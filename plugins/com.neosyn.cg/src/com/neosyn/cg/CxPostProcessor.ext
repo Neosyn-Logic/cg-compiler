@@ -1,0 +1,20 @@
+/*******************************************************************************
+ * Copyright (c) 2012-2021 Neosyn. All rights reserved.
+ *
+ * This file is part of the Neosyn SDK Project.
+ *
+ * The Neosyn SDK Project cannot be copied and/or distributed without the express
+ * Originally developed by Synflow. Now maintained by Neosyn team.
+ *
+ * History:
+ *    Originally developed by Synflow until February 2021 under LGPL.
+ *    Now maintained and improved by Neosyn team since January 2024.
+ *******************************************************************************/
+
+import ecore;
+import xtext;
+
+// delegate to an Xtend2 implementation:
+process(GeneratedMetamodel this) : JAVA
+	com.neosyn.cx.mwe2.CxPostProcessor.augment(org.eclipse.xtext.GeneratedMetamodel)
+;

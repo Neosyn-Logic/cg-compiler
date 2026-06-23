@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension-point id="injection" name="injection" schema="schema/injection.exsd"/>
+   <extension
+         id="nature"
+         point="org.eclipse.core.resources.natures">
+      <runtime>
+         <run
+               class="com.neosyn.core.NeosynNature">
+         </run>
+      </runtime>
+      <builder
+            id="com.neosyn.core.builder">
+      </builder>
+   </extension>
+   <extension
+         id="builder"
+         name="Neosyn builder"
+         point="org.eclipse.core.resources.builders">
+      <builder
+            callOnEmptyDelta="false"
+            hasNature="true"
+            isConfigurable="false"
+            supportsConfigurations="true">
+         <run
+               class="com.neosyn.core.InjectableExtensionFactory">
+            <parameter
+                  name="className"
+                  value="com.neosyn.core.internal.builder.NeosynBuilder">
+            </parameter>
+         </run></builder>
+   </extension>
+   <extension
+         point="org.eclipse.core.expressions.propertyTesters">
+      <propertyTester
+            class="com.neosyn.core.internal.CorePropertyTester"
+            id="com.neosyn.core.propertyTester"
+            namespace="com.neosyn.core"
+            properties="isPackage,isSourceFolder"
+            type="org.eclipse.core.resources.IResource">
+      </propertyTester>
+   </extension>
+   <extension point="org.eclipse.emf.ecore.generated_package">
+      <!-- @generated Core -->
+      <package
+            uri="http://www.neosyn.io/2013/Dpn"
+            class="com.neosyn.models.dpn.DpnPackage"
+            genModel="model/Core.genmodel"/>
+   </extension>
+   <extension point="org.eclipse.emf.ecore.generated_package">
+      <!-- @generated Core -->
+      <package
+            uri="http://www.neosyn.io/2013/Graph"
+            class="com.neosyn.models.graph.GraphPackage"
+            genModel="model/Core.genmodel"/>
+   </extension>
+   <extension point="org.eclipse.emf.ecore.generated_package">
+      <!-- @generated Core -->
+      <package
+            uri="http://www.neosyn.io/2013/Ir"
+            class="com.neosyn.models.ir.IrPackage"
+            genModel="model/Core.genmodel"/>
+   </extension>
+   <extension
+         point="org.eclipse.emf.ecore.extension_parser">
+      <parser
+            class="com.neosyn.models.ir.impl.IrResourceFactoryImpl"
+            type="ir">
+      </parser>
+   </extension>
+</plugin>

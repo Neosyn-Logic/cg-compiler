@@ -1,0 +1,471 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ *
+ * Copyright (c) Neosyn. C⏚ ("C-Ground") is the open-source continuation
+ * of the Synflow Cx toolchain, originally developed by Synflow.
+ */
+
+grammar com.neosyn.cg.Cg hidden(WS, ML_COMMENT, SL_COMMENT)
+
+import "http://www.eclipse.org/emf/2002/Ecore" as ecore
+import "http://www.neosyn.io/cg/Cg"
+
+///////////////////////////////////////////////////////////////////////////////
+// top-level entity
+///////////////////////////////////////////////////////////////////////////////
+
+Module:
+	'package' package = QualifiedName ';'
+	(imports += Import)*
+	(entities += CgEntity)*
+;
+
+Import: 'import' imported += Imported (',' imported += Imported)* ';'
+;
+
+Imported: type=[Named|QualifiedName] (wildcard ?= '.' '*')?;
+
+QualifiedName:
+	ValidID (=> '.' ValidID)*
+;
+
+ValidID:
+	ID;
+
+CgEntity: Bundle | Task | Network;
+
+///////////////////////////////////////////////////////////////////////////////
+// task and network level
+///////////////////////////////////////////////////////////////////////////////
+
+Task:
+	'task' name=ValidID
+		// L3 Generics iter #2: angle-bracket formal parameters, e.g.
+		// `task FIFO<int WIDTH=8, int DEPTH=16>`. Desugars to const+property
+		// monomorphization (see .claude/L3_GENERICS_DESIGN.md §iter 2).
+		('<' params += GenericParam (',' params += GenericParam)* '>')?
+		'{'
+		(imports += Import)*
+		('properties' properties=Obj)?
+		(portDecls += PortDecl | structs += Struct | enums += Enum | types += Typedef | decls += VarDecl)*
+	'}'
+;
+
+// A generic formal parameter. Returns Variable so it slots into the existing
+// scope / monomorphization machinery (CgUtil.getVariables + isConstant treat it
+// as an implicitly-const entity variable). The default value uses
+// ExpressionAdditive (not CgExpression) so the closing `>` of the parameter list
+// is never swallowed by a relational/shift operator (the C++ `>` template trap).
+GenericParam returns Variable:
+	type=CgType name=ValidID ('=' value=ExpressionAdditive)?
+;
+
+Bundle:
+	'bundle' name=ValidID ('extends' extends = [Bundle|QualifiedName])? '{'
+		(imports += Import)*
+		('properties' properties=Obj)?
+		(structs += Struct | enums += Enum | types += Typedef | decls += VarDecl)*
+	'}'
+;
+
+InstAnonTask returns Task: {Task}
+	'task' '{'
+		(imports += Import)*
+		('properties' properties=Obj)?
+		(portDecls += PortDecl | structs += Struct | enums += Enum | types += Typedef | decls += VarDecl)*
+	'}'
+;
+
+Network:
+	'network' name=ValidID '{'
+		(imports += Import)*
+		('properties' properties=Obj)?
+		(instances += Inst | portDecls += PortDecl | structs += Struct | enums += Enum | types += Typedef | connects += Connect)*
+	'}'
+;
+
+Connect:
+	(instance = [Inst|QualifiedName] | this ?= 'this') '.' type=('reads' | 'writes') '(' ports += VarRef (',' ports += VarRef)* ')' ';'
+;
+
+Inst:
+	name=ValidID '=' 'new'
+		// L3 Generics iter #2: positional type arguments, e.g. `new FIFO<8, 16>()`.
+		// Zipped against the target's formal `params` (by order) into the property
+		// map the monomorphization engine already consumes. ExpressionAdditive
+		// avoids the `>` template-close ambiguity (see GenericParam).
+		(entity=[Instantiable|QualifiedName]
+			('<' typeArgs += ExpressionAdditive (',' typeArgs += ExpressionAdditive)* '>')?
+			'(' (arguments = Obj)? ')'
+		| task=InstAnonTask) ';'
+;
+
+Array:
+	{Array} '[' (elements += Element (',' elements += Element)*)? ']'
+;
+
+Obj:
+	{Obj} '{' (members += Pair (',' members += Pair)*)? '}'
+;
+
+Pair:
+	key=ID ':' value=Element
+;
+
+Element:
+	Primitive | Obj | Array
+;
+
+Primitive: value=(CgExpression | Null);
+Null: {Null} 'null';
+
+///////////////////////////////////////////////////////////////////////////////
+// declarations
+///////////////////////////////////////////////////////////////////////////////
+
+// typedef declaration
+Typedef: 'typedef' type=CgType name=ValidID ';';
+
+// struct declaration (L1; see .claude/L1_STRUCT_DESIGN.md)
+Struct: 'struct' name=ValidID '{'
+	(fields += StructField)*
+'}';
+StructField returns Variable: type=CgType name=ValidID ';';
+
+// enum declaration (L2 iter #1+#2; see .claude/L2_ENUM_DESIGN.md)
+// iter #2: optional `: u<N>` underlying type and optional `LIT = N` explicit value.
+Enum: 'enum' name=ValidID (':' underlying=TypeDecl)? '{'
+	literals += EnumLiteral (',' literals += EnumLiteral)*
+'}';
+EnumLiteral returns Variable: name=ValidID ('=' value=CgExpression)?;
+
+PortDecl: SinglePortDecl | MultiPortDecl;
+SinglePortDecl: direction=('in' | 'out') ports += PortDef (',' ports += PortDef)* ';';
+PortDef:
+	// OLD syntax (deprecated): in sync ready u8 data;
+	(syncOld?='sync' (readyOld?='ready' | ackOld?='ack')?)?
+	// NEW syntax inline: in push u8 data; / in stream u8 data; / in confirm u8 data;
+	(pushOld?='push' | streamOld?='stream' | confirmOld?='confirm')?
+	var=PortVariable
+	// Parentheses syntax: in u8 data(push);
+	('(' (
+			(sync?='sync' combinational?='combinational'?)
+			| (combinational?='combinational' sync?='sync'?)
+			| ready?='ready'
+			| ack?='ack'
+			| push?='push'
+			| stream?='stream'
+			| confirm?='confirm'
+		)?
+	')')?
+;
+
+MultiPortDecl:
+	// OLD syntax (deprecated)
+	(sync?='sync' (ready?='ready' | ack?='ack')?)?
+	// NEW syntax
+	(push?='push' | stream?='stream' | confirm?='confirm')?
+	'{' decls += SyncPortDecl* '}'
+;
+SyncPortDecl returns SinglePortDecl: direction=('in' | 'out') ports += SyncPortDef (',' ports += SyncPortDef)* ';';
+SyncPortDef returns PortDef: (ready?='ready' | ack?='ack' | stream?='stream' | confirm?='confirm')? var=PortVariable;
+
+PortVariable returns Variable: (type = CgType)? name = ValidID;
+
+// variable/function declaration
+VarDecl:
+	(constant ?= 'const')?
+	(type = CgType | void ?= 'void')
+
+	(variables += Function
+	| variables += StateVar (',' variables += StateVar)* ';')
+;
+
+Function returns Variable:
+	name = ValidID
+	'(' (parameters += Parameter (',' parameters += Parameter)*)? ')'
+	body = Block
+;
+
+StateVar returns Variable:
+	name = ValidID ('[' dimensions += CgExpression ']')* ('=' value=Value)?;
+
+Parameter returns Variable: type = CgType name = ValidID;
+
+// initial value
+Value returns CgExpression: ExpressionList | CgExpression;
+ExpressionList:
+	{ExpressionList} '{' (values += Value (',' values += Value)* )? '}';
+
+///////////////////////////////////////////////////////////////////////////////
+// statements
+///////////////////////////////////////////////////////////////////////////////
+
+VarRef: objects += [Named|ValidID] ('.' objects += [Named|ValidID])*;
+
+StatementAssign:
+	(	(op='++' | op='--') target=ExpressionVariable )
+	|	(	target=ExpressionVariable
+			(	(op='++' | op='--')
+			|	((op='=' | op=ASSIGN_OP) value=CgExpression))?
+		);
+
+terminal ASSIGN_OP:
+	'&=' | '|=' | '^=' |
+	'&&=' | '||=' |
+	'+=' | '-=' | '*=' | '/=' | '%=' |
+	'<<=' | '>>='
+;
+
+StatementAssert:
+	'assert' '(' condition = CgExpression ')' ';';
+
+Block: {Block}
+	'{'
+		stmts += Statement*
+	'}'
+;
+
+StatementFence: {StatementFence} 'fence' ';';
+
+StatementBreak: {StatementBreak} 'break' ';';
+
+StatementContinue: {StatementContinue} 'continue' ';';
+
+StatementFor returns StatementLoop:
+	'for' '(' init = (StatementAssign | StatementVariable)? ';' condition=CgExpression ';' after=StatementAssign? ')'
+		body = Block;
+
+StatementIdle: {StatementIdle} 'idle' '(' numCycles=CgExpression ')' ';';
+
+StatementIf:
+	branches += Branch
+	('else' branches += Branch)*
+	('else' branches += BranchElse)?;
+
+Branch:
+	'if' '(' condition = CgExpression ')'
+		body = Block;
+
+BranchElse returns Branch:
+	body = Block;
+
+StatementLabeled: label=ID ':' stmt=Statement;
+
+StatementPrint:
+	{StatementPrint} 'print' '(' (args += CgExpression (',' args += CgExpression)*)? ')' ';';
+
+StatementReturn:
+	{StatementReturn} 'return' value = CgExpression? ';'
+;
+
+StatementVariable:
+	(constant ?= 'const')?
+	type = CgType
+	variables += LocalVar (',' variables += LocalVar)*;
+
+LocalVar returns Variable:
+	name = ValidID ('[' dimensions += CgExpression ']')* ('=' value=Value)?;
+
+StatementWhile returns StatementLoop:
+	'while' '(' condition=CgExpression ')'
+		body = Block;
+
+StatementWrite:
+	port=VarRef '.' 'write' '(' value=CgExpression ')' ';'
+;
+
+Statement:
+	(StatementAssign ';')
+	| StatementAssert
+	| StatementBreak
+	| StatementContinue
+	| StatementFence
+	| StatementFor
+	| StatementIdle
+	| StatementIf
+	| StatementLabeled
+	| StatementPrint
+	| StatementReturn
+	| (StatementVariable ';')
+	| StatementWhile
+	| StatementWrite;
+
+///////////////////////////////////////////////////////////////////////////////
+// expressions
+///////////////////////////////////////////////////////////////////////////////
+
+CgExpression:
+	ExpressionOr ({ExpressionIf.condition=current} operator='?' then=CgExpression ':' else=CgExpression)?;
+ExpressionOr returns CgExpression:
+	ExpressionAnd ({ExpressionBinary.left=current} operator='||' right=ExpressionAnd)*;
+ExpressionAnd returns CgExpression:
+	ExpressionBitor ({ExpressionBinary.left=current} operator='&&' right=ExpressionBitor)*;
+ExpressionBitor returns CgExpression:
+	ExpressionBitxor ({ExpressionBinary.left=current} operator='|' right=ExpressionBitxor)*;
+ExpressionBitxor returns CgExpression:
+	ExpressionBitand ({ExpressionBinary.left=current} operator='^' right=ExpressionBitand)*;
+ExpressionBitand returns CgExpression:
+	ExpressionEq ({ExpressionBinary.left=current} operator='&' right=ExpressionEq)*;
+ExpressionEq returns CgExpression:
+	ExpressionRelational ({ExpressionBinary.left=current} operator=('==' | '!=') right=ExpressionRelational)*;
+ExpressionRelational returns CgExpression:
+	ExpressionShift ({ExpressionBinary.left=current} operator=('<' | '<=' | '>' | '>=') right=ExpressionShift)*;
+ExpressionShift returns CgExpression:
+	ExpressionAdditive ({ExpressionBinary.left=current} operator=('<<' | '>>') right=ExpressionAdditive)*;
+ExpressionAdditive returns CgExpression:
+	ExpressionMultiplicative ({ExpressionBinary.left=current} operator=('+' | '-') right=ExpressionMultiplicative)*;
+ExpressionMultiplicative returns CgExpression:
+	ExpressionUnary ({ExpressionBinary.left=current} operator=('*' | '/' | '%') right=ExpressionUnary)*;
+
+ExpressionUnary returns CgExpression:
+	{ExpressionUnary} (
+		(operator=('~' | '!' | '-') expression=ExpressionPostfix)
+		| (operator='sizeof' '(' expression=CgExpression ')')
+	)
+	| ExpressionPostfix
+;
+
+ExpressionPostfix returns CgExpression:
+	=> ExpressionCast
+    | ExpressionVariable
+	| Primary
+;
+
+ExpressionCast:
+	'(' type=CgType ')' expression=ExpressionUnary
+;
+
+ExpressionVariable:
+	source=VarRef ('[' indexes += CgExpression ']')*
+		('.' members += [Named|ValidID])*
+		('.' ready = 'ready')?
+		('(' (parameters += CgExpression (',' parameters += CgExpression)*)? ')')?;
+
+Primary returns CgExpression:
+	Literal
+	| '(' CgExpression ')'
+;
+
+Literal returns CgExpression:
+      ExpressionBoolean
+	| ExpressionInteger
+    | ExpressionFloat
+    | ExpressionString
+;
+///////////////////////////////////////////////////////////////////////////////
+// literal expressions
+///////////////////////////////////////////////////////////////////////////////
+
+ExpressionBoolean: value=BOOL;
+
+ExpressionFloat: value=FLOAT;
+
+ExpressionInteger: value=(INTEGER | CHAR);
+
+ExpressionString: value=STRING;
+
+
+
+terminal BOOL returns ecore::EBoolean: 'true' | 'false';
+
+terminal INTEGER returns ecore::EBigInteger: DECIMAL | OCTAL | HEXADECIMAL | BINARY;
+
+terminal CHAR returns ecore::EBigInteger: "'" (ESCAPED_CHAR | (!('\\'|"'"))) "'";
+
+terminal STRING: '"' (ESCAPED_CHAR | !('\\'|'"'))* '"';
+
+
+
+terminal fragment DIGIT_BIN: '0' | '1';
+
+terminal fragment DIGIT_DEC: '0'..'9';
+
+terminal fragment DIGIT_HEX: DIGIT_DEC | 'a'..'f' | 'A'..'F';
+
+terminal fragment DIGIT_OCT: '0'..'7';
+
+terminal fragment DECIMAL: ('1'..'9') ('_'? DIGIT_DEC)*;
+
+terminal fragment OCTAL: '0' ('_'? DIGIT_OCT)*;
+
+terminal fragment HEXADECIMAL: '0' 'x' DIGIT_HEX ('_'? DIGIT_HEX)*;
+
+terminal fragment BINARY: '0' 'b' DIGIT_BIN ('_'? DIGIT_BIN)*;
+
+terminal fragment ESCAPED_CHAR:
+	'\\'
+	(
+		  "'"
+		| '"'
+		| '\\'
+		| 'b'
+		| 'f'
+		| 'n'
+		| 'r'
+		| 't'
+		| (DIGIT_OCT (DIGIT_OCT DIGIT_OCT?)?)
+		| ('x' DIGIT_HEX DIGIT_HEX)
+		| ('u' DIGIT_HEX DIGIT_HEX DIGIT_HEX DIGIT_HEX)
+		| ('U'	DIGIT_HEX DIGIT_HEX DIGIT_HEX DIGIT_HEX
+				DIGIT_HEX DIGIT_HEX DIGIT_HEX DIGIT_HEX)
+	);
+
+terminal FLOAT returns ecore::EBigDecimal: REAL;
+
+terminal fragment REAL:
+	DIGIT_DEC+ '.' DIGIT_DEC* EXPONENT?
+|	'.' DIGIT_DEC+ EXPONENT?
+|	DIGIT_DEC+ EXPONENT;
+
+terminal fragment EXPONENT: ('e'|'E') ('+' | '-')? DIGIT_DEC+;
+
+///////////////////////////////////////////////////////////////////////////////
+// types
+///////////////////////////////////////////////////////////////////////////////
+
+CgType:
+	TypeRef
+	| TypeDecl
+;
+
+terminal TYPE_INT: 'i' ('1'..'9') ('0'..'9')*;
+terminal TYPE_UINT: 'u' ('1'..'9') ('0'..'9')*;
+
+TypeRef: typeDef=[NamedType|QualifiedName];
+
+TypeDecl:
+	((unsigned ?='unsigned' | signed?='signed')
+		(('<' size=ExpressionShift '>')
+		| spec='char'
+		| spec='short'
+		| spec='int' ('<' size=ExpressionShift '>')?
+		| spec='long')?)
+
+	| spec='bool'
+	| spec='float'
+
+	| spec='char'
+	| spec='short'
+	| spec='int' ('<' size=ExpressionShift '>')?
+	| spec='long'
+
+	| spec='uchar'
+	| spec='ushort'
+	| spec='uint' ('<' size=ExpressionShift '>')?
+	| spec='ulong'
+
+	| spec=TYPE_INT
+	| spec=TYPE_UINT
+;
+
+// tokens from Xtext except INT and STRING
+// note that string is exclusively using double quotes "this is a string"
+// because we need to differentiate with characters (integers)
+
+terminal ID: ('a'..'z'|'A'..'Z'|'_') ('a'..'z'|'A'..'Z'|'_'|'0'..'9')*;
+terminal ML_COMMENT: '/*' -> '*/';
+terminal SL_COMMENT: '//' !('\n'|'\r')* ('\r'? '\n')?;
+terminal WS: (' '|'\t'|'\r'|'\n')+;

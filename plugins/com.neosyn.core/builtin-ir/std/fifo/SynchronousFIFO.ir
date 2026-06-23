@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<com.neosyn.models.dpn:Actor xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:com.neosyn.models.dpn="http://www.neosyn.io/2013/Dpn"
+    xmlns:com.neosyn.models.ir="http://www.neosyn.io/2013/Ir"
+    name="std.fifo.SynchronousFIFO" properties="{&quot;implementation&quot;:{&quot;type&quot;:&quot;builtin&quot;,&quot;dependencies&quot;:[&quot;std.mem.PseudoDualPortRAM&quot;]}}">
+  <inputs name="din" interface="SYNC_READY">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="32"/>
+    <additionalInputs name="din_valid">
+      <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </additionalInputs>
+    <additionalOutputs assignable="true" name="din_ready">
+      <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </additionalOutputs>
+  </inputs>
+  <outputs name="dout" interface="SYNC_READY">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="32"/>
+    <additionalOutputs assignable="true" name="dout_valid">
+      <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </additionalOutputs>
+    <additionalInputs name="dout_ready">
+      <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </additionalInputs>
+  </outputs>
+</com.neosyn.models.dpn:Actor>

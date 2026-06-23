@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<com.neosyn.models.dpn:Actor xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:com.neosyn.models.dpn="http://www.neosyn.io/2013/Dpn"
+    xmlns:com.neosyn.models.ir="http://www.neosyn.io/2013/Ir"
+    name="std.mem.SinglePortRAM" properties="{&quot;reset&quot;:null,&quot;implementation&quot;:{&quot;type&quot;:&quot;builtin&quot;}}">
+  <variables name="size" assignable="false">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="32"/>
+  </variables>
+  <variables name="width" assignable="false">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="32"/>
+  </variables>
+  <variables name="depth" assignable="false">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="32"/>
+    <initialValue xsi:type="com.neosyn.models.ir:ExprInt" value="0"/>
+  </variables>
+  <variables name="writeShiftMode" assignable="false">
+    <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+    <initialValue xsi:type="com.neosyn.models.ir:ExprBool" value="false"/>
+  </variables>
+  <variables name="addOutputRegister" assignable="false">
+    <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+    <initialValue xsi:type="com.neosyn.models.ir:ExprBool" value="false"/>
+  </variables>
+  <inputs name="address">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="16"/>
+  </inputs>
+  <inputs name="data" interface="SYNC">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="32"/>
+    <additionalInputs name="data_valid">
+      <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </additionalInputs>
+  </inputs>
+  <outputs name="q">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="32"/>
+  </outputs>
+</com.neosyn.models.dpn:Actor>

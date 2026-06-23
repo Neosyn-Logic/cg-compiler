@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<genmodel:GenModel xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    xmlns:genmodel="http://www.eclipse.org/emf/2002/GenModel" modelDirectory="/com.neosyn.cg/emf-gen" editDirectory="/com.neosyn.cg.edit/src"
+    editorDirectory="/com.neosyn.cg.editor/src" modelPluginID="com.neosyn.cg" forceOverwrite="true"
+    modelName="Cg" updateClasspath="false" rootExtendsClass="org.eclipse.emf.ecore.impl.MinimalEObjectImpl$Container"
+    complianceLevel="6.0" copyrightFields="false" editPluginID="com.neosyn.cg.edit"
+    editorPluginID="com.neosyn.cg.editor" runtimeVersion="2.9" usedGenPackages="../../com.neosyn.core/model/Core.genmodel#//dpn ../../com.neosyn.core/model/Core.genmodel#//ir ../../com.neosyn.core/model/Core.genmodel#//graph">
+  <genPackages prefix="Cg" basePackage="com.neosyn.cg" disposableProviderFactory="true"
+      fileExtensions="cg" ecorePackage="Cg.ecore#/">
+    <genDataTypes ecoreDataType="Cg.ecore#//EList">
+      <genTypeParameters ecoreTypeParameter="Cg.ecore#//EList/T"/>
+    </genDataTypes>
+    <genDataTypes ecoreDataType="Cg.ecore#//ErrorMarker"/>
+    <genClasses ecoreClass="Cg.ecore#//Module">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//Module/package"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//Module/imports"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//Module/entities"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//Import">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//Import/imported"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//Imported">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference Cg.ecore#//Imported/type"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//Imported/wildcard"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//CgEntity">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//CgEntity/imports"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//CgEntity/properties"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//CgEntity/types"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//CgEntity/structs"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//CgEntity/enums"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//Named">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//Named/name"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//NamedType" image="false"/>
+    <genClasses ecoreClass="Cg.ecore#//Struct">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//Struct/fields"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//Enum">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//Enum/literals"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//Enum/underlying"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//Instantiable">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//Instantiable/portDecls"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//Instantiable/internalErrors"/>
+      <genOperations ecoreOperation="Cg.ecore#//Instantiable/getErrors"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//Task">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//Task/decls"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//Bundle">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference Cg.ecore#//Bundle/extends"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//Bundle/decls"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//Network">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//Network/instances"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//Network/connects"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//Connect">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference Cg.ecore#//Connect/instance"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//Connect/this"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//Connect/type"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//Connect/ports"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//Inst">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference Cg.ecore#//Inst/entity"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//Inst/arguments"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//Inst/task"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//Array">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//Array/elements"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//Obj">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//Obj/members"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//Pair">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//Pair/key"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//Pair/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//Element"/>
+    <genClasses ecoreClass="Cg.ecore#//Primitive">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//Primitive/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//Null"/>
+    <genClasses ecoreClass="Cg.ecore#//Typedef">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//Typedef/type"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//PortDecl"/>
+    <genClasses ecoreClass="Cg.ecore#//SinglePortDecl">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//SinglePortDecl/direction"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//SinglePortDecl/ports"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//PortDef">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//PortDef/syncOld"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//PortDef/readyOld"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//PortDef/ackOld"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//PortDef/var"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//PortDef/sync"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//PortDef/combinational"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//PortDef/ready"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//PortDef/ack"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//MultiPortDecl">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//MultiPortDecl/sync"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//MultiPortDecl/ready"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//MultiPortDecl/ack"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//MultiPortDecl/decls"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//Variable">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//Variable/type"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//Variable/parameters"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//Variable/body"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//Variable/dimensions"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//Variable/value"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//Variable/initialized"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//Variable/used"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//VarDecl">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//VarDecl/constant"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//VarDecl/type"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//VarDecl/void"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//VarDecl/variables"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//CgExpression"/>
+    <genClasses ecoreClass="Cg.ecore#//ExpressionList">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//ExpressionList/values"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//VarRef">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference Cg.ecore#//VarRef/objects"/>
+      <genOperations ecoreOperation="Cg.ecore#//VarRef/getVariable"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//StatementAssign">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//StatementAssign/target"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//StatementAssign/op"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//StatementAssign/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//StatementAssert">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//StatementAssert/condition"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//Block">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//Block/stmts"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//StatementFence"/>
+    <genClasses ecoreClass="Cg.ecore#//StatementLoop">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//StatementLoop/init"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//StatementLoop/condition"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//StatementLoop/after"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//StatementLoop/body"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//StatementIdle">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//StatementIdle/numCycles"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//StatementIf">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//StatementIf/branches"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//Branch">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//Branch/condition"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//Branch/body"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//StatementLabeled">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//StatementLabeled/label"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//StatementLabeled/stmt"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//StatementPrint">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//StatementPrint/args"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//StatementReturn">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//StatementReturn/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//StatementVariable">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//StatementVariable/constant"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//StatementVariable/type"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//StatementVariable/variables"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//StatementWrite">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//StatementWrite/port"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//StatementWrite/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//Statement"/>
+    <genClasses ecoreClass="Cg.ecore#//ExpressionCast">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//ExpressionCast/type"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//ExpressionCast/expression"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//ExpressionVariable">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//ExpressionVariable/source"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//ExpressionVariable/indexes"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//ExpressionVariable/ready"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//ExpressionVariable/parameters"/>
+      <genOperations ecoreOperation="Cg.ecore#//ExpressionVariable/getProperty"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//ExpressionBoolean">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//ExpressionBoolean/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//ExpressionFloat">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//ExpressionFloat/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//ExpressionInteger">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//ExpressionInteger/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//ExpressionString">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//ExpressionString/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//CgType"/>
+    <genClasses ecoreClass="Cg.ecore#//TypeRef">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference Cg.ecore#//TypeRef/typeDef"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//TypeDecl">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//TypeDecl/unsigned"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//TypeDecl/signed"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//TypeDecl/size"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//TypeDecl/spec"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//ExpressionIf">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//ExpressionIf/condition"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//ExpressionIf/operator"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//ExpressionIf/then"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//ExpressionIf/else"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//ExpressionBinary">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//ExpressionBinary/left"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//ExpressionBinary/operator"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//ExpressionBinary/right"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//ExpressionUnary">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//ExpressionUnary/operator"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Cg.ecore#//ExpressionUnary/expression"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//Enter">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference Cg.ecore#//Enter/function"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Cg.ecore#//Enter/lineNumber"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference Cg.ecore#//Enter/parameters"/>
+    </genClasses>
+    <genClasses ecoreClass="Cg.ecore#//Leave"/>
+    <genClasses ecoreClass="Cg.ecore#//StatementGoto">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference Cg.ecore#//StatementGoto/target"/>
+    </genClasses>
+  </genPackages>
+</genmodel:GenModel>

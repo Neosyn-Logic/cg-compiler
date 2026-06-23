@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+	xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+	<!-- taken and adapted from https://github.com/schakko/xtext-plugin-with-maven-tycho -->
+
+	<!-- to override qualifier use: -DforceContextQualifier=XXXXXXXX -->
+
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>com.neosyn</groupId>
+	<artifactId>com.neosyn.ide.releng</artifactId>
+	<version>2.0.0-SNAPSHOT</version>
+	<packaging>pom</packaging>
+
+	<properties>
+		<tycho.version>4.0.8</tycho.version>
+		<tycho.extras.version>${tycho.version}</tycho.extras.version>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.build.resourceEncoding>UTF-8</project.build.resourceEncoding>
+		<xtext.version>2.34.0</xtext.version>
+		<maven.compiler.source>17</maven.compiler.source>
+		<maven.compiler.target>17</maven.compiler.target>
+		<!-- Skip slow external tool tests (Verilator, Yosys, cocotb) when true -->
+		<neosyn.skipSlowTests>false</neosyn.skipSlowTests>
+	</properties>
+
+	<repositories>
+		<!-- Eclipse 2024-03 p2 repository (latest supporting Java 17) -->
+		<repository>
+			<id>eclipse-2024-03</id>
+			<url>https://download.eclipse.org/releases/2024-03</url>
+			<layout>p2</layout>
+		</repository>
+		<!-- Xtext p2 repository -->
+		<repository>
+			<id>Xtext Update Site</id>
+			<layout>p2</layout>
+			<url>https://download.eclipse.org/modeling/tmf/xtext/updates/releases/${xtext.version}/</url>
+		</repository>
+		<!-- Maven Central for MWE2 and other dependencies -->
+		<repository>
+			<id>central</id>
+			<url>https://repo.maven.apache.org/maven2</url>
+		</repository>
+	</repositories>
+
+	<build>
+
+		<plugins>
+			<!-- xtend-maven-plugin is in pluginManagement instead of in plugins so
+				that it doesn't run before the exec-maven-plugin's *.mwe2 gen; this way we
+				can list it after. -->
+
+			<!-- Xtend build -->
+			<plugin>
+				<groupId>org.eclipse.xtend</groupId>
+				<artifactId>xtend-maven-plugin</artifactId>
+				<version>${xtext.version}</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>compile</goal>
+							<goal>testCompile</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<outputDirectory>xtend-gen</outputDirectory>
+				</configuration>
+			</plugin>
+
+			<!-- clean output directory. Otherwise we will run in issues with wrong
+				package name of classes inside xtend-gen directory -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-clean-plugin</artifactId>
+				<version>3.3.2</version>
+				<executions>
+					<execution>
+						<id>gen-clean</id>
+						<goals>
+							<goal>clean</goal>
+						</goals>
+						<configuration>
+							<filesets>
+								<fileset>
+									<directory>${basedir}/xtend-gen</directory>
+								</fileset>
+							</filesets>
+						</configuration>
+					</execution>
+					<execution>
+						<id>auto-clean</id>
+						<phase>initialize</phase>
+						<goals>
+							<goal>clean</goal>
+						</goals>
+
+						<configuration>
+							<filesets>
+								<fileset>
+									<directory>${basedir}/xtend-gen</directory>
+									<includes>
+										<include>**</include>
+									</includes>
+								</fileset>
+								<fileset>
+									<directory>${project.build.directory}</directory>
+									<includes>
+										<include>**</include>
+									</includes>
+								</fileset>
+							</filesets>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- register the directories src-gen and xtend-gen inside the project
+				folder as source directories -->
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>build-helper-maven-plugin</artifactId>
+				<version>3.5.0</version>
+				<executions>
+					<execution>
+						<id>add-source</id>
+						<phase>generate-sources</phase>
+						<goals>
+							<goal>add-source</goal>
+						</goals>
+						<configuration>
+							<sources>
+								<source>${basedir}/src-gen</source>
+								<source>${basedir}/xtend-gen</source>
+							</sources>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- UTF-8 stuff -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-resources-plugin</artifactId>
+				<version>3.3.1</version>
+				<configuration>
+					<encoding>UTF-8</encoding>
+				</configuration>
+			</plugin>
+
+
+			<!-- tycho-surefire-plugin executes every unit test if the packaging type
+				is eclipse-plugin-test -->
+			<plugin>
+				<groupId>org.eclipse.tycho</groupId>
+				<artifactId>tycho-surefire-plugin</artifactId>
+				<version>${tycho.version}</version>
+				<configuration>
+					<appArgLine>-Dfile.encoding=UTF-8</appArgLine>
+				</configuration>
+			</plugin>
+
+			<!-- use Tycho -->
+			<plugin>
+				<groupId>org.eclipse.tycho</groupId>
+				<artifactId>tycho-maven-plugin</artifactId>
+				<version>${tycho.version}</version>
+				<extensions>true</extensions>
+			</plugin>
+
+			<plugin>
+				<groupId>org.eclipse.tycho</groupId>
+				<artifactId>target-platform-configuration</artifactId>
+				<version>${tycho.version}</version>
+				<configuration>
+					<executionEnvironment>JavaSE-17</executionEnvironment>
+					<environments>
+						<environment>
+							<os>linux</os>
+							<ws>gtk</ws>
+							<arch>x86_64</arch>
+						</environment>
+						<environment>
+							<os>win32</os>
+							<ws>win32</ws>
+							<arch>x86_64</arch>
+						</environment>
+						<environment>
+							<os>macosx</os>
+							<ws>cocoa</ws>
+							<arch>x86_64</arch>
+						</environment>
+						<environment>
+							<os>macosx</os>
+							<ws>cocoa</ws>
+							<arch>aarch64</arch>
+						</environment>
+					</environments>
+				</configuration>
+			</plugin>
+
+			<!-- configure Tycho compiler -->
+			<plugin>
+				<groupId>org.eclipse.tycho</groupId>
+				<artifactId>tycho-compiler-plugin</artifactId>
+				<version>${tycho.version}</version>
+				<configuration>
+					<encoding>UTF-8</encoding>
+
+					<!-- ignore some files so we don't get them in generated JAR -->
+					<excludeResources>
+						<excludeResource>**/*._trace</excludeResource>
+						<excludeResource>**/*.ext</excludeResource>
+						<excludeResource>**/*.mwe2</excludeResource>
+						<excludeResource>**/*.xtend</excludeResource>
+						<excludeResource>**/*.xtext</excludeResource>
+					</excludeResources>
+
+					<!--misc options -->
+					<optimize>true</optimize>
+					<showDeprecation>true</showDeprecation>
+					<showWarnings>true</showWarnings>
+
+				</configuration>
+			</plugin>
+
+			<plugin>
+				<groupId>org.eclipse.tycho</groupId>
+				<artifactId>tycho-p2-plugin</artifactId>
+				<version>${tycho.version}</version>
+				<configuration>
+					<defaultP2Metadata>true</defaultP2Metadata>
+				</configuration>
+			</plugin>
+
+		</plugins>
+	</build>
+</project>

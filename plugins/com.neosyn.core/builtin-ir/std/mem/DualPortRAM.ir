@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<com.neosyn.models.dpn:Actor xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:com.neosyn.models.dpn="http://www.neosyn.io/2013/Dpn"
+    xmlns:com.neosyn.models.ir="http://www.neosyn.io/2013/Ir"
+    name="std.mem.DualPortRAM" properties="{&quot;reset&quot;:null,&quot;clocks&quot;:[&quot;clock_a&quot;,&quot;clock_b&quot;],&quot;implementation&quot;:{&quot;type&quot;:&quot;builtin&quot;}}">
+  <inputs name="address_a">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="16"/>
+  </inputs>
+  <inputs name="data_a" interface="SYNC">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="32"/>
+    <additionalInputs name="data_a_valid">
+      <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </additionalInputs>
+  </inputs>
+  <outputs name="q_a">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="32"/>
+  </outputs>
+  <inputs name="address_b">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="16"/>
+  </inputs>
+  <inputs name="data_b" interface="SYNC">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="32"/>
+    <additionalInputs name="data_b_valid">
+      <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </additionalInputs>
+  </inputs>
+  <outputs name="q_b">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="32"/>
+  </outputs>
+</com.neosyn.models.dpn:Actor>

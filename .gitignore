@@ -1,0 +1,340 @@
+# =============================================================================
+# Neosyn IDE - Git Ignore
+# =============================================================================
+
+# =============================================================================
+# Build Output
+# =============================================================================
+target/
+bin/
+build/
+
+# =============================================================================
+# Eclipse IDE
+# =============================================================================
+
+# Project files (keep .project and .classpath for Eclipse import)
+# .project
+# .classpath
+.settings/
+*.launch
+
+# Eclipse workspace
+.metadata/
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+
+# External tool builders
+.externalToolBuilders/
+
+# Locally stored "Eclipse launch configurations"
+*.launch
+
+# PyDev specific
+*.pydevproject
+
+# CDT-specific
+.cproject
+
+# PDT-specific
+.buildpath
+
+# sbteclipse plugin
+.target
+
+# Tern plugin
+.tern-project
+
+# TeXlipse plugin
+.texlipse
+
+# STS (Spring Tool Suite)
+.springBeans
+
+# Code Coverage
+.coverage/
+jacoco.exec
+
+# =============================================================================
+# Maven
+# =============================================================================
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# =============================================================================
+# Xtext / Xtend
+# =============================================================================
+
+# Generated source folders
+xtend-gen/
+src-gen/
+emf-gen/
+
+# MWE2 generated files
+*.mwe2gen
+
+# Xtext builder state
+.xtext-bin/
+
+# =============================================================================
+# Tycho / Eclipse RCP
+# =============================================================================
+
+# Feature build output
+feature.temp.folder/
+
+# Plugin build output
+@dot/
+javaCompiler...args
+
+# P2 repository
+repository/
+
+# =============================================================================
+# IDE Generated - Intermediate Representation
+# =============================================================================
+
+# IR files generated from .cx source (build output)
+.ir/
+
+# Generated HDL output
+hdl-gen/
+verilog-gen/
+vhdl-gen/
+
+# =============================================================================
+# Java
+# =============================================================================
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+
+# Log files
+*.log
+logs/
+
+# BlueJ files
+*.ctxt
+
+# Package Files
+*.zip
+*.tar.gz
+*.rar
+
+# Virtual machine crash logs
+hs_err_pid*
+replay_pid*
+
+# =============================================================================
+# macOS
+# =============================================================================
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Icon must end with two \r
+Icon
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# =============================================================================
+# Windows
+# =============================================================================
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+
+# Dump file
+*.stackdump
+
+# Folder config file
+[Dd]esktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Windows Installer files
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+# Windows shortcuts
+*.lnk
+
+# =============================================================================
+# Linux
+# =============================================================================
+*~
+
+# Temporary files which can be created if a process still has a handle open of a deleted file
+.fuse_hidden*
+
+# KDE directory preferences
+.directory
+
+# Linux trash folder which might appear on any partition or disk
+.Trash-*
+
+# .nfs files are created when an open file is removed but is still being accessed
+.nfs*
+
+# =============================================================================
+# JetBrains IDEs (if used alongside Eclipse)
+# =============================================================================
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# =============================================================================
+# VS Code
+# =============================================================================
+.vscode/
+*.code-workspace
+
+# =============================================================================
+# Node.js / VS Code Extension (vscode-cx/)
+# =============================================================================
+node_modules/
+*.vsix
+package-lock.json
+.npm/
+.eslintcache
+.node_repl_history
+
+# =============================================================================
+# Secrets / Credentials (NEVER commit these)
+# =============================================================================
+*.pem
+*.key
+*.p12
+*.keystore
+*.jks
+credentials.json
+secrets.json
+.env
+.env.local
+.env.*.local
+
+# License files (development only)
+license.dat
+*.lic
+
+# =============================================================================
+# Claude Code Context (internal development notes)
+# =============================================================================
+.claude/
+
+# =============================================================================
+# Eclipse OSGi / Runtime Configuration Cache
+# =============================================================================
+
+# OSGi bundles cache
+**/org.eclipse.osgi/
+**/org.eclipse.core.runtime/
+
+# Eclipse configuration metadata (auto-generated runtime files)
+**/configuration/.data
+**/configuration/.settings/
+plugins/com.neosyn.cg.tests/configuration/
+
+# Tycho auto-generated consumer POMs
+.tycho-consumer-pom.xml
+
+# =============================================================================
+# Neosyn Specific
+# =============================================================================
+
+# User workspace data
+workspace/
+
+# Test output
+test-output/
+test-results/
+
+# Temporary compilation files
+*.tmp
+*.temp
+
+# Profiling data
+*.hprof
+*.jfr
+
+# =============================================================================
+# Documentation build
+# =============================================================================
+docs/_build/
+docs/api/
+site/
+
+# =============================================================================
+# Build / sim artefacts (generated, never source)
+# =============================================================================
+# Waveform dumps from iverilog / bytecode sim runs (kept large + binary)
+*.vcd
+# Generated Verilog testbench output beside example .cg files
+vscode-cg/examples/**/testbench/
+# Generated Verilog testbench output dropped at repo root by a local sim/test run
+/testbench/
+# Generated Verilog testbench output from the cg.tests golden-update run
+plugins/com.neosyn.cg.tests/testbench/
+# Stray Maven-mirror index leftover (releng/index.html etc.)
+releng/index.html
+# Codex CLI session marker
+.codex
+# Eclipse Tycho test-runtime extraction (recreated on every mvn verify)
+plugins/com.neosyn.cg.tests/plugins/
+plugins/com.neosyn.cg.tests/dev.properties
+
+# (see negation below). Private keys live in ~/.neosyn/private/ or a secrets vault.
+
+# =============================================================================
+# Keep these files (use ! to negate)
+# =============================================================================
+# Keep .project files for easy Eclipse import
+!.project
+!.classpath
+
+# Keep product definition
+!*.product
+.venv/
+
+# MkDocs developer-manual rendered output
+site/
+
+# Confidential dev-manual distribution archive (make docs-dist)
+neosyn-studio-dev-manual.zip

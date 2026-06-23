@@ -1,0 +1,94 @@
+/*******************************************************************************
+ * Copyright (c) 2024-2025 Neosyn. All rights reserved.
+ * https://neosyn.io
+ *
+ * C⏚ Standard Library - Utility Primitives (std.lib)
+ *
+ * This file defines built-in utility primitives for common hardware patterns.
+ *
+ * Clock Domain Crossing (CDC):
+ * - SynchronizerFF: Multi-stage flip-flop synchronizer for single-bit signals
+ * - SynchronizerMux: Multi-bit synchronizer using MUX-based protocol
+ *
+ * Double Data Rate (DDR):
+ * - MuxDDR: Combines rising/falling edge data into DDR output
+ * - DemuxDDR: Splits DDR input into rising/falling edge data
+ *
+ * Parameters:
+ * - stages: Number of synchronizer stages (default: 2)
+ * - width: Bit width for multi-bit synchronizers
+ ******************************************************************************/
+
+package std.lib;
+
+task SynchronizerFF {
+
+	properties {
+		clocks: ["din_clock", "dout_clock"],
+		implementation: {
+			type: "builtin"
+		},
+		domains: {
+			din_clock:  ["din"],
+			dout_clock: ["dout"]
+		}
+	}
+
+	const int stages = 2;
+
+	in bool din; out bool dout;
+
+}
+
+task SynchronizerMux {
+
+	properties {
+		clocks: ["din_clock", "dout_clock"],
+		implementation: {
+			type: "builtin",
+			dependencies: ["std.lib.SynchronizerFF"]
+		},
+		domains: {
+			din_clock:  ["din"],
+			dout_clock: ["dout"]
+		}
+	}
+
+	const int width = 16, stages = 2;
+
+	in unsigned int<width> din (sync); out unsigned int<width> dout;
+
+}
+
+/**
+ * Multiplexes two single data rate signals to generate a Double Data Rate signal.
+ */
+task MuxDDR {
+	properties {
+		reset: null,
+		implementation: {
+			type: "builtin"
+		}
+	}
+
+	const int width;
+	typedef unsigned int<width> data_t;
+	in data_t rising (sync), falling (sync); out data_t dout (sync);
+
+}
+
+/**
+ * Demultiplexes a Double Data Rate signal as two single data rate signals.
+ */
+task DemuxDDR {
+	properties {
+		implementation: {
+			type: "builtin"
+		}
+	}
+
+	const int width;
+	typedef unsigned int<width> data_t;
+	in data_t din (sync); out data_t rising (sync), falling (sync);
+
+}

@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+  xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.neosyn</groupId>
+    <artifactId>com.neosyn.ide.releng</artifactId>
+    <version>2.0.0-SNAPSHOT</version>
+    <relativePath>com.neosyn.ide.releng</relativePath>
+  </parent>
+
+  <artifactId>com.neosyn.ide.releng.build</artifactId>
+  <packaging>pom</packaging>
+
+  <modules>
+    <!-- VS Code-only build: Eclipse RCP product, features, and IDE-only
+         plugins (com.neosyn.ide.ui / .ide / .doc) were retired in the
+         Session 111 cleanup. The remaining set is exactly what the LSP
+         shade JAR + the Tycho regression tests need. -->
+    <module>../fragments/com.neosyn.ide.libraries</module>
+    <module>../plugins/com.neosyn.core</module>
+    <module>../plugins/com.neosyn.cg</module>
+    <module>../plugins/com.neosyn.cg.ui</module>
+    <module>../plugins/com.neosyn.ide</module>
+  </modules>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <!-- runs an Ant build file using the antRunner application -->
+        <!-- Note: tycho-eclipserun-plugin was relocated to tycho-eclipse-plugin in Tycho 4.x -->
+        <plugin>
+          <groupId>org.eclipse.tycho</groupId>
+          <artifactId>tycho-eclipse-plugin</artifactId>
+          <version>${tycho.version}</version>
+          <configuration>
+            <repositories>
+              <repository>
+                <id>eclipse-2024-03</id>
+                <layout>p2</layout>
+                <url>https://download.eclipse.org/releases/2024-03</url>
+              </repository>
+            </repositories>
+
+            <dependencies>
+              <dependency>
+                <artifactId>org.eclipse.ant.core</artifactId>
+                <type>eclipse-plugin</type>
+              </dependency>
+
+              <dependency>
+                <artifactId>org.eclipse.ant.launching</artifactId>
+                <type>eclipse-plugin</type>
+              </dependency>
+
+              <dependency>
+                <artifactId>org.apache.ant</artifactId>
+                <type>eclipse-plugin</type>
+              </dependency>
+
+              <!-- required for repository tools -->
+              <dependency>
+                <artifactId>org.eclipse.core.net</artifactId>
+                <type>eclipse-plugin</type>
+              </dependency>
+
+              <dependency>
+                <artifactId>org.eclipse.equinox.p2.transport.ecf</artifactId>
+                <type>eclipse-plugin</type>
+              </dependency>
+
+              <!-- for p2.composite.repository Ant task -->
+              <dependency>
+                <artifactId>org.eclipse.equinox.p2.repository.tools</artifactId>
+                <type>eclipse-plugin</type>
+              </dependency>
+
+              <dependency>
+                <artifactId>org.eclipse.platform</artifactId>
+                <type>eclipse-plugin</type>
+              </dependency>
+
+              <dependency>
+                <artifactId>org.eclipse.equinox.simpleconfigurator</artifactId>
+                <type>eclipse-plugin</type>
+              </dependency>
+
+              <!-- for p2: require JSch so we can use it within Ant script -->
+              <dependency>
+                <artifactId>com.jcraft.jsch</artifactId>
+                <type>eclipse-plugin</type>
+              </dependency>
+            </dependencies>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
+</project>

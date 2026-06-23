@@ -1,0 +1,27 @@
+cg-compiler — the open-source C⏚ Verilog compiler
+Copyright (c) Neosyn
+
+This product is licensed under the Mozilla Public License 2.0.
+A copy of the license is provided in the LICENSE file.
+
+------------------------------------------------------------------------
+Heritage
+------------------------------------------------------------------------
+C⏚ ("C-Ground") is the continuation of the Synflow Cx toolchain, originally
+developed by Synflow (until 2021) and maintained and evolved by Neosyn since
+2024. Portions of this codebase originate from that work.
+
+------------------------------------------------------------------------
+Scope
+------------------------------------------------------------------------
+This repository contains the C⏚ language frontend and the Verilog code
+generator only. The fast (bytecode) simulator, the VHDL backend, the license/
+activation tooling, and the production IP cores are part of the commercial
+Neosyn distribution and are not included here. See https://neosyn.io/open.
+
+------------------------------------------------------------------------
+Third-party components
+------------------------------------------------------------------------
+This software builds on the Eclipse Xtext / Xtend / EMF frameworks and the
+Eclipse LSP4J library, each distributed under the Eclipse Public License.
+Build-time and runtime dependencies retain their respective licenses.

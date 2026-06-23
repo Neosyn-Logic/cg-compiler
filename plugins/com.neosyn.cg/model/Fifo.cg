@@ -1,0 +1,66 @@
+/*******************************************************************************
+ * Copyright (c) 2024-2025 Neosyn. All rights reserved.
+ * https://neosyn.io
+ *
+ * C⏚ Standard Library - FIFO Primitives (std.fifo)
+ *
+ * This file defines built-in FIFO (First-In-First-Out) queue primitives for
+ * buffered communication between hardware blocks.
+ *
+ * Available FIFO types:
+ * - SynchronousFIFO: Single-clock FIFO using PseudoDualPortRAM
+ * - AsynchronousFIFO: Dual-clock FIFO for clock domain crossing (CDC)
+ *
+ * Parameters:
+ * - size: FIFO depth (number of entries)
+ * - width: Bit width of each entry
+ *
+ * Ports use sync/ready handshaking for flow control.
+ ******************************************************************************/
+
+package std.fifo;
+
+task SynchronousFIFO {
+
+	properties {
+		implementation: {
+			type: "builtin",
+			dependencies: ["std.mem.PseudoDualPortRAM"]
+		}
+	}
+
+	const int size, width, depth = sizeof(size - 1);
+
+	sync ready {
+		in unsigned<width> din;
+		out unsigned<width> dout;
+	}
+}
+
+task AsynchronousFIFO {
+
+	properties {
+		clocks: ["din_clock", "dout_clock"],
+		implementation: {
+			type: "builtin",
+			dependencies: [
+				"com.neosyn.fifo.FIFO_Flag_Async",
+				"com.neosyn.fifo.FIFO_Read_Controller",
+				"com.neosyn.fifo.FIFO_Write_Controller",
+				"com.neosyn.fifo.FIFO_Flag_Controller",
+				"std.mem.DualPortRAM"
+			]
+		},
+		domains: {
+			din_clock:  ["din", "din_rdy"],
+			dout_clock: ["readFifo", "dout", "readFifo_rdy"]
+		}
+	}
+
+	const int size, width, depth = sizeof(size - 1);
+
+	sync ready {
+		in unsigned<width> din;
+		out unsigned<width> dout;
+	}
+}

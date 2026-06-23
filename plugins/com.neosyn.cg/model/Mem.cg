@@ -1,0 +1,79 @@
+/*******************************************************************************
+ * Copyright (c) 2024-2025 Neosyn. All rights reserved.
+ * https://neosyn.io
+ *
+ * C⏚ Standard Library - Memory Primitives (std.mem)
+ *
+ * This file defines built-in memory block primitives that map directly to
+ * FPGA block RAM (BRAM) resources. These are synthesized to vendor-specific
+ * RAM primitives (Xilinx RAMB*, Intel M10K, etc.).
+ *
+ * Available memory types:
+ * - SinglePortRAM: Single read/write port, synchronous
+ * - DualPortRAM: Two independent ports, dual-clock support
+ * - PseudoDualPortRAM: One read port, one write port, dual-clock
+ *
+ * Parameters:
+ * - size: Number of memory locations
+ * - width: Bit width of each location
+ * - depth: Address width (auto-calculated from size)
+ ******************************************************************************/
+
+package std.mem;
+
+task SinglePortRAM {
+
+	properties {
+		reset: null,
+		implementation: {type: "builtin"}
+	}
+
+	const int size, width, depth = sizeof(size - 1);
+	const bool writeShiftMode = false, addOutputRegister = false;
+
+	uint<width> contents[size];
+
+	in uint<depth> address, sync uint<width> data; out uint<width> q;
+
+}
+
+task DualPortRAM {
+
+	properties {
+		reset: null,
+		clocks: ["clock_a", "clock_b"],
+		implementation: {type: "builtin"},
+		domains: {
+			clock_a: ["address_a", "data_a", "q_a"],
+			clock_b: ["address_b", "data_b", "q_b"]
+		}
+	}
+
+	const int size, width, depth = sizeof(size - 1);
+
+	uint<width> contents[size];
+
+	in uint<depth> address_a, sync uint<width> data_a; out uint<width> q_a;
+	in uint<depth> address_b, sync uint<width> data_b; out uint<width> q_b;
+
+}
+
+task PseudoDualPortRAM {
+
+	properties {
+		reset: null,
+		clocks: ["rd_clock", "wr_clock"],
+		implementation: {type: "builtin"},
+		domains: {
+			rd_clock: ["rd_address", "q"],
+			wr_clock: ["wr_address", "data"]
+		}
+	}
+
+	const int size, width, depth = sizeof(size - 1);
+
+	uint<width> contents[size];
+
+	in uint<depth> rd_address, wr_address, sync uint<width> data; out uint<width> q;
+
+}

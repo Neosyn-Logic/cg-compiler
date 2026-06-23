@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<com.neosyn.models.dpn:Actor xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:com.neosyn.models.dpn="http://www.neosyn.io/2013/Dpn"
+    xmlns:com.neosyn.models.ir="http://www.neosyn.io/2013/Ir"
+    name="std.mem.PseudoDualPortRAM" properties="{&quot;reset&quot;:null,&quot;clocks&quot;:[&quot;rd_clock&quot;,&quot;wr_clock&quot;],&quot;implementation&quot;:{&quot;type&quot;:&quot;builtin&quot;}}">
+  <inputs name="rd_address">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="16"/>
+  </inputs>
+  <inputs name="wr_address">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="16"/>
+  </inputs>
+  <inputs name="data" interface="SYNC">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="32"/>
+    <additionalInputs name="data_valid">
+      <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </additionalInputs>
+  </inputs>
+  <outputs name="q">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="32"/>
+  </outputs>
+</com.neosyn.models.dpn:Actor>

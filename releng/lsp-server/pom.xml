@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.neosyn</groupId>
+    <artifactId>cg-language-server</artifactId>
+    <version>2.0.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>C⏚ Language Server</name>
+    <description>LSP server for C⏚ language - provides IDE features for VS Code and other editors</description>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <xtext.version>2.34.0</xtext.version>
+        <lsp4j.version>0.21.1</lsp4j.version>
+        <guice.version>7.0.0</guice.version>
+        <gson.version>2.10.1</gson.version>
+        <emf.ecore.version>2.36.0</emf.ecore.version>
+        <emf.common.version>2.44.0</emf.common.version>
+        <!-- Default: skip obfuscation. Builds the customer-facing jar
+             without ProGuard. Set to false on the release machine. -->
+        <proguard.skip>true</proguard.skip>
+    </properties>
+
+    <repositories>
+        <repository>
+            <id>central</id>
+            <url>https://repo.maven.apache.org/maven2</url>
+        </repository>
+        <repository>
+            <id>sonatype-snapshots</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
+    <dependencies>
+        <!-- Xtext IDE (includes LSP support) -->
+        <dependency>
+            <groupId>org.eclipse.xtext</groupId>
+            <artifactId>org.eclipse.xtext.ide</artifactId>
+            <version>${xtext.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.eclipse.xtext</groupId>
+            <artifactId>org.eclipse.xtext</artifactId>
+            <version>${xtext.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.eclipse.xtext</groupId>
+            <artifactId>org.eclipse.xtext.xbase</artifactId>
+            <version>${xtext.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.eclipse.xtext</groupId>
+            <artifactId>org.eclipse.xtext.common.types</artifactId>
+            <version>${xtext.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.eclipse.xtext</groupId>
+            <artifactId>org.eclipse.xtext.xbase.ide</artifactId>
+            <version>${xtext.version}</version>
+        </dependency>
+
+        <!-- LSP4J - Language Server Protocol implementation -->
+        <dependency>
+            <groupId>org.eclipse.lsp4j</groupId>
+            <artifactId>org.eclipse.lsp4j</artifactId>
+            <version>${lsp4j.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.eclipse.lsp4j</groupId>
+            <artifactId>org.eclipse.lsp4j.jsonrpc</artifactId>
+            <version>${lsp4j.version}</version>
+        </dependency>
+
+        <!-- Guice for dependency injection -->
+        <dependency>
+            <groupId>com.google.inject</groupId>
+            <artifactId>guice</artifactId>
+            <version>${guice.version}</version>
+        </dependency>
+
+        <!-- GSON for JSON -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>${gson.version}</version>
+        </dependency>
+
+        <!-- EMF Core -->
+        <dependency>
+            <groupId>org.eclipse.emf</groupId>
+            <artifactId>org.eclipse.emf.ecore</artifactId>
+            <version>${emf.ecore.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.eclipse.emf</groupId>
+            <artifactId>org.eclipse.emf.common</artifactId>
+            <version>${emf.common.version}</version>
+        </dependency>
+
+        <!-- Xtend runtime library (for generators) -->
+        <dependency>
+            <groupId>org.eclipse.xtend</groupId>
+            <artifactId>org.eclipse.xtend.lib</artifactId>
+            <version>${xtext.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.eclipse.xtext</groupId>
+            <artifactId>org.eclipse.xtext.xbase.lib</artifactId>
+            <version>${xtext.version}</version>
+        </dependency>
+
+        <!-- Logging -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>2.0.9</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>2.0.9</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <!-- Include our custom log4j.properties (overrides default from Xtext) -->
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+            </resource>
+        </resources>
+
+        <plugins>
+            <!-- Compiler plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>17</source>
+                    <target>17</target>
+                </configuration>
+            </plugin>
+
+            <!-- Build fat JAR with all dependencies -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.1</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>com.neosyn.cg.ide.server.CgLanguageServerMain</mainClass>
+                                </transformer>
+                                <!-- Merge service files -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                            </transformers>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                                <!-- Exclude default log4j.properties from Xtext -->
+                                <filter>
+                                    <artifact>org.eclipse.xtext:*</artifact>
+                                    <excludes>
+                                        <exclude>log4j.properties</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                            <finalName>cg-language-server</finalName>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            
+
+            <!-- Copy compiled classes from plugin projects -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>copy-cx-classes</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.outputDirectory}</outputDirectory>
+                            <resources>
+                                <!-- Copy from com.neosyn.cg -->
+                                <resource>
+                                    <directory>../../plugins/com.neosyn.cg/target/classes</directory>
+                                </resource>
+                                <!-- Copy from com.neosyn.cg.ui (LSP server code) -->
+                                <resource>
+                                    <directory>../../plugins/com.neosyn.cg.ui/target/classes</directory>
+                                    <includes>
+                                        <include>com/neosyn/cg/ide/**</include>
+                                        <include>META-INF/services/**</include>
+                                    </includes>
+                                </resource>
+                                <!-- Copy from com.neosyn.core -->
+                                <resource>
+                                    <directory>../../plugins/com.neosyn.core/target/classes</directory>
+                                </resource>
+                                <!-- Copy from com.neosyn.ide (HDL generators) -->
+                                <resource>
+                                    <directory>../../plugins/com.neosyn.ide/target/classes</directory>
+                                </resource>
+                                <!-- Copy HDL libraries (Verilog/VHDL support files) -->
+                                <resource>
+                                    <directory>../../fragments/com.neosyn.ide.libraries</directory>
+                                    <includes>
+                                        <include>lib/verilog/**</include>
+                                    </includes>
+                                </resource>
+                                <!-- Copy built-in IR files (std.mem.*, std.fifo.*, std.lib.*) -->
+                                <resource>
+                                    <directory>../../plugins/com.neosyn.cg/.ir</directory>
+                                    <targetPath>builtin-ir</targetPath>
+                                    <includes>
+                                        <include>std/**/*.ir</include>
+                                    </includes>
+                                </resource>
+                                <!-- Copy built-in .cg model files (for Xtext linking) -->
+                                <resource>
+                                    <directory>../../plugins/com.neosyn.cg/model</directory>
+                                    <targetPath>builtin-cg</targetPath>
+                                    <includes>
+                                        <include>Mem.cg</include>
+                                        <include>Fifo.cg</include>
+                                        <include>Lib.cg</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

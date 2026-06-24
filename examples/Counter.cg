@@ -1,0 +1,11 @@
+package examples;
+
+/** Free-running 8-bit counter. */
+task Counter {
+  out push u8 count;
+  u8 c;
+  void loop() {
+    c = (u8)(c + 1);
+    count.write(c);
+  }
+}

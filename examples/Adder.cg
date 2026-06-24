@@ -1,0 +1,11 @@
+package examples;
+
+/** Stream adder: reads one byte from each input, writes their 16-bit sum. */
+task Adder {
+  in  stream u8 a;
+  in  stream u8 b;
+  out stream u16 sum;
+  void loop() {
+    sum.write((u16)(a.read + b.read));
+  }
+}

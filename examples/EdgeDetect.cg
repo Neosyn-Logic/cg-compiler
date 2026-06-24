@@ -1,0 +1,13 @@
+package examples;
+
+/** One-cycle pulse on every rising edge of the input line. */
+task EdgeDetect {
+  in  stream bool sig;
+  out stream bool pulse;
+  bool prev;
+  void loop() {
+    bool now = sig.read;
+    pulse.write(now && !prev);
+    prev = now;
+  }
+}

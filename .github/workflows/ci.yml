@@ -30,34 +30,29 @@ jobs:
         working-directory: releng/lsp-server
         run: mvn -B clean package -Dproguard.skip=true
 
-      - name: Smoke test — generate Verilog from C⏚ (gate-free)
+      - name: Install Icarus Verilog (for elaboration check)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq iverilog
+
+      - name: Generate Verilog + elaborate every example (gate-free)
         run: |
           set -e
-          JAR=releng/lsp-server/target/cg-language-server.jar
-          mkdir -p /tmp/ci
-          cat > /tmp/ci/MovingAvg.cg <<'CG'
-          package ci;
-
-          task MovingAvg {
-            in  stream u8 sample;
-            out stream u8 filtered;
-
-            u8 window[4];
-            u2 head;
-
-            void loop() {
-              u8 x = sample.read;
-              window[head] = x;
-              head = (u2)(head + 1);
-              u10 sum = (u10)(window[0] + window[1] + window[2] + window[3]);
-              filtered.write((u8)(sum >> 2));
-            }
-          }
-          CG
-          java -jar "$JAR" generate /tmp/ci/MovingAvg.cg
-          test -f /tmp/ci/verilog-gen/ci/MovingAvg.v
-          echo "✓ generated $(wc -l < /tmp/ci/verilog-gen/ci/MovingAvg.v) lines of Verilog"
-          head -20 /tmp/ci/verilog-gen/ci/MovingAvg.v
+          JAR="$PWD/releng/lsp-server/target/cg-language-server.jar"
+          LIB="$PWD/fragments/com.neosyn.ide.libraries/lib/verilog/src/std"
+          fail=0
+          for cg in examples/*.cg; do
+            name=$(basename "$cg" .cg)
+            out="/tmp/gen_$name"; rm -rf "$out"; mkdir -p "$out"
+            if ! java -jar "$JAR" generate "$cg" --output "$out"; then
+              echo "::error::$name failed to generate"; fail=1; continue
+            fi
+            vfiles=$(find "$out" -name '*.v')
+            if iverilog -t null -g2012 -y "$LIB/lib" -y "$LIB/mem" -y "$LIB/fifo" $vfiles; then
+              echo "✓ $name — generated + elaborated ($(echo "$vfiles" | wc -l) .v files)"
+            else
+              echo "::error::$name produced Verilog that iverilog rejected"; fail=1
+            fi
+          done
+          exit $fail
 
       - name: Upload the jar
         uses: actions/upload-artifact@v4

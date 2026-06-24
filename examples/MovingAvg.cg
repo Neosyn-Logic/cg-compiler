@@ -1,0 +1,16 @@
+package examples;
+
+/** 4-tap moving-average filter over a stream of bytes. */
+task MovingAvg {
+  in  stream u8 sample;
+  out stream u8 filtered;
+  u8 window[4];
+  u2 head;
+  void loop() {
+    u8 x = sample.read;
+    window[head] = x;
+    head = (u2)(head + 1);
+    u10 sum = (u10)(window[0] + window[1] + window[2] + window[3]);
+    filtered.write((u8)(sum >> 2));
+  }
+}

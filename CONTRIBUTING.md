@@ -43,7 +43,7 @@ releng/                    Tycho reactor + the standalone language-server jar
 - If you touch generated Verilog, include a small C⏚ input + the expected
   output in the description so reviewers can reproduce.
 - By submitting a contribution you certify the Developer Certificate of Origin
-  (DCO) — i.e. you wrote it or have the right to submit it under MPL-2.0. Sign
+  (DCO) - i.e. you wrote it or have the right to submit it under MPL-2.0. Sign
   off your commits with `git commit -s`.
 
 ## License

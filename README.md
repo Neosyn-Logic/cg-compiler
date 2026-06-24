@@ -1,4 +1,7 @@
-# cg-compiler — the open-source C⏚ Verilog compiler
+# cg-compiler - the open-source C⏚ Verilog compiler
+
+[![build](https://github.com/Neosyn-Logic/cg-compiler/actions/workflows/ci.yml/badge.svg)](https://github.com/Neosyn-Logic/cg-compiler/actions/workflows/ci.yml)
+[![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](https://www.mozilla.org/MPL/2.0/)
 
 **C⏚** ("C-Ground", or "Cg") is a hardware description language with C-like
 syntax that compiles to clean, standard **Verilog**. This repository is the
@@ -34,13 +37,13 @@ $ java -jar cg-language-server.jar generate MovingAvg.cg
 The hardest question anyone asks before betting silicon on a tool is *"what
 happens to my designs if you disappear?"* This repository is the answer: the
 C⏚ Verilog compiler is yours as much as ours. Build it from source, fork it,
-keep it alive — your designs compile to standard Verilog forever, with or
+keep it alive - your designs compile to standard Verilog forever, with or
 without us. No escrow clause, no lock-in.
 
 ## What's here, and what isn't
 
 This repo is the **Verilog compiler**. The commercial Neosyn distribution adds
-convenience and premium features on top — you pay for ease of use, never for
+convenience and premium features on top - you pay for ease of use, never for
 permission to compile.
 
 | Open (this repo, MPL-2.0) | Commercial (neosyn.io) |
@@ -85,7 +88,7 @@ java -jar cg-language-server.jar graph path/to/Design.cg
 java -jar cg-language-server.jar --stdio
 ```
 
-The generated Verilog is vendor-neutral — synthesize it on Intel, Xilinx,
+The generated Verilog is vendor-neutral - synthesize it on Intel, Xilinx,
 Lattice or Microchip, or end-to-end with the open-source flow (Yosys +
 nextpnr + Icarus Verilog).
 
@@ -102,6 +105,6 @@ welcome; MPL-2.0 means changes to covered files are shared back.
 
 ## License
 
-Mozilla Public License 2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE).
+Mozilla Public License 2.0 - see [LICENSE](LICENSE) and [NOTICE](NOTICE).
 C⏚ began as the Synflow Cx toolchain; this compiler is its open-source
 continuation.

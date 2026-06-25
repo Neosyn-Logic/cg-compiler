@@ -26,6 +26,7 @@
     <module>../plugins/com.neosyn.cg</module>
     <module>../plugins/com.neosyn.cg.ui</module>
     <module>../plugins/com.neosyn.ide</module>
+    <module>../plugins/com.neosyn.cg.tests</module>
   </modules>
 
   <build>

@@ -1,0 +1,123 @@
+/*
+ * Phase 1 timing test T13 — Split-timing decode pipeline.
+ *
+ * Replicates the Intel 8088 pattern where InstrDecode writes EA
+ * control signals (mod/r_m) in one cycle and the displacement value
+ * in a LATER cycle (because reading displacement bytes from the
+ * instruction queue creates cycle breaks).
+ *
+ * Key: decode has DUPLICATE output ports for execute (ctrl_mod/ctrl_rm)
+ * and compute_ea (ea_mod/ea_rm), because push ports are single-consumer.
+ */
+package com.neosyn.test.bytecode.timing;
+
+network T13_SplitTimingDecode {
+
+    properties {
+        test: { terminate: "execute.finished" }
+    }
+
+    // Simulates InstrDecode: writes control signals + EA duplicates,
+    // then disp one cycle later (like reading displacement bytes)
+    decode = new task {
+        // For Execute
+        out push u2 ctrl_mod;
+        out push u3 ctrl_rm;
+        // Duplicates for ComputeEA (push ports can't be shared)
+        out push u2 ea_mod;
+        out push u3 ea_rm;
+        // Shared displacement (arrives later)
+        out push u16 disp;
+
+        u8 phase;
+        bool done;
+
+        void setup() {
+            phase = 0;
+            done = false;
+        }
+
+        void loop() {
+            if (!done) {
+                if (phase == 0) {
+                    // Cycle N: write control + EA signals together
+                    ctrl_mod.write(0);
+                    ctrl_rm.write(6);
+                    ea_mod.write(0);
+                    ea_rm.write(6);
+                    phase = 1;
+                } else if (phase == 1) {
+                    // Cycle N+1: write displacement
+                    disp.write(3);
+                    phase = 2;
+                    done = true;
+                }
+            }
+        }
+    };
+
+    // Simulates Execute: reads control signals, then waits for bus data
+    execute = new task {
+        bool finished;
+
+        void setup() {
+            finished = false;
+        }
+
+        void loop() {
+            if (!finished) {
+                u2 m = decode.ctrl_mod.read();
+                u3 rm = decode.ctrl_rm.read();
+                fence;
+
+                // For memory read (mod != 11): wait for bus data
+                if (m != 3) {
+                    u8 data = bus.response.read();
+                    if (data == 42) {
+                        print("T13_SplitTimingDecode PASS data=", data);
+                    } else {
+                        print("T13_SplitTimingDecode FAIL data=", data, " expected=42");
+                    }
+                    finished = true;
+                }
+            }
+        }
+    };
+
+    // Simulates ComputeEA: reads EA signals, then disp, writes addr
+    compute_ea = new task {
+        out push u8 addr;
+
+        void loop() {
+            u2 m = decode.ea_mod.read();
+            decode.ea_rm.read();
+            fence;
+
+            if (m == 0) {
+                // Direct addressing: addr = disp
+                addr.write((u8) decode.disp.read());
+            }
+        }
+    };
+
+    // Simulates bus: reads addr, responds with memory[addr]
+    bus = new task {
+        out push u8 response;
+        u8 memory[8];
+
+        void setup() {
+            memory[0] = 10;
+            memory[1] = 20;
+            memory[2] = 30;
+            memory[3] = 42;
+            memory[4] = 50;
+        }
+
+        void loop() {
+            if (compute_ea.addr.available()) {
+                u8 a = compute_ea.addr.read();
+                response.write(memory[a]);
+            }
+        }
+    };
+}

@@ -1,0 +1,21 @@
+package com.neosyn.test.refdef;
+
+import com.neosyn.test.refdef.RefDefProducer;
+
+task RefDefSink {
+  in push u8 data;
+
+  void loop() {
+    u8 dummy = data.read();
+    if (dummy == 0) {
+      dummy = 1;
+    }
+  }
+}
+
+network RefDefNetwork {
+  prod = new RefDefProducer();
+  sink = new RefDefSink();
+
+  sink.reads(prod.data);
+}

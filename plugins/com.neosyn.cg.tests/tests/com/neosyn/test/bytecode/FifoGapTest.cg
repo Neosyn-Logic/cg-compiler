@@ -1,0 +1,68 @@
+/*
+ * Regression test for SynchronousFIFO stream handshake in the bytecode sim.
+ *
+ * Two bugs this guards against (both were live before the fix):
+ *  - WRITE side: the producer writes 3 values once and then goes idle. Its
+ *    idle FSM state leaves dout.valid asserted; the FIFO must CONSUME the token
+ *    (deassert din.valid) on ingest, otherwise it re-ingests the stale last
+ *    value forever and floods the buffer.
+ *  - READ side: the consumer reads with idle() gaps between reads. A stream
+ *    reader leaves `ready` asserted while idle, so the FIFO must NOT pop on
+ *    `ready` alone — it must HOLD each element until actually consumed,
+ *    otherwise elements are drained during the gaps and lost.
+ *
+ * The consumer asserts the exact sequence 0xAA, 0xBB, 0xCC. With either bug the
+ * sequence is corrupted and an assert fails (non-zero exit), failing the test.
+ */
+package com.neosyn.test.bytecode;
+
+import std.fifo.SynchronousFIFO;
+
+network FifoGapTest {
+	properties { test: { terminate: "consumer.finished" } }
+
+	fifo = new SynchronousFIFO({size: 8, width: 8});
+
+	producer = new task {
+		out sync ready u8 dout;
+		bool done;
+
+		void setup() {
+			done = false;
+		}
+
+		void loop() {
+			if (!done) {
+				dout.write(0xAA);
+				dout.write(0xBB);
+				dout.write(0xCC);
+				done = true;
+			}
+		}
+	};
+
+	consumer = new task {
+		in sync ready u8 din;
+		bool finished;
+
+		void setup() {
+			finished = false;
+
+			u8 v0 = din.read;
+			idle(20);            // gap: FIFO must hold the next element
+			u8 v1 = din.read;
+			idle(20);
+			u8 v2 = din.read;
+
+			print("FifoGap read: ", v0, " ", v1, " ", v2, "\n");
+			assert(v0 == 0xAA);
+			assert(v1 == 0xBB);
+			assert(v2 == 0xCC);
+			print("=== FifoGapTest PASSED ===\n");
+			finished = true;
+		}
+	};
+
+	fifo.reads(producer.dout);
+	consumer.reads(fifo.dout);
+}

@@ -1,0 +1,55 @@
+/*
+ * L2 Enums Tier 0 fixture — single-task enum used in a 3-state FSM.
+ * Validates: parse + scoping + IR-gen + bytecode-sim end-to-end.
+ *
+ * v1 iter #1 surface (per .claude/L2_ENUM_DESIGN.md §1):
+ *   - implicit values (IDLE=0, RUN=1, DONE=2)
+ *   - implicit width (3 literals → u2)
+ *   - bare literal access (`s = IDLE`) and qualified access (`s = state_t.RUN`)
+ *
+ * Deliberately NOT exercised:
+ *   - explicit underlying type `: u4`         (iter #2)
+ *   - explicit literal values `LIT = N`        (iter #2)
+ *   - enum-typed ports                         (gated by ERR_ENUM_AS_PORT_TYPE)
+ */
+package com.neosyn.test.bytecode;
+
+network EnumFsmTest {
+    properties { test: { terminate: "user.finished" } }
+
+    user = new task {
+        enum state_t { IDLE, RUN, DONE }
+
+        bool finished;
+
+        void setup() {
+            finished = false;
+        }
+
+        void loop() {
+            if (!finished) {
+                state_t s = IDLE;
+
+                // bare literal in comparison
+                assert(s == IDLE);
+
+                // bare literal assignment
+                s = RUN;
+                assert(s == RUN);
+
+                // qualified literal — equivalent to bare DONE
+                s = state_t.DONE;
+                assert(s == DONE);
+                assert(s == state_t.DONE);
+
+                // literal values are 0-indexed
+                assert(IDLE == 0);
+                assert(RUN == 1);
+                assert(DONE == 2);
+
+                print("=== EnumFsmTest PASSED ===\n");
+                finished = true;
+            }
+        }
+    };
+}

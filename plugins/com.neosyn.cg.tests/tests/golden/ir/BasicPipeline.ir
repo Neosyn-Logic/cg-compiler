@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<com.neosyn.models.dpn:DPN xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:com.neosyn.models.dpn="http://www.neosyn.io/2013/Dpn" fileName="/home/nicolas06/neosyn/neosyn-studio/plugins/com.neosyn.cg.tests/tests/golden/GoldenNetworks.cg"
+    lineNumber="42" name="com.neosyn.test.golden.BasicPipeline" properties="{&quot;test&quot;:true,&quot;clocks&quot;:[&quot;clock&quot;],&quot;resets&quot;:[{&quot;type&quot;:&quot;asynchronous&quot;,&quot;active&quot;:&quot;low&quot;,&quot;name&quot;:&quot;reset_n&quot;}],&quot;copyright&quot;:[&quot;Copyright (c) 2024 Neosyn. All rights reserved.&quot;,&quot; *&quot;,&quot;Golden file test - Network compositions for regression testing.&quot;,&quot;Tests: task instantiation, port connections, inline tasks.&quot;],&quot;javadoc&quot;:[&quot;Basic network - connects producer to consumer.&quot;,&quot;Tests: simple point-to-point connection.&quot;]}"
+    instances="#//@graph/@vertices.1 #//@graph/@vertices.2" vertex="#//@graph/@vertices.0">
+  <graph>
+    <edges xsi:type="com.neosyn.models.dpn:Connection" source="#//@graph/@vertices.1"
+        target="#//@graph/@vertices.2" sourcePort="Producer.ir#//@outputs.0" targetPort="Consumer.ir#//@inputs.0"/>
+    <vertices/>
+    <vertices xsi:type="com.neosyn.models.dpn:Instance" outgoing="#//@graph/@edges.0"
+        entity="Producer.ir#/" name="producer" properties="{&quot;entityType&quot;:&quot;com.neosyn.test.golden.Producer&quot;,&quot;clocks&quot;:{&quot;clock&quot;:&quot;clock&quot;},&quot;resets&quot;:{&quot;reset_n&quot;:&quot;reset_n&quot;}}"/>
+    <vertices xsi:type="com.neosyn.models.dpn:Instance" incoming="#//@graph/@edges.0"
+        entity="Consumer.ir#/" name="consumer" properties="{&quot;entityType&quot;:&quot;com.neosyn.test.golden.Consumer&quot;,&quot;clocks&quot;:{&quot;clock&quot;:&quot;clock&quot;},&quot;resets&quot;:{&quot;reset_n&quot;:&quot;reset_n&quot;}}"/>
+  </graph>
+</com.neosyn.models.dpn:DPN>

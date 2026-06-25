@@ -1,0 +1,73 @@
+/*
+ * Simple FIFO test - Tests std.fifo.SynchronousFIFO
+ * Verifies bytecode simulation with built-in entities
+ */
+package com.neosyn.test.bytecode;
+
+import std.fifo.SynchronousFIFO;
+
+network SimpleFifoTest {
+    properties { test: { terminate: "consumer.finished" } }
+
+    // A simple FIFO with 8-bit data, 4 entries
+    fifo = new SynchronousFIFO({size: 4, width: 8});
+
+    producer = new task {
+        out sync ready u8 dout;
+
+        u8 i;
+        bool finished;
+
+        void setup() {
+            i = 0;
+            finished = false;
+            print("=== SimpleFifoTest Producer Started ===\n");
+        }
+
+        void loop() {
+            if (!finished) {
+                if (i < 5) {
+                    u8 data = i * 10 + 1;
+                    print("Producing: ", data, "\n");
+                    dout.write(data);
+                    i = i + 1;
+                } else {
+                    finished = true;
+                }
+            }
+        }
+    };
+
+    consumer = new task {
+        in sync ready u8 din;
+
+        u8 i;
+        bool finished;
+
+        void setup() {
+            i = 0;
+            finished = false;
+            // Wait a bit for producer to fill FIFO
+            idle(3);
+            print("=== SimpleFifoTest Consumer Started ===\n");
+        }
+
+        void loop() {
+            if (!finished) {
+                if (i < 5) {
+                    u8 data = din.read;
+                    u8 expected = i * 10 + 1;
+                    print("Consumed: ", data, " expected: ", expected, "\n");
+                    assert(data == expected);
+                    i = i + 1;
+                } else {
+                    print("=== Test PASSED ===\n");
+                    finished = true;
+                }
+            }
+        }
+    };
+
+    fifo.reads(producer.dout);
+    consumer.reads(fifo.dout);
+}

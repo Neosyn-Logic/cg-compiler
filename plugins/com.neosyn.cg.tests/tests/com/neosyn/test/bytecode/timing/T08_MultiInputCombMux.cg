@@ -1,0 +1,101 @@
+/*
+ * Phase 1 timing test T08 — combinational mux with multiple inputs and
+ * an if / else if chain. This is the multi-source pattern from
+ * Intel-8088 BIU's compute_real, which selects between ctrl.offset and
+ * splitter.offset.
+ *
+ * Topology:
+ *
+ *   producer_a (seq, push u8) ─┐
+ *                              ├─► mux (combinational, picks first valid)
+ *   producer_b (seq, push u8) ─┘
+ *                              │
+ *                              ▼
+ *                            checker (seq)
+ *
+ * In this test producer_a writes on every cycle and producer_b never
+ * fires (its action is gated on a permanently-false flag). The mux's
+ * if/else if chain should always pick producer_a. If the bytecode has
+ * trouble dispatching the mux on multi-input combinational tasks, the
+ * checker either sees no values or the wrong values and the assert
+ * fails.
+ *
+ * Cross-task references inside the mux body, no explicit reads().
+ */
+package com.neosyn.test.bytecode.timing;
+
+network T08_MultiInputCombMux {
+
+    properties {
+        test: { terminate: "checker.finished" }
+    }
+
+    producer_a = new task {
+        out push u8 va;
+        u8 count;
+
+        void setup() {
+            count = 0;
+        }
+
+        void loop() {
+            count++;
+            va.write(count);
+        }
+    };
+
+    producer_b = new task {
+        out push u8 vb;
+        bool never;
+
+        void setup() {
+            never = false;
+        }
+
+        void loop() {
+            if (never) {
+                vb.write(0xFF);
+            }
+        }
+    };
+
+    mux = new task {
+        properties { type: "combinational" }
+        out push u8 selected;
+
+        void loop() {
+            if (producer_a.va.available()) {
+                selected.write(producer_a.va.read());
+            } else if (producer_b.vb.available()) {
+                selected.write(producer_b.vb.read());
+            }
+        }
+    };
+
+    checker = new task {
+        in push u8 incoming;
+
+        u8 expected;
+        bool finished;
+
+        void setup() {
+            expected = 1;
+            finished = false;
+        }
+
+        void loop() {
+            if (!finished) {
+                u8 v = incoming.read();
+                assert(v == expected);
+                if (expected == 5) {
+                    print("T08_MultiInputCombMux PASS\n");
+                    finished = true;
+                } else {
+                    expected++;
+                }
+            }
+        }
+    };
+
+    checker.reads(mux.selected);
+}

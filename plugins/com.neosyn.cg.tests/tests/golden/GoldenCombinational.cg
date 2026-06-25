@@ -1,0 +1,270 @@
+/*******************************************************************************
+ * Copyright (c) 2024 Neosyn. All rights reserved.
+ *
+ * Golden file test - Combinational logic for regression testing.
+ * Tests: properties { type: "combinational" }, pure logic without state.
+ *******************************************************************************/
+package com.neosyn.test.golden;
+
+/**
+ * Simple ALU - combinational arithmetic/logic unit.
+ * Based on: Intel-8088/ALU.cg
+ * Tests: combinational property, switch-like conditionals.
+ */
+task SimpleALU {
+	properties { type: "combinational" }
+
+	in u8 a, b;
+	in u2 op;  // 0=add, 1=sub, 2=and, 3=or
+	out u8 result;
+
+	void loop() {
+		u8 r;
+		if (op == 0) {
+			r = (u8)(a + b);
+		} else if (op == 1) {
+			r = (u8)(a - b);
+		} else if (op == 2) {
+			r = a & b;
+		} else {
+			r = a | b;
+		}
+		result.write(r);
+	}
+}
+
+/**
+ * Comparator - tests comparison operators.
+ */
+task Comparator {
+	properties { type: "combinational" }
+
+	in u8 a, b;
+	out bool equal;
+	out bool less;
+	out bool greater;
+
+	void loop() {
+		equal.write(a == b);
+		less.write(a < b);
+		greater.write(a > b);
+	}
+}
+
+/**
+ * Multiplexer - 4-to-1 mux.
+ * Tests: selection logic.
+ */
+task Mux4to1 {
+	properties { type: "combinational" }
+
+	in u8 d0, d1, d2, d3;
+	in u2 sel;
+	out u8 y;
+
+	void loop() {
+		if (sel == 0) {
+			y.write(d0);
+		} else if (sel == 1) {
+			y.write(d1);
+		} else if (sel == 2) {
+			y.write(d2);
+		} else {
+			y.write(d3);
+		}
+	}
+}
+
+/**
+ * Priority encoder - finds highest set bit.
+ */
+task PriorityEncoder {
+	properties { type: "combinational" }
+
+	in u8 bits;
+	out u3 index;
+	out bool valid;
+
+	void loop() {
+		u8 b = bits;
+		if ((b & 0x80) != 0) {
+			index.write(7);
+			valid.write(true);
+		} else if ((b & 0x40) != 0) {
+			index.write(6);
+			valid.write(true);
+		} else if ((b & 0x20) != 0) {
+			index.write(5);
+			valid.write(true);
+		} else if ((b & 0x10) != 0) {
+			index.write(4);
+			valid.write(true);
+		} else if ((b & 0x08) != 0) {
+			index.write(3);
+			valid.write(true);
+		} else if ((b & 0x04) != 0) {
+			index.write(2);
+			valid.write(true);
+		} else if ((b & 0x02) != 0) {
+			index.write(1);
+			valid.write(true);
+		} else if ((b & 0x01) != 0) {
+			index.write(0);
+			valid.write(true);
+		} else {
+			index.write(0);
+			valid.write(false);
+		}
+	}
+}
+
+/**
+ * Decoder - 3-to-8 decoder using lookup.
+ */
+task Decoder3to8 {
+	properties { type: "combinational" }
+
+	in u3 sel;
+	in bool enable;
+	out u8 y;
+
+	void loop() {
+		u8 result;
+		if (!enable) {
+			result = 0;
+		} else if (sel == 0) {
+			result = 0x01;
+		} else if (sel == 1) {
+			result = 0x02;
+		} else if (sel == 2) {
+			result = 0x04;
+		} else if (sel == 3) {
+			result = 0x08;
+		} else if (sel == 4) {
+			result = 0x10;
+		} else if (sel == 5) {
+			result = 0x20;
+		} else if (sel == 6) {
+			result = 0x40;
+		} else {
+			result = 0x80;
+		}
+		y.write(result);
+	}
+}
+
+/**
+ * MultiChainCombinational - Tests multiple independent if-else chains.
+ *
+ * This is a regression test for the RouteAddr bug (Session 48/49) where
+ * combinational tasks with multiple if-else chains generated empty branches
+ * instead of proper combinational logic.
+ *
+ * Based on: Intel-8088/RegisterFile.cg RouteAddr task
+ *
+ * The bug occurred because:
+ * - CycleScheduler.translateMultiCycleIf() was being called instead of
+ *   CombinationalScheduler.caseStatementIf()
+ * - This created separate actions/transitions per if-branch
+ * - Result: 10 empty if-else branches, no actual logic
+ *
+ * Expected behavior: Single always block with all if-else logic intact.
+ */
+task MultiChainCombinational {
+	properties { type: "combinational" }
+
+	// Four inputs with validity flags (simulates push ports)
+	in u8 a1, a2, b1, b2;
+	in bool a1_valid, a2_valid, b1_valid, b2_valid;
+
+	// Multiple outputs
+	out u8 half1, half2;
+	out u2 enabled;
+
+	void loop() {
+		// Read port values first (required before use)
+		u8 va1 = a1;
+		u8 va2 = a2;
+		u8 vb1 = b1;
+		u8 vb2 = b2;
+		bool v_a1 = a1_valid;
+		bool v_a2 = a2_valid;
+		bool v_b1 = b1_valid;
+		bool v_b2 = b2_valid;
+
+		// Two independent if-else chains - this pattern caused the bug
+		u2 en = 0b11;
+
+		// First chain: select half1 from a1 or a2
+		if (v_a1) {
+			half1.write(va1);
+		} else if (v_a2) {
+			half1.write(va2);
+		} else {
+			en[0] = 0;
+		}
+
+		// Second chain: select half2 from b1 or b2
+		if (v_b1) {
+			half2.write(vb1);
+		} else if (v_b2) {
+			half2.write(vb2);
+		} else {
+			en[1] = 0;
+		}
+
+		enabled.write(en);
+	}
+}
+
+/**
+ * NestedIfCombinational - Tests nested if-else in combinational logic.
+ *
+ * Additional regression test for combinational scheduler to ensure
+ * deeply nested conditionals don't get split into multiple actions.
+ */
+task NestedIfCombinational {
+	properties { type: "combinational" }
+
+	in u4 sel;
+	in u8 a, b, c, d;
+	out u8 result;
+	out bool valid;
+
+	void loop() {
+		// Read port values first (required in C⏚)
+		u4 s = sel;
+		u8 va = a;
+		u8 vb = b;
+		u8 vc = c;
+		u8 vd = d;
+
+		bool v = true;
+		u8 r;
+
+		// Nested structure - outer if based on high bits, inner on low bits
+		if (s[3]) {
+			if (s[0]) {
+				r = (u8)(va + vb);  // explicit cast for addition
+			} else {
+				r = (u8)(va - vb);  // explicit cast for subtraction
+			}
+		} else if (s[2]) {
+			if (s[1]) {
+				r = vc & vd;
+			} else {
+				r = vc | vd;
+			}
+		} else if (s[1]) {
+			r = va ^ vc;
+		} else if (s[0]) {
+			r = vb ^ vd;
+		} else {
+			r = 0;
+			v = false;
+		}
+
+		result.write(r);
+		valid.write(v);
+	}
+}

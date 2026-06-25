@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<com.neosyn.models.dpn:Actor xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:com.neosyn.models.dpn="http://www.neosyn.io/2013/Dpn"
+    xmlns:com.neosyn.models.ir="http://www.neosyn.io/2013/Ir" fileName="/home/nicolas06/neosyn/neosyn-studio/plugins/com.neosyn.cg.tests/tests/golden/GoldenSimple.cg"
+    lineNumber="13" name="com.neosyn.test.golden.Counter" properties="{&quot;clocks&quot;:[&quot;clock&quot;],&quot;resets&quot;:[{&quot;type&quot;:&quot;asynchronous&quot;,&quot;active&quot;:&quot;low&quot;,&quot;name&quot;:&quot;reset_n&quot;}],&quot;copyright&quot;:[&quot;Copyright (c) 2024 Neosyn. All rights reserved.&quot;,&quot; *&quot;,&quot;Golden file test - simple task for regression testing.&quot;,&quot;This file is used to verify that IR and HDL generation produce consistent output.&quot;],&quot;javadoc&quot;:[&quot;Simple counter task for golden file testing.&quot;,&quot;Increments a counter on each cycle and outputs it.&quot;],&quot;comments&quot;:{}}">
+  <outputs defs="#//@actions.0/@body/@blocks.0/@instructions.1/@target" name="count">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+  </outputs>
+  <variables assignable="true" defs="#//@actions.0/@body/@blocks.0/@instructions.3/@target"
+      lineNumber="16" name="counter" uses="#//@actions.0/@body/@blocks.0/@instructions.0/@source #//@actions.0/@body/@blocks.0/@instructions.2/@source">
+    <initialValue xsi:type="com.neosyn.models.ir:ExprInt" value="0"/>
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+  </variables>
+  <actions name="FSM_Counter_a">
+    <body lineNumber="19" name="FSM_Counter_a">
+      <locals assignable="true" defs="#//@actions.0/@body/@blocks.0/@instructions.0/@target"
+          lineNumber="19" name="counter_0" uses="#//@actions.0/@body/@blocks.0/@instructions.1/@value/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@body/@blocks.0/@instructions.2/@target"
+          name="counter_1" uses="#//@actions.0/@body/@blocks.0/@instructions.3/@value/@expr/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="19">
+          <source variable="#//@variables.0"/>
+          <target variable="#//@actions.0/@body/@locals.0"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="19">
+          <target variable="#//@outputs.0"/>
+          <value xsi:type="com.neosyn.models.ir:ExprVar">
+            <use variable="#//@actions.0/@body/@locals.0"/>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad">
+          <source variable="#//@variables.0"/>
+          <target variable="#//@actions.0/@body/@locals.1"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="20">
+          <target variable="#//@variables.0"/>
+          <value xsi:type="com.neosyn.models.ir:ExprResize" targetSize="8">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="PLUS">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.0/@body/@locals.1"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="1"/>
+            </expr>
+          </value>
+        </instructions>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </body>
+    <combinational lineNumber="19" name="comb_FSM_Counter_a">
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </combinational>
+    <inputPattern/>
+    <outputPattern ports="#//@outputs.0"/>
+    <peekPattern/>
+    <scheduler lineNumber="19" name="isSchedulable_FSM_Counter_a">
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstReturn">
+          <value xsi:type="com.neosyn.models.ir:ExprBool" value="true"/>
+        </instructions>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </scheduler>
+  </actions>
+</com.neosyn.models.dpn:Actor>

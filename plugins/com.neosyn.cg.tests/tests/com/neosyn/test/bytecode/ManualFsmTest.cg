@@ -1,0 +1,78 @@
+/*
+ * Test: Manual state machine with port writes in different branches.
+ * Regression test for CycleScheduler losing writes.
+ *
+ * Bug: The CycleScheduler decomposed if-else chains using manual state
+ * variables into separate actions. Some actions lost their port writes
+ * (e.g., the prefetch branch lost offset.write() and state assignment).
+ *
+ * This task uses a manual state variable to select between branches,
+ * each of which writes to different output ports.
+ */
+package com.neosyn.test.bytecode;
+
+network ManualFsmTest {
+	properties {
+		test: { terminate: "checker.finished" }
+	}
+
+	dut = new task {
+		in push bool go;
+		out push u16 portA;
+		out push u16 portB;
+
+		u2 state;
+
+		void loop() {
+			if (state == 0) {
+				if (go.available()) {
+					go.read();
+					portA.write(0xAA);
+					state = 1;
+				}
+			} else if (state == 1) {
+				portB.write(0xBB);
+				state = 2;
+			} else if (state == 2) {
+				portA.write(0xCC);
+				portB.write(0xDD);
+				state = 0;
+			}
+		}
+	};
+
+	checker = new task {
+		in push u16 fromA;
+		in push u16 fromB;
+		bool finished;
+
+		void setup() {
+			// Trigger state 0 → 1
+			dut.go.write(true);
+			fence;
+			// State 0: portA=0xAA
+			u16 a1 = fromA.read();
+			assert(a1 == 0xAA);
+			print("state 0: portA=", a1, " (expected 0xAA)\n");
+
+			fence;
+			// State 1: portB=0xBB
+			u16 b1 = fromB.read();
+			assert(b1 == 0xBB);
+			print("state 1: portB=", b1, " (expected 0xBB)\n");
+
+			fence;
+			// State 2: portA=0xCC, portB=0xDD
+			u16 a2 = fromA.read();
+			u16 b2 = fromB.read();
+			assert(a2 == 0xCC);
+			assert(b2 == 0xDD);
+			print("state 2: portA=", a2, ", portB=", b2, " (expected 0xCC, 0xDD)\n");
+
+			print("Test PASSED\n");
+			finished = true;
+		}
+	};
+
+	checker.reads(dut.portA, dut.portB);
+}

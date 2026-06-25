@@ -1,0 +1,82 @@
+/*
+ * Phase 1 timing test T16 — Stream port reads inside if-condition.
+ *
+ * Minimal reproduction of the T14/Fibonacci deadlock pattern:
+ * Multiple reads from the same stream port inside an if-condition
+ * create automatic cycle breaks. Does the if-condition leak into
+ * the cycle-break-created states?
+ *
+ * This is the exact InstrDecode pattern:
+ *   if (!exec_ready) { fence; }
+ *   else {
+ *       instr.read();  // auto cycle break after this
+ *       instr.read();  // auto cycle break after this
+ *   }
+ */
+package com.neosyn.test.bytecode.timing;
+
+network T16_StreamReadInIf {
+
+    properties {
+        test: { terminate: "decoder.finished" }
+    }
+
+    // Instruction source
+    source = new task {
+        out stream u8 data;
+
+        u8 count;
+
+        void setup() {
+            count = 0;
+        }
+
+        void loop() {
+            data.write(count);
+            count = (u8)(count + 1);
+        }
+    };
+
+    // Execute stub: sets ready=true, reads result, sets ready=false
+    execute = new task {
+        out bool exec_ready;
+        out push u8 result;
+
+        void setup() {
+            exec_ready.write(true);
+        }
+
+        void loop() {
+            if (decoder.output.available()) {
+                u8 v = decoder.output.read();
+                result.write(v);
+            }
+        }
+    };
+
+    // Decoder with the exact InstrDecode pattern
+    decoder = new task {
+        out push u8 output;
+        bool finished;
+
+        void setup() {
+            finished = false;
+        }
+
+        void loop() {
+            if (!finished) {
+                if (execute.exec_ready) {
+                    // State 0: read first byte (exec_ready is true here)
+                    u8 b0 = source.data.read();
+                    // After this read, exec_ready may go false
+                    // Second read creates automatic cycle break
+                    u8 b1 = source.data.read();
+                    // Third read creates another cycle break
+                    u8 b2 = source.data.read();
+                    output.write((u8)(b0 + b1 + b2));
+                    finished = true;
+                }
+            }
+        }
+    };
+}

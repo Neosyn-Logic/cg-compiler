@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<com.neosyn.models.dpn:DPN xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:com.neosyn.models.dpn="http://www.neosyn.io/2013/Dpn" fileName="/home/nicolas06/neosyn/neosyn-studio/plugins/com.neosyn.cg.tests/tests/golden/GoldenNetworks.cg"
+    lineNumber="102" name="com.neosyn.test.golden.ProcessingChain" properties="{&quot;test&quot;:true,&quot;clocks&quot;:[&quot;clock&quot;],&quot;resets&quot;:[{&quot;type&quot;:&quot;asynchronous&quot;,&quot;active&quot;:&quot;low&quot;,&quot;name&quot;:&quot;reset_n&quot;}],&quot;copyright&quot;:[&quot;Copyright (c) 2024 Neosyn. All rights reserved.&quot;,&quot; *&quot;,&quot;Golden file test - Network compositions for regression testing.&quot;,&quot;Tests: task instantiation, port connections, inline tasks.&quot;],&quot;javadoc&quot;:[&quot;Network with feedback (not a real loop, just demonstrating structure).&quot;,&quot;Tests: complex connection patterns.&quot;]}"
+    instances="#//@graph/@vertices.1 #//@graph/@vertices.2 #//@graph/@vertices.3"
+    vertex="#//@graph/@vertices.0">
+  <graph>
+    <edges xsi:type="com.neosyn.models.dpn:Connection" source="#//@graph/@vertices.1"
+        target="#//@graph/@vertices.2" sourcePort="ProcessingChain_generator.ir#//@outputs.0"
+        targetPort="ProcessingChain_squarer.ir#//@inputs.0"/>
+    <edges xsi:type="com.neosyn.models.dpn:Connection" source="#//@graph/@vertices.2"
+        target="#//@graph/@vertices.3" sourcePort="ProcessingChain_squarer.ir#//@outputs.0"
+        targetPort="ProcessingChain_accumulator.ir#//@inputs.0"/>
+    <vertices/>
+    <vertices xsi:type="com.neosyn.models.dpn:Instance" outgoing="#//@graph/@edges.0"
+        entity="ProcessingChain_generator.ir#/" name="generator" properties="{&quot;clocks&quot;:{&quot;clock&quot;:&quot;clock&quot;},&quot;resets&quot;:{&quot;reset_n&quot;:&quot;reset_n&quot;}}"/>
+    <vertices xsi:type="com.neosyn.models.dpn:Instance" incoming="#//@graph/@edges.0"
+        outgoing="#//@graph/@edges.1" entity="ProcessingChain_squarer.ir#/" name="squarer"
+        properties="{&quot;clocks&quot;:{&quot;clock&quot;:&quot;clock&quot;},&quot;resets&quot;:{&quot;reset_n&quot;:&quot;reset_n&quot;}}"/>
+    <vertices xsi:type="com.neosyn.models.dpn:Instance" incoming="#//@graph/@edges.1"
+        entity="ProcessingChain_accumulator.ir#/" name="accumulator" properties="{&quot;clocks&quot;:{&quot;clock&quot;:&quot;clock&quot;},&quot;resets&quot;:{&quot;reset_n&quot;:&quot;reset_n&quot;}}"/>
+  </graph>
+</com.neosyn.models.dpn:DPN>

@@ -1,0 +1,8 @@
+package com.neosyn.test.cyclic;
+
+import com.neosyn.test.cyclic.CycleA.A_VAL;
+
+// Other half of the mutual import cycle with CycleA.
+bundle CycleB {
+  const u8 B_VAL = A_VAL;
+}

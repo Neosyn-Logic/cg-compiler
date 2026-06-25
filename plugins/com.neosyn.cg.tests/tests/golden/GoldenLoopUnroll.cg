@@ -1,0 +1,38 @@
+package com.neosyn.test.golden;
+
+/*
+ * Fixture for the constant-loop-unroll regression test.
+ *
+ * ConstUnroll  — a `for` with a compile-time-constant trip count. Its body must
+ *                be unrolled into straight-line IR so the generated Verilog
+ *                contains no `while` (which yosys rejects outside const funcs).
+ * DataDepLoop  — a `for` whose bound is a runtime input. It cannot be unrolled;
+ *                its `k < bound` test must survive as a runtime comparison
+ *                (scheduler-lowered FSM back-edge), proving the unroll is
+ *                selective and the non-constant path is intact.
+ */
+task ConstUnroll {
+	out u8 dout;
+
+	void setup() {
+		u8 sum = 0;
+		for (u8 k = 0; k < 8; k++) {
+			sum = (u8) (sum + k);
+		}
+		dout.write(sum);
+	}
+}
+
+task DataDepLoop {
+	in u8 n;
+	out u8 dout;
+
+	void loop() {
+		u8 bound = n.read();
+		u8 sum = 0;
+		for (u8 k = 0; k < bound; k++) {
+			sum = (u8) (sum + k);
+		}
+		dout.write(sum);
+	}
+}

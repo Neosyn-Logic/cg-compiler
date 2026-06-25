@@ -1,0 +1,75 @@
+/*
+ * Phase 1 timing test T07 — cross-task port reference inside an inline
+ * task body, with NO explicit `reads()` declaration. The combinational
+ * forwarder reads `producer.value` directly inside its loop, the same
+ * way Intel-8088 BIU's compute_real reads `ctrl.offset` directly.
+ *
+ * Difference vs T02:
+ *   T02 uses `forwarder.reads(producer.value)` to declare the connection.
+ *   T07 has no `reads(...)` clause — the connection is implicit, created
+ *   by the compiler when it sees `producer.value.available()` /
+ *   `producer.value.read()` inside `forwarder.loop()`.
+ *
+ * If T02 passes and T07 fails, the bug is in the implicit cross-task
+ * connection path for combinational tasks.
+ */
+package com.neosyn.test.bytecode.timing;
+
+network T07_CrossTaskRefInBody {
+
+    properties {
+        test: { terminate: "checker.finished" }
+    }
+
+    producer = new task {
+        out push u8 value;
+        u8 count;
+
+        void setup() {
+            count = 0;
+        }
+
+        void loop() {
+            count++;
+            value.write(count);
+        }
+    };
+
+    forwarder = new task {
+        properties { type: "combinational" }
+        out push u8 vout;
+
+        void loop() {
+            if (producer.value.available()) {
+                vout.write((u8)(producer.value.read() * 2));
+            }
+        }
+    };
+
+    checker = new task {
+        in push u8 doubled;
+
+        u8 expected;
+        bool finished;
+
+        void setup() {
+            expected = 2;
+            finished = false;
+        }
+
+        void loop() {
+            if (!finished) {
+                u8 v = doubled.read();
+                assert(v == expected);
+                if (expected == 10) {
+                    print("T07_CrossTaskRefInBody PASS\n");
+                    finished = true;
+                } else {
+                    expected = (u8)(expected + 2);
+                }
+            }
+        }
+    };
+
+    checker.reads(forwarder.vout);
+}

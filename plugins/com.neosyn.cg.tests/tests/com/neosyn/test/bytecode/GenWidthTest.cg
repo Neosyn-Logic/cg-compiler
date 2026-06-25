@@ -1,0 +1,30 @@
+package com.neosyn.test.bytecode;
+
+/*
+ * L3 Generics Tier 0 — parameterized task specialized per-instance via the
+ * existing const + property-arg mechanism (no <...> sugar yet). Widget has a
+ * defaulted width parameter W and a defaulted EXPECT; each instance masks
+ * 0xFF to its own uint<W> and self-asserts. Proves per-instance
+ * monomorphization of a parameterized width. Params MUST be defaulted — the
+ * validator rejects uninitialized consts.
+ */
+task Widget {
+    const int W = 8;
+    const int EXPECT = 0xFF;
+    uint<W> reg;
+    bool finished;
+    void setup() { reg = (uint<W>) 0xFF; finished = false; }
+    void loop() {
+        if (!finished) {
+            assert(reg == EXPECT);
+            print("W=", W, " reg=", reg, " (expected ", EXPECT, ")\n");
+            finished = true;
+        }
+    }
+}
+
+network GenWidthTest {
+    properties { test: { terminate: "w8.finished" } }
+    w4 = new Widget({W: 4, EXPECT: 0xF});
+    w8 = new Widget({W: 8, EXPECT: 0xFF});
+}

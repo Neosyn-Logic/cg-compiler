@@ -1,0 +1,63 @@
+/*
+ * Simple arithmetic test - NO built-in entities
+ * Tests basic arithmetic operations in bytecode simulation
+ */
+package com.neosyn.test.bytecode;
+
+network SimpleArithTest {
+    properties { test: { terminate: "calculator.finished" } }
+
+    calculator = new task {
+        u32 a, b, result;
+        bool finished;
+
+        void setup() {
+            a = 0;
+            b = 0;
+            result = 0;
+            finished = false;
+            print("=== SimpleArithTest Started ===\n");
+        }
+
+        void loop() {
+            if (!finished) {
+                // Test addition
+                a = 10;
+                b = 25;
+                result = (u32)(a + b);
+                print("10 + 25 = ", result, "\n");
+                assert(result == 35);
+
+                // Test subtraction
+                result = (u32)(b - a);
+                print("25 - 10 = ", result, "\n");
+                assert(result == 15);
+
+                // Test multiplication
+                a = 7;
+                b = 6;
+                result = (u32)(a * b);
+                print("7 * 6 = ", result, "\n");
+                assert(result == 42);
+
+                // Test bit operations
+                a = 0b1010;
+                b = 0b1100;
+                result = a & b;
+                print("0b1010 & 0b1100 = ", result, "\n");
+                assert(result == 0b1000);
+
+                result = a | b;
+                print("0b1010 | 0b1100 = ", result, "\n");
+                assert(result == 0b1110);
+
+                result = a ^ b;
+                print("0b1010 ^ 0b1100 = ", result, "\n");
+                assert(result == 0b0110);
+
+                print("=== Test PASSED ===\n");
+                finished = true;
+            }
+        }
+    };
+}

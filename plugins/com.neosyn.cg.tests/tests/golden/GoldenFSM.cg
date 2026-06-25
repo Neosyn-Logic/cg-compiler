@@ -1,0 +1,202 @@
+/*******************************************************************************
+ * Copyright (c) 2024 Neosyn. All rights reserved.
+ *
+ * Golden file test - FSM (Finite State Machine) patterns for regression testing.
+ * Tests: state labels, transitions, while loops.
+ *******************************************************************************/
+package com.neosyn.test.golden;
+
+/**
+ * GCD (Greatest Common Divisor) using subtraction algorithm.
+ * Based on: Arithmetic/GCD.cg
+ * Tests: while loop generating FSM, multiple state transitions.
+ */
+task GCD {
+	in u8 a, b;
+	out u8 result;
+
+	void loop() {
+		u8 x = a.read();
+		u8 y = b.read();
+
+		// Subtraction-based GCD (no modulo operator needed)
+		while (x != y) {
+			if (x > y) {
+				x = (u8)(x - y);
+			} else {
+				y = (u8)(y - x);
+			}
+		}
+
+		result.write(x);
+	}
+}
+
+/**
+ * Simple state machine with explicit states.
+ * Tests: state labels, fence/goto patterns.
+ */
+task TrafficLight {
+	out u2 light;  // 0=red, 1=yellow, 2=green
+
+	u8 counter;
+
+	void setup() {
+		counter = 0;
+	}
+
+	void loop() {
+	red:
+		light.write(0);
+		counter = 0;
+		while (counter < 30) {
+			counter++;
+		}
+
+	green:
+		light.write(2);
+		counter = 0;
+		while (counter < 25) {
+			counter++;
+		}
+
+	yellow:
+		light.write(1);
+		counter = 0;
+		while (counter < 5) {
+			counter++;
+		}
+	}
+}
+
+/**
+ * Sequence detector - detects pattern 1011.
+ * Tests: classic FSM pattern for pattern recognition.
+ */
+task SequenceDetector {
+	in bool bit;
+	out bool detected;
+
+	u3 state;  // 0=idle, 1=got1, 2=got10, 3=got101, 4=got1011
+
+	void setup() {
+		state = 0;
+	}
+
+	void loop() {
+		bool b = bit.read();
+		detected.write(false);
+
+		if (state == 0) {
+			// Idle - looking for first 1
+			if (b) {
+				state = 1;
+			}
+		} else if (state == 1) {
+			// Got 1 - looking for 0
+			if (b) {
+				state = 1;  // Stay in got1
+			} else {
+				state = 2;  // Got 10
+			}
+		} else if (state == 2) {
+			// Got 10 - looking for 1
+			if (b) {
+				state = 3;  // Got 101
+			} else {
+				state = 0;  // Reset
+			}
+		} else if (state == 3) {
+			// Got 101 - looking for final 1
+			if (b) {
+				detected.write(true);  // Pattern found!
+				state = 1;  // Overlap: this 1 could start new pattern
+			} else {
+				state = 2;  // Got 10 (overlap)
+			}
+		}
+	}
+}
+
+/**
+ * Serial receiver - simplified UART-like.
+ * Tests: for loop in FSM, bit shifting.
+ */
+task SerialReceiver {
+	in bool rx;
+	out u8 data;
+	out bool valid;
+
+	u2 state;  // 0=idle, 1=receiving
+	u3 bitCount;
+	u8 rxByte;
+
+	void setup() {
+		state = 0;
+		bitCount = 0;
+		rxByte = 0;
+	}
+
+	void loop() {
+		if (state == 0) {
+			// Idle - wait for start bit (low)
+			valid.write(false);
+			if (!rx.read()) {
+				state = 1;
+				bitCount = 0;
+				rxByte = 0;
+			}
+		} else {
+			// Receiving - shift in bits
+			rxByte = (u8)(rxByte >> 1);
+			if (rx.read()) {
+				rxByte = rxByte | 0x80;
+			}
+			bitCount++;
+			if (bitCount >= 8) {
+				data.write(rxByte);
+				valid.write(true);
+				state = 0;
+			} else {
+				valid.write(false);
+			}
+		}
+	}
+}
+
+/**
+ * Debouncer - filters button bounce.
+ * Tests: counter-based FSM, threshold detection.
+ */
+task Debouncer {
+	in bool button;
+	out bool stable;
+
+	u8 counter;
+	bool lastState;
+
+	void setup() {
+		counter = 0;
+		lastState = false;
+	}
+
+	void loop() {
+		bool current = button.read();
+
+		if (current == lastState) {
+			// Same state - increment counter
+			if (counter < 255) {
+				counter++;
+			}
+		} else {
+			// State changed - reset counter
+			counter = 0;
+			lastState = current;
+		}
+
+		// Output stable after threshold
+		if (counter >= 10) {
+			stable.write(lastState);
+		}
+	}
+}

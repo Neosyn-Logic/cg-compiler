@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<com.neosyn.models.dpn:Actor xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:com.neosyn.models.dpn="http://www.neosyn.io/2013/Dpn"
+    xmlns:com.neosyn.models.ir="http://www.neosyn.io/2013/Ir" fileName="/home/nicolas06/neosyn/neosyn-studio/plugins/com.neosyn.cg.tests/tests/golden/GoldenBasicTasks.cg"
+    lineNumber="13" name="com.neosyn.test.golden.BlankingLed" properties="{&quot;clocks&quot;:[&quot;clock&quot;],&quot;resets&quot;:[{&quot;type&quot;:&quot;asynchronous&quot;,&quot;active&quot;:&quot;low&quot;,&quot;name&quot;:&quot;reset_n&quot;}],&quot;copyright&quot;:[&quot;Copyright (c) 2024 Neosyn. All rights reserved.&quot;,&quot; *&quot;,&quot;Golden file test - Basic tasks for regression testing.&quot;,&quot;Tests: simple state variables, arithmetic, output ports.&quot;],&quot;javadoc&quot;:[&quot;Minimal toggle task - tests boolean state and output.&quot;,&quot;Based on: LED/BlankingLed.cg&quot;],&quot;comments&quot;:{}}">
+  <outputs defs="#//@actions.0/@body/@blocks.0/@instructions.1/@target" name="led">
+    <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+  </outputs>
+  <variables assignable="true" defs="#//@actions.0/@body/@blocks.0/@instructions.3/@target"
+      lineNumber="16" name="state" uses="#//@actions.0/@body/@blocks.0/@instructions.0/@source #//@actions.0/@body/@blocks.0/@instructions.2/@source">
+    <initialValue xsi:type="com.neosyn.models.ir:ExprBool"/>
+    <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+  </variables>
+  <actions name="FSM_BlankingLed_a">
+    <body lineNumber="19" name="FSM_BlankingLed_a">
+      <locals assignable="true" defs="#//@actions.0/@body/@blocks.0/@instructions.0/@target"
+          lineNumber="19" name="state_0" uses="#//@actions.0/@body/@blocks.0/@instructions.1/@value/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@body/@blocks.0/@instructions.2/@target"
+          lineNumber="20" name="state_1" uses="#//@actions.0/@body/@blocks.0/@instructions.3/@value/@expr/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+      </locals>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="19">
+          <source variable="#//@variables.0"/>
+          <target variable="#//@actions.0/@body/@locals.0"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="19">
+          <target variable="#//@outputs.0"/>
+          <value xsi:type="com.neosyn.models.ir:ExprVar">
+            <use variable="#//@actions.0/@body/@locals.0"/>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="20">
+          <source variable="#//@variables.0"/>
+          <target variable="#//@actions.0/@body/@locals.1"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="20">
+          <target variable="#//@variables.0"/>
+          <value xsi:type="com.neosyn.models.ir:ExprUnary" op="LOGIC_NOT">
+            <expr xsi:type="com.neosyn.models.ir:ExprVar">
+              <use variable="#//@actions.0/@body/@locals.1"/>
+            </expr>
+          </value>
+        </instructions>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </body>
+    <combinational lineNumber="19" name="comb_FSM_BlankingLed_a">
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </combinational>
+    <inputPattern/>
+    <outputPattern ports="#//@outputs.0"/>
+    <peekPattern/>
+    <scheduler lineNumber="19" name="isSchedulable_FSM_BlankingLed_a">
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstReturn">
+          <value xsi:type="com.neosyn.models.ir:ExprBool" value="true"/>
+        </instructions>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </scheduler>
+  </actions>
+</com.neosyn.models.dpn:Actor>

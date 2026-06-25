@@ -1,0 +1,81 @@
+/*
+ * Phase 1 timing test T09 — multi-state FSM producer feeding a
+ * combinational consumer. The producer uses `fence` to split its
+ * loop into multiple states, just like Intel-8088 BusController.
+ *
+ * Producer FSM:
+ *   state 0: write addr push port
+ *   fence
+ *   state 1: write data push port
+ *   fence
+ *
+ * The combinational forwarder reads producer.addr and writes its own
+ * output. The checker asserts the value sequence.
+ *
+ * If T07 passes but T09 fails, the bug is in commit propagation when
+ * the producer's push output is written from a non-initial FSM state,
+ * or in the *_next reset behavior across FSM state transitions.
+ */
+package com.neosyn.test.bytecode.timing;
+
+network T09_FsmProducerToComb {
+
+    properties {
+        test: { terminate: "checker.finished" }
+    }
+
+    producer = new task {
+        out push u8 addr;
+        out push u8 data;
+        u8 count;
+
+        void setup() {
+            count = 0;
+        }
+
+        void loop() {
+            count++;
+            addr.write(count);
+            fence;
+            data.write((u8)(count + 100));
+        }
+    };
+
+    forwarder = new task {
+        properties { type: "combinational" }
+        out push u8 mirrored;
+
+        void loop() {
+            if (producer.addr.available()) {
+                mirrored.write(producer.addr.read());
+            }
+        }
+    };
+
+    checker = new task {
+        in push u8 incoming;
+
+        u8 expected;
+        bool finished;
+
+        void setup() {
+            expected = 1;
+            finished = false;
+        }
+
+        void loop() {
+            if (!finished) {
+                u8 v = incoming.read();
+                assert(v == expected);
+                if (expected == 5) {
+                    print("T09_FsmProducerToComb PASS\n");
+                    finished = true;
+                } else {
+                    expected++;
+                }
+            }
+        }
+    };
+
+    checker.reads(forwarder.mirrored);
+}

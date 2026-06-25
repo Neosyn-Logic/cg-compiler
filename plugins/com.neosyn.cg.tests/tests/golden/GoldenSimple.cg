@@ -1,0 +1,49 @@
+/*******************************************************************************
+ * Copyright (c) 2024 Neosyn. All rights reserved.
+ *
+ * Golden file test - simple task for regression testing.
+ * This file is used to verify that IR and HDL generation produce consistent output.
+ *******************************************************************************/
+package com.neosyn.test.golden;
+
+/**
+ * Simple counter task for golden file testing.
+ * Increments a counter on each cycle and outputs it.
+ */
+task Counter {
+	out u8 count;
+
+	u8 counter = 0;
+
+	void loop() {
+		count.write(counter);
+		counter++;
+	}
+}
+
+/**
+ * Simple adder task for golden file testing.
+ * Adds two inputs and produces the sum.
+ */
+task Adder {
+	in u8 a, b;
+	out u8 sum;
+
+	void loop() {
+		sum.write((u8)(a.read() + b.read()));
+	}
+}
+
+/**
+ * Simple network for golden file testing.
+ * Connects Counter to Adder.
+ */
+network SimpleNetwork {
+	properties { test: true }
+
+	counter = new Counter();
+	adder = new Adder();
+
+	// Counter feeds both inputs of adder
+	adder.reads(counter.count, counter.count);
+}

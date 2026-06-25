@@ -1,0 +1,42 @@
+package com.neosyn.test.golden;
+
+/*
+ * Fixture for codegen-quality regression tests.
+ *
+ * Exercises the cast / sign-conversion pipeline with the patterns that used to
+ * emit redundant nested sign reinterpretations in the generated Verilog (the
+ * Sobel-filter case): a narrowing unsigned cast of a masked int expression,
+ * and a narrowing signed cast of signed arithmetic.
+ */
+task CastNest {
+	in u8 a, b;
+	out u8 ucast;
+	out i8 scast;
+
+	void loop() {
+		int row = a.read();
+		int col = b.read();
+		// narrowing unsigned cast of a masked int (Sobel pixel pattern)
+		ucast.write((u8) ((row * 32 + col) & 0xFF));
+
+		// narrowing signed cast of signed arithmetic
+		i8 x = (i8) a.read();
+		i8 y = (i8) b.read();
+		scast.write((i8) (x - y));
+	}
+}
+
+/*
+ * A genuinely-wide 32-bit state int whose product is truncated to 8 bits —
+ * the case bit-width narrowing (#b) targets. `acc * 32` must compute on
+ * 8-bit operands, not 38-bit sign-extended ones.
+ */
+task WideArith {
+	out u8 o;
+	int acc;
+
+	void loop() {
+		acc = (int) (acc + 1);
+		o.write((u8) ((acc * 32) & 0xFF));
+	}
+}

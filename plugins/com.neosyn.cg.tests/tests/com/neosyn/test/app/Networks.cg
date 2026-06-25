@@ -1,0 +1,332 @@
+/*******************************************************************************
+ * Copyright (c) 2024 Neosyn. All rights reserved.
+ *
+ * This file is part of the Neosyn SDK Project.
+ * Tests for networks with external entity references, std.mem, and nested networks.
+ * These tests ensure bytecode simulation works correctly for complex network structures.
+ *******************************************************************************/
+package com.neosyn.test.app.networks;
+
+import std.mem.SinglePortRAM;
+import std.mem.DualPortRAM;
+import std.mem.PseudoDualPortRAM;
+import std.fifo.SynchronousFIFO;
+
+/**
+ * Test: Simple network with SinglePortRAM
+ * This tests that networks with std.mem.SinglePortRAM instances
+ * correctly store entityType and generate bytecode.
+ */
+network TestNetworkWithSinglePortRAM {
+
+    ram = new SinglePortRAM({size: 16, width: 8});
+
+    controller = new task {
+        void setup() {
+            // Write to RAM
+            ram.address.write(0);
+            ram.data.write(42);
+
+            // Read back
+            ram.address.write(0);
+            fence;
+            assert(ram.q.read == 42);
+
+            // Write another value
+            ram.address.write(1);
+            ram.data.write(100);
+
+            ram.address.write(1);
+            fence;
+            assert(ram.q.read == 100);
+        }
+    };
+
+    end_sim = new task {
+        void setup() {
+            idle(20);
+        }
+    };
+}
+
+/**
+ * Test: Network with multiple RAMs
+ * Tests multiple std.mem instances in the same network.
+ */
+network TestNetworkWithMultipleRAMs {
+
+    ram1 = new SinglePortRAM({size: 8, width: 16});
+    ram2 = new SinglePortRAM({size: 8, width: 16});
+
+    controller = new task {
+        void setup() {
+            // Write to both RAMs
+            ram1.address.write(0);
+            ram1.data.write(1234);
+
+            ram2.address.write(0);
+            ram2.data.write(5678);
+
+            // Read back from both
+            ram1.address.write(0);
+            ram2.address.write(0);
+            fence;
+
+            assert(ram1.q.read == 1234);
+            assert(ram2.q.read == 5678);
+        }
+    };
+
+    end_sim = new task {
+        void setup() {
+            idle(20);
+        }
+    };
+}
+
+/**
+ * Test: External task reference
+ * Tests that networks correctly reference external tasks defined in the same file.
+ */
+task ExternalCounter {
+    out sync u8 count;
+
+    u8 i;
+
+    void setup() {
+        for (i = 0; i < 10; i++) {
+            count.write(i);
+        }
+    }
+}
+
+task ExternalChecker {
+    in sync u8 value;
+
+    u8 expected;
+
+    void setup() {
+        for (expected = 0; expected < 10; expected++) {
+            assert(value.read == expected);
+        }
+    }
+}
+
+network TestNetworkWithExternalTasks {
+
+    counter = new ExternalCounter();
+    checker = new ExternalChecker();
+
+    checker.reads(counter.count);
+
+    end_sim = new task {
+        void setup() {
+            idle(30);
+        }
+    };
+}
+
+/**
+ * Test: Nested network with RAM
+ * Inner network contains RAM, outer network instantiates inner network.
+ */
+network InnerNetworkWithRAM {
+    in sync u8 write_data;
+    out u8 read_data;
+
+    ram = new SinglePortRAM({size: 4, width: 8});
+
+    ctrl = new task {
+        u8 addr;
+
+        void loop() {
+            u8 data = write_data.read;
+            ram.address.write(addr);
+            ram.data.write(data);
+
+            ram.address.write(addr);
+            addr++;
+        }
+    };
+
+    // Connect RAM output to network output
+    output_task = new task {
+        void loop() {
+            read_data.write(ram.q.read);
+        }
+    };
+}
+
+network TestNestedNetworkWithRAM {
+
+    inner = new InnerNetworkWithRAM();
+
+    driver = new task {
+        void setup() {
+            inner.write_data.write(10);
+            inner.write_data.write(20);
+            inner.write_data.write(30);
+
+            idle(5);
+
+            // Read outputs
+            u8 out1 = inner.read_data;
+            print("Output: ", out1);
+        }
+    };
+
+    end_sim = new task {
+        void setup() {
+            idle(30);
+        }
+    };
+}
+
+/**
+ * Test: Network with FIFO
+ * Tests std.fifo.SynchronousFIFO instantiation.
+ */
+network TestNetworkWithFIFO {
+
+    fifo = new SynchronousFIFO({size: 8, width: 16});
+
+    producer = new task {
+        u16 i;
+
+        void setup() {
+            for (i = 0; i < 5; i++) {
+                fifo.din.write(i * 100);
+            }
+        }
+    };
+
+    consumer = new task {
+        u16 expected;
+
+        void setup() {
+            for (expected = 0; expected < 5; expected++) {
+                assert(fifo.dout.read == expected * 100);
+            }
+        }
+    };
+
+    end_sim = new task {
+        void setup() {
+            idle(30);
+        }
+    };
+}
+
+/**
+ * Test: Complex network combining multiple features
+ * Tests RAM, FIFO, external tasks, and inline tasks together.
+ */
+task DataGenerator {
+    out sync u8 data;
+
+    u8 value;
+
+    void setup() {
+        for (value = 1; value <= 5; value++) {
+            data.write(value * 10);
+        }
+    }
+}
+
+network TestComplexNetwork {
+
+    // External task
+    generator = new DataGenerator();
+
+    // Built-in FIFO
+    fifo = new SynchronousFIFO({size: 4, width: 8});
+
+    // Built-in RAM
+    ram = new SinglePortRAM({size: 8, width: 8});
+
+    // Inline task: reads from generator, writes to FIFO and RAM
+    router = new task {
+        u8 addr;
+
+        void loop() {
+            u8 data = generator.data.read;
+
+            // Write to FIFO
+            fifo.din.write(data);
+
+            // Write to RAM
+            ram.address.write(addr);
+            ram.data.write(data);
+            addr++;
+        }
+    };
+
+    // Inline task: verifies data from FIFO
+    verifier = new task {
+        u8 expected;
+
+        void setup() {
+            for (expected = 1; expected <= 5; expected++) {
+                u8 actual = fifo.dout.read;
+                assert(actual == expected * 10);
+            }
+        }
+    };
+
+    end_sim = new task {
+        void setup() {
+            idle(50);
+        }
+    };
+}
+
+/**
+ * Test: Network instantiating another network (two levels deep)
+ */
+network Level1Network {
+    in sync u8 input;
+    out u8 output;
+
+    buffer = new task {
+        void loop() {
+            output.write(input.read);
+        }
+    };
+}
+
+network Level0Network {
+    in sync u8 input;
+    out u8 output;
+
+    level1 = new Level1Network();
+
+    level1.reads(input);
+
+    passthrough = new task {
+        void loop() {
+            output.write(level1.output);
+        }
+    };
+}
+
+network TestDeepNestedNetworks {
+
+    top = new Level0Network();
+
+    driver = new task {
+        void setup() {
+            top.input.write(42);
+            top.input.write(100);
+
+            idle(3);
+
+            assert(top.output == 42);
+        }
+    };
+
+    end_sim = new task {
+        void setup() {
+            idle(20);
+        }
+    };
+}

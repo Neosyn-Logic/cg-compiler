@@ -1,0 +1,54 @@
+/*
+ * L1 Structs Tier 0 fixture — single-task struct with two scalar fields.
+ * Validates: parse + scoping + IR-gen + bytecode-sim end-to-end.
+ *
+ * v1 deferred (intentionally NOT exercised here):
+ *   - no nested structs, no struct-typed ports, no whole-struct read/assign,
+ *     no arrays of struct, no struct field arrays.
+ *
+ * See .claude/L1_STRUCT_DESIGN.md for the full design.
+ */
+package com.neosyn.test.bytecode;
+
+network PairStructTest {
+    properties { test: { terminate: "user.finished" } }
+
+    user = new task {
+        struct Pair {
+            u8 lo;
+            u16 hi;
+        }
+
+        bool finished;
+
+        void setup() {
+            finished = false;
+        }
+
+        void loop() {
+            if (!finished) {
+                Pair p;
+
+                // field write (LHS path)
+                p.lo = 3;
+                p.hi = 0x100;
+
+                // field read (RHS path) — each field read separately
+                print("p.lo = ", p.lo, ", p.hi = ", p.hi, "\n");
+                assert(p.lo == 3);
+                assert(p.hi == 0x100);
+
+                // read-modify-write a field
+                p.lo = (u8)(p.lo + 1);
+                assert(p.lo == 4);
+
+                // crosswise read into another scalar
+                u16 sum = (u16)(p.hi + p.lo);
+                assert(sum == 0x104);
+
+                print("=== PairStructTest PASSED ===\n");
+                finished = true;
+            }
+        }
+    };
+}

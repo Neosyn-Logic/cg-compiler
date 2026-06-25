@@ -1,0 +1,93 @@
+/*
+ * Phase 1 timing test T04 — chain of two combinational tasks between
+ * sequential producer and sequential consumer.
+ *
+ * Topology: producer (seq) → comb1 (combinational, x*2) → comb2
+ *           (combinational, x+1) → checker (seq).
+ *
+ * The point of this test is to confirm that combinational tasks within
+ * the same phase fire in topological order, so that comb2 sees comb1's
+ * just-written output in the same cycle (no extra latency for each comb
+ * stage).
+ *
+ * Expectation AFTER Phase 2:
+ *   With producer values 1, 2, 3, 4, 5, the checker should see
+ *   2*1+1=3, 2*2+1=5, 2*3+1=7, 2*4+1=9, 2*5+1=11.
+ *
+ * Expectation BEFORE Phase 2: probably broken in the same way as T02.
+ */
+package com.neosyn.test.bytecode.timing;
+
+network T04_CombChain {
+
+    properties {
+        test: { terminate: "checker.finished" }
+    }
+
+    producer = new task {
+        out push u8 value;
+        u8 count;
+
+        void setup() {
+            count = 0;
+        }
+
+        void loop() {
+            count++;
+            value.write(count);
+        }
+    };
+
+    comb1 = new task {
+        properties { type: "combinational" }
+        in push u8 vin;
+        out push u8 vout;
+
+        void loop() {
+            if (vin.available()) {
+                vout.write((u8)(vin.read() * 2));
+            }
+        }
+    };
+
+    comb2 = new task {
+        properties { type: "combinational" }
+        in push u8 vin;
+        out push u8 vout;
+
+        void loop() {
+            if (vin.available()) {
+                vout.write((u8)(vin.read() + 1));
+            }
+        }
+    };
+
+    checker = new task {
+        in push u8 result;
+
+        u8 expected;
+        bool finished;
+
+        void setup() {
+            expected = 3;   // 2*1 + 1
+            finished = false;
+        }
+
+        void loop() {
+            if (!finished) {
+                u8 v = result.read();
+                assert(v == expected);
+                if (expected == 11) {
+                    print("T04_CombChain PASS\n");
+                    finished = true;
+                } else {
+                    expected = (u8)(expected + 2);
+                }
+            }
+        }
+    };
+
+    comb1.reads(producer.value);
+    comb2.reads(comb1.vout);
+    checker.reads(comb2.vout);
+}

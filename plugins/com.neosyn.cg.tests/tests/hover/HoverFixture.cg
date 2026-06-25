@@ -1,0 +1,34 @@
+package com.neosyn.test.hover;
+
+/**
+ * Hover-test fixture. Exercises the EObjects CgHoverService dispatches on.
+ */
+bundle HoverBundle {
+  const u8 TWO = 2;
+}
+
+task HoverProducer {
+  out push u8 data;
+
+  void loop() {
+    data.write(1);
+  }
+}
+
+task HoverTask {
+  in push u8 a;
+  out u8 b;
+
+  u8 counter = 0;
+
+  void loop() {
+    b.write((u8)(a.read() + counter));
+    counter++;
+  }
+}
+
+network HoverNetwork {
+  prod = new HoverProducer();
+  ht = new HoverTask();
+  ht.reads(prod.data);
+}

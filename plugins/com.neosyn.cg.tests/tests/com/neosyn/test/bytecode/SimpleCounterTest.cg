@@ -1,0 +1,55 @@
+/*
+ * Simple counter test - NO built-in entities
+ * Uses counter + expected (checker) pattern for proper testbench
+ */
+package com.neosyn.test.bytecode;
+
+network SimpleCounterTest {
+    properties {
+        test: { terminate: "expected.finished" }
+    }
+
+    counter = new task {
+        out sync u8 value;
+
+        u8 count;
+
+        void setup() {
+            count = 0;
+        }
+
+        void loop() {
+            count++;
+            value.write(count);
+        }
+    };
+
+    expected = new task {
+        in sync u8 actual;
+
+        u8 expectedValue;
+        u8 testCount;
+        bool finished;
+
+        void setup() {
+            expectedValue = 1;
+            testCount = 0;
+            finished = false;
+        }
+
+        void loop() {
+            if (!finished) {
+                u8 v = actual.read;
+                assert(v == expectedValue);
+                expectedValue++;
+                testCount++;
+                if (testCount >= 5) {
+                    print("Test PASSED\n");
+                    finished = true;
+                }
+            }
+        }
+    };
+
+    expected.reads(counter.value);
+}

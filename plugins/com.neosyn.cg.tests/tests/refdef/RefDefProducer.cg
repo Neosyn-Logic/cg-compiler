@@ -1,0 +1,16 @@
+package com.neosyn.test.refdef;
+
+/**
+ * Producer task referenced by RefDefConsumer.cg. Exercises cross-file
+ * definition / reference resolution.
+ */
+task RefDefProducer {
+  out push u8 data;
+
+  u8 counter = 0;
+
+  void loop() {
+    data.write(counter);
+    counter++;
+  }
+}

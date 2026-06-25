@@ -1,0 +1,50 @@
+package com.neosyn.test.bytecode;
+
+/*
+ * Bug #12 — modifying a struct read from a port before forwarding it.
+ * `Outer o = in_o.read(); o.hi.a = ...; out_o.write(o);`. LoadStoreReplacer
+ * used to forward the port-load into the local leaf and remove the local; if
+ * that leaf was then reassigned, the store's target was stranded (empty
+ * target -> broken codegen). The guard now keeps the local when it has more
+ * than one definition, while still forwarding the read-only (unmodified)
+ * leaves. The processor increments one nested field and forwards the rest;
+ * the tester round-trips a value and asserts both the modified and the
+ * unmodified fields, so a stranded store or a missed forward fails the run.
+ */
+network StructPortModifyTest {
+    properties { test: { terminate: "tester.finished" } }
+
+    struct Inner { u8 a; u8 b; }
+    struct Outer { u8 lo; Inner hi; }
+
+    processor = new task {
+        in Outer in_o;
+        out Outer out_o;
+        void loop() {
+            Outer o = in_o.read();
+            o.hi.a = (u8)(o.hi.a + 1);   // modify one nested field of the port-read struct
+            out_o.write(o);              // forward the (partly modified) struct
+        }
+    };
+
+    tester = new task {
+        bool finished;
+        void setup() { finished = false; }
+        void loop() {
+            if (!finished) {
+                Outer o;
+                o.lo = 3;
+                o.hi.a = 10;
+                o.hi.b = 20;
+                processor.in_o.write(o);
+                idle(2);
+                Outer r = processor.out_o.read();
+                assert(r.lo == 3);      // unmodified — forwarded straight through
+                assert(r.hi.a == 11);   // modified — 10 + 1
+                assert(r.hi.b == 20);   // unmodified — forwarded straight through
+                print("=== StructPortModify r.hi.a=", r.hi.a, " ===\n");
+                finished = true;
+            }
+        }
+    };
+}

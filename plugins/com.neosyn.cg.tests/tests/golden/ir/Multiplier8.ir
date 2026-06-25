@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<com.neosyn.models.dpn:Actor xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:com.neosyn.models.dpn="http://www.neosyn.io/2013/Dpn"
+    xmlns:com.neosyn.models.ir="http://www.neosyn.io/2013/Ir" fileName="/home/nicolas06/neosyn/neosyn-studio/plugins/com.neosyn.cg.tests/tests/golden/GoldenBasicTasks.cg"
+    lineNumber="77" name="com.neosyn.test.golden.Multiplier8" properties="{&quot;clocks&quot;:[&quot;clock&quot;],&quot;resets&quot;:[{&quot;type&quot;:&quot;asynchronous&quot;,&quot;active&quot;:&quot;low&quot;,&quot;name&quot;:&quot;reset_n&quot;}],&quot;copyright&quot;:[&quot;Copyright (c) 2024 Neosyn. All rights reserved.&quot;,&quot; *&quot;,&quot;Golden file test - Basic tasks for regression testing.&quot;,&quot;Tests: simple state variables, arithmetic, output ports.&quot;],&quot;javadoc&quot;:[&quot;Multiplier - tests larger arithmetic.&quot;],&quot;comments&quot;:{}}">
+  <inputs name="a" uses="#//@actions.0/@body/@blocks.0/@instructions.0/@value/@expr/@e1/@use">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+  </inputs>
+  <inputs name="b" uses="#//@actions.0/@body/@blocks.0/@instructions.0/@value/@expr/@e2/@use">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+  </inputs>
+  <outputs defs="#//@actions.0/@body/@blocks.0/@instructions.0/@target" name="product">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="16"/>
+  </outputs>
+  <actions name="FSM_Multiplier8_a">
+    <body lineNumber="82" name="FSM_Multiplier8_a">
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="82">
+          <target variable="#//@outputs.0"/>
+          <value xsi:type="com.neosyn.models.ir:ExprResize" targetSize="16">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="TIMES">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@inputs.0"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@inputs.1"/>
+              </e2>
+            </expr>
+          </value>
+        </instructions>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </body>
+    <combinational lineNumber="82" name="comb_FSM_Multiplier8_a">
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </combinational>
+    <inputPattern ports="#//@inputs.0 #//@inputs.1"/>
+    <outputPattern ports="#//@outputs.0"/>
+    <peekPattern/>
+    <scheduler lineNumber="82" name="isSchedulable_FSM_Multiplier8_a">
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstReturn">
+          <value xsi:type="com.neosyn.models.ir:ExprBool" value="true"/>
+        </instructions>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </scheduler>
+  </actions>
+</com.neosyn.models.dpn:Actor>

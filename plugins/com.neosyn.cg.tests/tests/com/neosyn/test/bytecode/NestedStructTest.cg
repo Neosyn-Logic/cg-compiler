@@ -1,0 +1,78 @@
+/*
+ * L1 Structs Tier 2.3 fixture — nested structs (struct-in-struct).
+ * Validates the recursive field-wise flatten/lowering for:
+ *   - nested field access      (`o.lo.a`, write and read)
+ *   - whole-OUTER-struct copy   (`Outer o2 = o;` — recurses to leaf fields)
+ *   - nested struct-typed ports across tasks (`in/out Outer`, written/read whole)
+ * end-to-end through IR-gen + bytecode sim. Leaf fields flatten to
+ * `o$lo$a`, `o$lo$b`, `o$hi$a`, `o$hi$b`; the cross-task port fans out to
+ * `processor_in_o$lo$a` etc.
+ *
+ * See .claude/L1_STRUCT_DESIGN.md and PLAN.md Tier 2.3.
+ */
+package com.neosyn.test.bytecode;
+
+network NestedStructTest {
+    properties { test: { terminate: "tester.finished" } }
+
+    struct Inner {
+        u8 a;
+        u16 b;
+    }
+    struct Outer {
+        Inner lo;
+        Inner hi;
+    }
+
+    processor = new task {
+        in Outer in_o;
+        out Outer out_o;
+
+        void loop() {
+            Outer o = in_o.read();
+            out_o.write(o);
+        }
+    };
+
+    tester = new task {
+        bool finished;
+
+        void setup() {
+            finished = false;
+        }
+
+        void loop() {
+            if (!finished) {
+                Outer o;
+                o.lo.a = 5;
+                o.lo.b = 0x111;
+                o.hi.a = 9;
+                o.hi.b = 0x222;
+
+                // whole-OUTER copy lowers to a recursive field-wise copy
+                Outer o2 = o;
+                assert(o2.lo.a == 5);
+                assert(o2.lo.b == 0x111);
+                assert(o2.hi.a == 9);
+                assert(o2.hi.b == 0x222);
+
+                // value copy — mutating a nested leaf of the source leaves o2 intact
+                o.lo.a = 1;
+                assert(o2.lo.a == 5);
+                assert(o.lo.a == 1);
+
+                // round-trip the whole nested struct through a struct port pair
+                processor.in_o.write(o);
+                idle(2);
+                Outer r = processor.out_o.read();
+                assert(r.lo.a == 1);
+                assert(r.lo.b == 0x111);
+                assert(r.hi.a == 9);
+                assert(r.hi.b == 0x222);
+
+                print("=== NestedStructTest PASSED ===\n");
+                finished = true;
+            }
+        }
+    };
+}

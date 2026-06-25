@@ -1,0 +1,43 @@
+package com.neosyn.test.bytecode;
+
+/*
+ * L3 Generics Tier 2 (3.4) — generic-width PORTS wired across instances of
+ * DIFFERENT widths in one network. Producer/Consumer are parameterized by a
+ * width W and expose `out push uint<W>` / `in push uint<W>` ports. Two
+ * pipelines are specialized and wired width-matched: p4->c4 at 4 bits and
+ * p8->c8 at 8 bits. Each consumer self-asserts the value it received masked to
+ * its own width. Proves per-instance monomorphization of a PORT width plus
+ * correct width-matched cross-instance wiring on both the bytecode and Verilog
+ * paths. The companion PortWidthMismatchValidationTest pins the error raised
+ * when the two widths do NOT match.
+ */
+task Producer {
+    const int W = 8;
+    out push uint<W> o;
+    void setup() {
+        o.write((uint<W>) 0xFF);
+    }
+}
+
+task Consumer {
+    const int W = 8;
+    const int EXPECT = 0xFF;
+    in push uint<W> i;
+    bool finished;
+    void setup() {
+        uint<W> v = i.read;
+        assert(v == EXPECT);
+        print("W=", W, " got=", v, " (expected ", EXPECT, ")\n");
+        finished = true;
+    }
+}
+
+network GenPortTest {
+    properties { test: { terminate: "c8.finished" } }
+    p4 = new Producer({W: 4});
+    c4 = new Consumer({W: 4, EXPECT: 0xF});
+    p8 = new Producer({W: 8});
+    c8 = new Consumer({W: 8, EXPECT: 0xFF});
+    c4.reads(p4.o);
+    c8.reads(p8.o);
+}

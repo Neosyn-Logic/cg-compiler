@@ -1,0 +1,81 @@
+/*
+ * Phase 1 timing test T11 — sequential inline task that does BOTH a
+ * cross-task READ and a cross-task WRITE in the same loop body, gated
+ * on `available()`. This is the exact pattern Intel-8088 Fibonacci's
+ * `bus` task uses (and which Fibonacci_test fails on).
+ *
+ *     bus.loop() {
+ *         if (cpu.addr.available()) {        // cross-task read of sibling output
+ *             u8 a = cpu.addr.read();
+ *             cpu.data_i.write(memory[a]);   // cross-task write of sibling input
+ *         }
+ *     }
+ *
+ * If T07 (cross-task ref in body) passes but T11 fails, the bug is in
+ * having a cross-task read AND a cross-task write in the same task.
+ */
+package com.neosyn.test.bytecode.timing;
+
+network T11_CrossTaskReadWrite {
+
+    properties {
+        test: { terminate: "cpu_stub.finished" }
+    }
+
+    cpu_stub = new task {
+        out push u8 addr;
+        in push u8 data_i;
+
+        u8 next_addr;
+        u8 sum;
+        u8 ticks;
+        bool finished;
+
+        void setup() {
+            next_addr = 0;
+            sum = 0;
+            ticks = 0;
+            finished = false;
+        }
+
+        void loop() {
+            if (!finished) {
+                addr.write(next_addr);
+                fence;
+                u8 d = data_i.read();
+                sum = (u8)(sum + d);
+                next_addr = (u8)(next_addr + 1);
+                ticks = (u8)(ticks + 1);
+                if (sum >= 10) {
+                    print("T11_CrossTaskReadWrite PASS sum=", sum, " ticks=", ticks);
+                    finished = true;
+                } else {
+                    if (ticks >= 100) {
+                        print("T11_CrossTaskReadWrite FAIL sum=", sum, " ticks=", ticks);
+                        assert(false);
+                    }
+                }
+            }
+        }
+    };
+
+    bus = new task {
+        u8 memory[8];
+
+        void setup() {
+            memory[0] = 1;
+            memory[1] = 2;
+            memory[2] = 3;
+            memory[3] = 4;
+            memory[4] = 5;
+        }
+
+        void loop() {
+            if (cpu_stub.addr.available()) {
+                u8 a = cpu_stub.addr.read();
+                u8 d = memory[a];
+                cpu_stub.data_i.write(d);
+            }
+        }
+    };
+}

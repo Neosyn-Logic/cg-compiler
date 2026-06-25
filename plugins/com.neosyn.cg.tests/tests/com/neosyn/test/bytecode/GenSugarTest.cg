@@ -1,0 +1,30 @@
+package com.neosyn.test.bytecode;
+
+/*
+ * L3 Generics iter #2 — the `<...>` angle-bracket sugar. Same per-instance
+ * monomorphization as GenWidthTest, but parameters are declared
+ * `task Cell<int W = 8, int EXPECT = 0xFF>` and supplied positionally
+ * `new Cell<4, 0xF>()`. Proves the sugar desugars to the existing const +
+ * property mechanism: w4 masks 0xFF to uint<4>; w8 keeps all 8 bits; wd
+ * supplies no type args and so uses both defaults (W=8, EXPECT=0xFF). Each
+ * instance self-asserts, so a mis-bound parameter fails the run.
+ */
+task Cell<int W = 8, int EXPECT = 0xFF> {
+    uint<W> reg;
+    bool finished;
+    void setup() { reg = (uint<W>) 0xFF; finished = false; }
+    void loop() {
+        if (!finished) {
+            assert(reg == EXPECT);
+            print("W=", W, " reg=", reg, " (expected ", EXPECT, ")\n");
+            finished = true;
+        }
+    }
+}
+
+network GenSugarTest {
+    properties { test: { terminate: "wd.finished" } }
+    w4 = new Cell<4, 0xF>();    // positional: W=4, EXPECT=0xF
+    w8 = new Cell<8, 0xFF>();   // positional: W=8, EXPECT=0xFF
+    wd = new Cell();            // no type args: both defaults
+}

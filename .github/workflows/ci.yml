@@ -22,9 +22,11 @@ jobs:
       - name: Verify Maven >= 3.9 (Tycho 4)
         run: mvn -version
 
-      - name: Build the language plugins (Tycho reactor)
+      - name: Build + unit-test the language plugins (Tycho reactor)
         working-directory: releng
-        run: mvn -B clean install -DskipTests
+        # Runs the com.neosyn.cg.tests suite (validation, IR generation,
+        # Verilog goldens, LSP features, codegen) as part of the reactor.
+        run: mvn -B clean install
 
       - name: Build the language-server / CLI jar
         working-directory: releng/lsp-server

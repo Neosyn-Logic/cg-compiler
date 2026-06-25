@@ -1,0 +1,12 @@
+package codeaction;
+
+task Dep {
+	in sync u8 a;
+	in sync ready u8 b;
+	in sync ack u8 c;
+	out u8 q;
+
+	void loop() {
+		q.write((u8) (a.read() + b.read() + c.read()));
+	}
+}

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<com.neosyn.models.dpn:DPN xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:com.neosyn.models.dpn="http://www.neosyn.io/2013/Dpn" fileName="/home/nicolas06/neosyn/neosyn-studio/plugins/com.neosyn.cg.tests/tests/golden/GoldenNetworks.cg"
+    lineNumber="144" name="com.neosyn.test.golden.SyncNetwork" properties="{&quot;test&quot;:true,&quot;clocks&quot;:[&quot;clock&quot;],&quot;resets&quot;:[{&quot;type&quot;:&quot;asynchronous&quot;,&quot;active&quot;:&quot;low&quot;,&quot;name&quot;:&quot;reset_n&quot;}],&quot;copyright&quot;:[&quot;Copyright (c) 2024 Neosyn. All rights reserved.&quot;,&quot; *&quot;,&quot;Golden file test - Network compositions for regression testing.&quot;,&quot;Tests: task instantiation, port connections, inline tasks.&quot;],&quot;javadoc&quot;:[&quot;Network demonstrating sync ports.&quot;,&quot;Tests: sync qualifier on ports.&quot;]}"
+    instances="#//@graph/@vertices.1 #//@graph/@vertices.2" vertex="#//@graph/@vertices.0">
+  <graph>
+    <edges xsi:type="com.neosyn.models.dpn:Connection" source="#//@graph/@vertices.1"
+        target="#//@graph/@vertices.2" sourcePort="SyncNetwork_sender.ir#//@outputs.0"
+        targetPort="SyncNetwork_receiver.ir#//@inputs.0"/>
+    <vertices/>
+    <vertices xsi:type="com.neosyn.models.dpn:Instance" outgoing="#//@graph/@edges.0"
+        entity="SyncNetwork_sender.ir#/" name="sender" properties="{&quot;clocks&quot;:{&quot;clock&quot;:&quot;clock&quot;},&quot;resets&quot;:{&quot;reset_n&quot;:&quot;reset_n&quot;}}"/>
+    <vertices xsi:type="com.neosyn.models.dpn:Instance" incoming="#//@graph/@edges.0"
+        entity="SyncNetwork_receiver.ir#/" name="receiver" properties="{&quot;clocks&quot;:{&quot;clock&quot;:&quot;clock&quot;},&quot;resets&quot;:{&quot;reset_n&quot;:&quot;reset_n&quot;}}"/>
+  </graph>
+</com.neosyn.models.dpn:DPN>

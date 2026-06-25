@@ -1,0 +1,227 @@
+/*******************************************************************************
+ * Originally developed by Synflow until February 2021 under LGPL. Now maintained by Neosyn team since January 2024.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+
+
+ *******************************************************************************/
+package com.neosyn.test.pass.comb;
+
+task BarrelShifter {
+	properties {
+		test: {inn: [ 1, 1, 1, 2,   2, 0x2000_0000 ], inp: [ 0, 1, 2, 3,   8, 1 ], outp: [ 1, 2, 4, 16,  2, 0x4000_0000 ] }
+	}
+
+	in sync u32 inn, sync u8 inp; out sync u32 outp;
+
+	void loop() {
+		outp.write(barrelShifter(inn.read(), inp.read()));
+	}
+
+	const u32 barrelShifter(u32 a, u8 b) {
+		u32 toto[8];
+		toto[0] = a;
+
+		for (u8 i = 1; i < 8; i++) {
+			toto[i] = (u32) (toto[i - 1] << 1);
+		}
+		return toto[b];
+	}
+}
+
+task Combinational1 {
+	properties {
+		num_states: 0, num_transitions: 1,
+		type: "combinational",
+		test: {
+			op1: [ 1024,  0x7FFF_FFFF ], op2: [ 1,     1 ], doAdd: [ false, true ],
+			res: [ 1023,  0x8000_0000 ],
+			o: [ false, true ],
+			c: [ false, false ]
+		}
+	}
+
+	in u32 op1, op2, bool doAdd;
+	out u32 res, bool o, c;
+
+	void loop() {
+		u32 oper1 = op1.read;
+		u32 oper2 = op2.read;
+	
+		u32 result = 0;
+		bool test = doAdd.read;
+		if (test) {
+			result = (u32) (oper1 + oper2);
+		} else {
+			result = (u32) (oper1 - oper2);
+		}
+	
+		o.write(oper1[31] && oper2[31] && !result[31] || // both operands have MSB, but not result
+					!oper1[31] && !oper2[31] && result[31]); // both operands have no MSB, but result has
+		c.write(oper1[31] && oper2[31] || // two operands have MSB set
+					!result[31] && (oper1[31] || oper2[31])); // or one of them has, but not the result
+		res.write(result);
+	}
+}
+
+task Combinational2 {
+	properties {
+		num_states: 0, num_transitions: 1,
+		type: "combinational",
+		test: {
+			s: [ true, true, false ],
+			din1: [ 1, null, 3 ],
+			din2: [ 4, 5, 6 ],
+			dout: [ 1, null, 6 ]
+		}
+	}
+
+	in bool s, sync u8 din1, sync u8 din2; out sync u8 dout;
+
+	void loop() {
+		if (s.read) {
+			dout.write(din1.read);
+		} else if (!s.read) {
+			dout.write(din2.read);
+		}
+	}
+}
+
+/**
+ * Test for combinational task with complex if-else chains.
+ * This tests the fix for the RouteAddr bug where:
+ * 1. type: "combinational" property wasn't being detected by CombinationalVisitor
+ * 2. Body content wasn't being generated because CombinationalVisitor.isCombinational()
+ *    only checked for clocks: [] but not for type: "combinational"
+ *
+ * Expected: Task generates proper combinational logic with if-else statements.
+ * Bug symptom: Empty always block with no if-else statements.
+ */
+task CombinationalIfElseChain {
+	properties {
+		num_states: 0, num_transitions: 1,
+		type: "combinational",
+		test: {
+			a_valid: [ true,  false, false, false ],
+			b_valid: [ false, true,  false, false ],
+			a: [ 10, 0, 0, 0 ],
+			b: [ 0, 20, 0, 0 ],
+			result: [ 10, 20, 0, 0 ],
+			enabled: [ true, true, false, false ]
+		}
+	}
+
+	in bool a_valid, b_valid, u8 a, b;
+	out u8 result, bool enabled;
+
+	void loop() {
+		u8 r = 0;
+		bool en = false;
+
+		if (a_valid.read()) {
+			r = a.read();
+			en = true;
+		} else if (b_valid.read()) {
+			r = b.read();
+			en = true;
+		} else {
+			r = 0;
+			en = false;
+		}
+
+		result.write(r);
+		enabled.write(en);
+	}
+}
+
+/**
+ * Test combinational task with nested if-else (like RouteAddr's dual selection).
+ */
+task CombinationalDualSelect {
+	properties {
+		num_states: 0, num_transitions: 1,
+		type: "combinational",
+		test: {
+			a1_valid: [ true,  false, false, false ],
+			a2_valid: [ false, true,  false, false ],
+			b1_valid: [ true,  false, true,  false ],
+			b2_valid: [ false, true,  false, false ],
+			a1: [ 1, 0, 0, 0 ],
+			a2: [ 0, 2, 0, 0 ],
+			b1: [ 3, 0, 4, 0 ],
+			b2: [ 0, 5, 0, 0 ],
+			half1: [ 1, 2, 0, 0 ],
+			half2: [ 3, 5, 4, 0 ],
+			flags: [ 3, 3, 2, 0 ]
+		}
+	}
+
+	in bool a1_valid, a2_valid, b1_valid, b2_valid, u8 a1, a2, b1, b2;
+	out u8 half1, half2, u2 flags;
+
+	void loop() {
+		u8 h1 = 0;
+		u8 h2 = 0;
+		u2 f = 0;
+
+		// First selection
+		if (a1_valid.read()) {
+			h1 = a1.read();
+			f[0] = true;
+		} else if (a2_valid.read()) {
+			h1 = a2.read();
+			f[0] = true;
+		}
+
+		// Second selection
+		if (b1_valid.read()) {
+			h2 = b1.read();
+			f[1] = true;
+		} else if (b2_valid.read()) {
+			h2 = b2.read();
+			f[1] = true;
+		}
+
+		half1.write(h1);
+		half2.write(h2);
+		flags.write(f);
+	}
+}
+
+task ComputationForLoop {
+	properties {
+		num_states: 0, num_transitions: 1,
+		test: {p: [ true ], resulti: [ 16 ], resultj: [ 64 ] }
+	}
+
+	in sync bool p;
+	out sync u8 resulti;
+	out sync u8 resultj;
+
+	void loop() {
+		p.read();
+		u8 i = compute_i();
+		resulti.write(i);
+		compute_j(i);
+	}
+	
+	const u8 compute_i() {
+		u8 res = 1;
+		for (u3 i = 0; i < 4; i++) {
+			res <<= 1;
+		}
+		return res;
+	}
+	
+	void compute_j(u8 param) {
+		u8 res = 0;
+		for (u4 i = 8; i != 0; i--) {
+			res += param >> 1;
+		}
+		resultj.write(res);
+	}
+}

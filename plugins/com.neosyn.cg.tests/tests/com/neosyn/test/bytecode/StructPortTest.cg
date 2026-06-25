@@ -1,0 +1,45 @@
+package com.neosyn.test.bytecode;
+
+network StructPortTest {
+    properties { test: { terminate: "tester.finished" } }
+
+    struct Pair {
+        u8 lo;
+        u16 hi;
+    }
+
+    processor = new task {
+        in Pair in_pair;
+        out Pair out_pair;
+
+        void loop() {
+            Pair p = in_pair.read();
+            out_pair.write(p);
+        }
+    };
+
+    tester = new task {
+        bool finished;
+
+        void setup() {
+            finished = false;
+        }
+
+        void loop() {
+            if (!finished) {
+                Pair p;
+                p.lo = 7;
+                p.hi = 0x123;
+                processor.in_pair.write(p);
+
+                idle(2);
+
+                Pair r = processor.out_pair.read();
+                assert(r.lo == 7);
+                assert(r.hi == 0x123);
+                print("=== StructPortTest PASSED ===\n");
+                finished = true;
+            }
+        }
+    };
+}

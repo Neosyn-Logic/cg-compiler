@@ -1,0 +1,53 @@
+/*
+ * Simple memory test - Tests std.mem.SinglePortRAM
+ * Verifies bytecode simulation with built-in entities
+ */
+package com.neosyn.test.bytecode;
+
+import std.mem.SinglePortRAM;
+
+network SimpleMemoryTest {
+    properties { test: { terminate: "tester.finished" } }
+
+    // A simple RAM with 8-bit data, 4-bit address (16 locations)
+    ram = new SinglePortRAM({size: 16, width: 8});
+
+    tester = new task {
+        u4 i;
+        u8 data;
+        bool finished;
+
+        void setup() {
+            i = 0;
+            data = 0;
+            finished = false;
+            print("=== SimpleMemoryTest Started ===\n");
+        }
+
+        void loop() {
+            if (!finished) {
+                if (i < 4) {
+                    // Write phase: write i*10 to address i
+                    data = i * 10;
+                    ram.address.write(i);
+                    ram.data.write(data);
+                    print("Write: addr=", i, " data=", data, "\n");
+                    i = i + 1;
+                } else if (i < 8) {
+                    // Read phase: read back from addresses 0-3
+                    u4 readAddr = i - 4;
+                    ram.address.write(readAddr);
+                    fence;  // Wait one cycle for RAM to process address and commit q
+                    u8 readData = ram.q.read;
+                    u8 expected = readAddr * 10;
+                    print("Read: addr=", readAddr, " got=", readData, " expected=", expected, "\n");
+                    assert(readData == expected);
+                    i = i + 1;
+                } else {
+                    print("=== Test PASSED ===\n");
+                    finished = true;
+                }
+            }
+        }
+    };
+}

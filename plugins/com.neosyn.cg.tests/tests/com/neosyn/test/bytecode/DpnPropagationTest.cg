@@ -1,0 +1,52 @@
+/*
+ * Test: DPN output port propagation across nested networks.
+ * Regression for DPN commit chain cycle accuracy.
+ */
+package com.neosyn.test.bytecode;
+
+task Adder {
+	in push u16 data_in;
+	out push u16 data_out;
+
+	void loop() {
+		u16 v = data_in.read();
+		data_out.write((u16)(v + 1));
+	}
+}
+
+network InnerNet {
+	import com.neosyn.test.bytecode.Adder;
+
+	in push u16 data_in;
+	out push u16 data_out;
+
+	adder = new Adder();
+	adder.reads(data_in);
+	this.reads(adder.data_out);
+}
+
+network DpnPropagationTest {
+	import com.neosyn.test.bytecode.InnerNet;
+
+	properties {
+		test: { terminate: "checker.finished" }
+	}
+
+	inner = new InnerNet();
+
+	checker = new task {
+		in push u16 result;
+		bool finished;
+
+		void setup() {
+			inner.data_in.write(41);
+			fence;
+			u16 v = result.read();
+			assert(v == 42);
+			print("Test PASSED");
+			finished = true;
+		}
+	};
+
+	checker.reads(inner.data_out);
+}

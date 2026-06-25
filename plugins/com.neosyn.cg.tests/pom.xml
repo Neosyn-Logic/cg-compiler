@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+  xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.neosyn</groupId>
+    <artifactId>com.neosyn.ide.releng</artifactId>
+    <version>2.0.0-SNAPSHOT</version>
+    <relativePath>../../releng/com.neosyn.ide.releng</relativePath>
+  </parent>
+
+  <artifactId>com.neosyn.cg.tests</artifactId>
+  <packaging>eclipse-test-plugin</packaging>
+
+  <build>
+    <plugins>
+      <!-- Include test resources -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>3.5.0</version>
+        <executions>
+          <execution>
+            <id>add-test-source</id>
+            <phase>generate-test-sources</phase>
+            <goals>
+              <goal>add-test-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>${basedir}/src</source>
+                <source>${basedir}/src-gen</source>
+                <source>${basedir}/xtend-gen</source>
+              </sources>
+            </configuration>
+          </execution>
+          <execution>
+            <id>add-test-resource</id>
+            <phase>generate-test-resources</phase>
+            <goals>
+              <goal>add-test-resource</goal>
+            </goals>
+            <configuration>
+              <resources>
+                <resource>
+                  <directory>${basedir}/tests</directory>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- Configure Tycho Surefire for test execution -->
+      <plugin>
+        <groupId>org.eclipse.tycho</groupId>
+        <artifactId>tycho-surefire-plugin</artifactId>
+        <version>${tycho.version}</version>
+        <configuration>
+          <useUIHarness>false</useUIHarness>
+          <useUIThread>false</useUIThread>
+          <!-- Pass system properties to test JVM.
+               Use -Dneosyn.skipSlowTests=true to skip slow tests
+               Use -Dneosyn.updateGoldenFiles=true to regenerate golden files -->
+          <argLine>-Xmx1024m -Dneosyn.skipSlowTests=${neosyn.skipSlowTests} -Dneosyn.updateGoldenFiles=${neosyn.updateGoldenFiles}</argLine>
+          <!-- Run tests from the plugin directory so relative paths work -->
+          <testRuntime>default</testRuntime>
+          <work>${project.basedir}</work>
+          <!-- Skip tests that require external tools or complex setup -->
+          <skipTests>false</skipTests>
+          <!--
+            Test categories:
+            - CgIRGenerationTest: IR generation (no external tools needed)
+            - VerilatorPassTests: Verilog simulation with Verilator (open-source)
+            - YosysSynthesisTests: Synthesis with Yosys (open-source, placeholder)
+            - CocotbPassTests: Python testbenches with cocotb (placeholder)
+            - VerilogPassTests: Verilog with ModelSim (requires license)
+            - VhdlPassTests: VHDL with ModelSim (requires license)
+          -->
+          <includes>
+            <!-- Always run: no external tools needed -->
+            <include>**/CgIRGenerationTest.java</include>
+            <include>**/InstantiatorEntityTypeTest.java</include>
+            <include>**/GoldenFileTests.java</include>
+            <include>**/VerilogCastSimplificationTest.java</include>
+            <include>**/ConstantLoopUnrollTest.java</include>
+            <include>**/LoopControlValidationTest.java</include>
+            <include>**/BuiltinPortTypeResolverTest.java</include>
+            <include>**/FastSimSupportTest.java</include>
+            <include>**/ProjectRootResolutionTest.java</include>
+            <include>**/ValidationResultDedupTest.java</include>
+            <include>**/PortShadowingValidationTest.java</include>
+            <include>**/StructSentinelValidationTest.java</include>
+            <include>**/EnumSentinelValidationTest.java</include>
+            <include>**/GenericArgValidationTest.java</include>
+            <include>**/PortWidthMismatchValidationTest.java</include>
+            <include>**/CyclicImportValidationTest.java</include>
+            <include>**/CgFoldingRangeTests.java</include>
+            <include>**/CgInlayHintTests.java</include>
+            <include>**/CgCodeActionTests.java</include>
+            <include>**/CgSemanticTokenTests.java</include>
+            <include>**/CgSyntaxErrorTest.java</include>
+            <!-- Bytecode simulation (Java-based, no external tools) -->
+            <include>**/BytecodePassTests.java</include>
+            <include>**/BytecodeTimingTests.java</include>
+            <include>**/CrossTaskBytecodeTest.java</include>
+            <!-- Cross-task write IR diagnostics -->
+            <include>**/CrossTaskWriteTest.java</include>
+            <!-- Scheduler and transformation tests -->
+            <include>**/PathTest.java</include>
+            <include>**/SchedulerIntegrationTest.java</include>
+            <include>**/AddBufferedInputsTest.java</include>
+            <include>**/ComprehensiveSchedulerTest.java</include>
+            <include>**/FsmGenerationTest.java</include>
+            <!-- Fast Verilog syntax check (iverilog -t null) -->
+            <include>**/IverilogPassTests.java</include>
+            <!-- LSP-path regression gates (skipped if releng/lsp-server jar absent) -->
+            <include>**/B7CrossFileResolutionTests.java</include>
+            <include>**/SimulateSafetyTest.java</include>
+            <!-- Slow tests: skipped when -Dneosyn.skipSlowTests=true -->
+            <include>**/VerilatorPassTests.java</include>
+            <include>**/YosysSynthesisTests.java</include>
+            <include>**/CocotbPassTests.java</include>
+            <!-- ModelSim (proprietary) - uncomment if ModelSim is installed -->
+            <!-- <include>**/VerilogPassTests.java</include> -->
+            <!-- <include>**/VhdlPassTests.java</include> -->
+          </includes>
+          <!-- Explicitly include bundles needed for test runtime -->
+          <dependencies>
+            <dependency>
+              <type>eclipse-plugin</type>
+              <artifactId>com.neosyn.core</artifactId>
+            </dependency>
+            <dependency>
+              <type>eclipse-plugin</type>
+              <artifactId>com.neosyn.cg</artifactId>
+            </dependency>
+            <dependency>
+              <type>eclipse-plugin</type>
+              <artifactId>com.neosyn.ide</artifactId>
+            </dependency>
+            <dependency>
+              <type>eclipse-plugin</type>
+              <artifactId>org.eclipse.core.runtime</artifactId>
+            </dependency>
+            <dependency>
+              <type>eclipse-plugin</type>
+              <artifactId>org.eclipse.equinox.common</artifactId>
+            </dependency>
+          </dependencies>
+          <!-- Start bundles explicitly -->
+          <bundleStartLevel>
+            <bundle>
+              <id>org.eclipse.equinox.common</id>
+              <level>2</level>
+              <autoStart>true</autoStart>
+            </bundle>
+            <bundle>
+              <id>org.eclipse.core.runtime</id>
+              <level>4</level>
+              <autoStart>true</autoStart>
+            </bundle>
+            <bundle>
+              <id>com.neosyn.core</id>
+              <level>4</level>
+              <autoStart>true</autoStart>
+            </bundle>
+            <bundle>
+              <id>com.neosyn.ide</id>
+              <level>4</level>
+              <autoStart>true</autoStart>
+            </bundle>
+          </bundleStartLevel>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

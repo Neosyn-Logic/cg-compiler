@@ -1,0 +1,95 @@
+/*
+ * Phase 1 timing test T02 — sequential producer → combinational forwarder
+ * → sequential consumer. This is the Fibonacci-in-microcosm: it reproduces
+ * the same shape as Intel-8088's BusController → compute_real → bus path.
+ *
+ * Topology:
+ *
+ *   producer (seq, push out)
+ *     │
+ *     ▼  raw push port
+ *   forwarder (combinational, push in / push out)
+ *     │
+ *     ▼
+ *   checker (seq, push in)
+ *
+ * The forwarder doubles the producer's value.
+ *
+ * Expectation BEFORE Phase 2:
+ *   Likely fails — the combinational forwarder runs in phase 1 of each
+ *   cycle, before the sequential producer has executed its body. So
+ *   forwarder.in is always at last cycle's committed value (or zero on
+ *   the first cycle), and forwarder.out lags by a full cycle past what
+ *   we'd expect, OR forwarder never sees a valid input at all because
+ *   producer's commit happens after forwarder ran.
+ *
+ * Expectation AFTER Phase 2:
+ *   The consumer sees doubled values 2, 4, 6, 8, 10. With the new cycle
+ *   order (execute → commit → executeCombinational), the forwarder runs
+ *   AFTER producer's commit, so it sees the just-committed value in the
+ *   same cycle. The checker reads the forwarder's output one cycle later
+ *   (registered via push), so total latency from producer.write to
+ *   checker.read is 1 cycle. We accept that and check the sequence.
+ */
+package com.neosyn.test.bytecode.timing;
+
+network T02_SeqCombSeq {
+
+    properties {
+        test: { terminate: "checker.finished" }
+    }
+
+    producer = new task {
+        out push u8 value;
+        u8 count;
+
+        void setup() {
+            count = 0;
+        }
+
+        void loop() {
+            count++;
+            value.write(count);
+        }
+    };
+
+    forwarder = new task {
+        properties { type: "combinational" }
+        in push u8 vin;
+        out push u8 vout;
+
+        void loop() {
+            if (vin.available()) {
+                vout.write((u8)(vin.read() * 2));
+            }
+        }
+    };
+
+    checker = new task {
+        in push u8 doubled;
+
+        u8 expected;
+        bool finished;
+
+        void setup() {
+            expected = 2;
+            finished = false;
+        }
+
+        void loop() {
+            if (!finished) {
+                u8 v = doubled.read();
+                assert(v == expected);
+                if (expected == 10) {
+                    print("T02_SeqCombSeq PASS\n");
+                    finished = true;
+                } else {
+                    expected = (u8)(expected + 2);
+                }
+            }
+        }
+    };
+
+    forwarder.reads(producer.value);
+    checker.reads(forwarder.vout);
+}

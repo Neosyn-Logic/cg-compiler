@@ -1,0 +1,87 @@
+/*
+ * Phase 1 timing test T12 — Multiple independent if(available()) checks
+ * in the same loop body (no fence between them).
+ *
+ * This is the exact pattern MemBridge uses:
+ *     void loop() {
+ *         if (portA.available()) { handle A }
+ *         if (portB.available()) { handle B }
+ *     }
+ *
+ * Both checks should be evaluated each cycle. If only portA has data,
+ * only that branch fires. If both have data, both branches fire.
+ */
+package com.neosyn.test.bytecode.timing;
+
+network T12_MultipleAvailableChecks {
+
+    properties {
+        test: { terminate: "handler.finished" }
+    }
+
+    // Source sends data on two ports over 3 cycles:
+    // cycle 0: port_a=10
+    // cycle 1: port_b=20
+    // cycle 2: port_a=30, port_b=40
+    source = new task {
+        out push u8 port_a;
+        out push u8 port_b;
+
+        u8 cycle;
+
+        void setup() {
+            cycle = 0;
+        }
+
+        void loop() {
+            if (cycle == 0) {
+                port_a.write(10);
+            } else if (cycle == 1) {
+                port_b.write(20);
+            } else if (cycle == 2) {
+                port_a.write(30);
+                port_b.write(40);
+            }
+            cycle = (u8)(cycle + 1);
+        }
+    };
+
+    // Handler with multiple independent available() checks.
+    // Accumulates values and checks result.
+    handler = new task {
+        bool finished;
+        u8 sum;
+        u8 ticks;
+
+        void setup() {
+            sum = 0;
+            ticks = 0;
+            finished = false;
+        }
+
+        void loop() {
+            if (!finished) {
+                if (source.port_a.available()) {
+                    sum = (u8)(sum + source.port_a.read());
+                }
+
+                if (source.port_b.available()) {
+                    sum = (u8)(sum + source.port_b.read());
+                }
+
+                ticks = (u8)(ticks + 1);
+
+                // After enough cycles, check result
+                if (ticks >= 10) {
+                    // sum should be 10+20+30+40 = 100
+                    if (sum == 100) {
+                        print("T12_MultipleAvailableChecks PASS sum=", sum);
+                    } else {
+                        print("T12_MultipleAvailableChecks FAIL sum=", sum, " expected=100");
+                    }
+                    finished = true;
+                }
+            }
+        }
+    };
+}

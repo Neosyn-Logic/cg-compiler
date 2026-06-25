@@ -1,0 +1,51 @@
+package com.neosyn.test.bytecode;
+
+/*
+ * Bug #11 — struct-typed STATE fields. Before the fix, a struct declared at
+ * task scope (persistent state, not a function local) crashed IR-gen with a
+ * null-target NPE, because struct flattening only ran for function locals.
+ * SkeletonMaker now fans struct state vars into persistent leaf field Vars and
+ * ActorBuilder seeds them into the struct-field map. This fixture exercises all
+ * three shapes — a scalar struct, a nested struct, and an array of (nested)
+ * struct — as STATE, writing them in setup() and reading them back in loop().
+ * Self-asserting, so a mis-mapped field fails the run.
+ */
+task StructState {
+    struct Inner { u8 x; u8 y; }
+    struct Packet { u8 a; Inner inner; }
+
+    Packet single;           // nested struct state
+    Packet arr[3];           // array of nested struct state
+    bool finished;
+
+    void setup() {
+        single.a = 7;
+        single.inner.x = 8;
+        single.inner.y = 9;
+        u8 i;
+        for (i = 0; i < 3; i = (u8)(i + 1)) {
+            arr[i].a = i;
+            arr[i].inner.x = (u8)(i + 10);
+        }
+        finished = false;
+    }
+
+    void loop() {
+        if (!finished) {
+            assert(single.a == 7);
+            assert(single.inner.x == 8);
+            assert(single.inner.y == 9);
+            assert(arr[0].a == 0);
+            assert(arr[2].a == 2);
+            assert(arr[2].inner.x == 12);
+            print("single.a=", single.a, " single.inner.y=", single.inner.y,
+                  " arr2.inner.x=", arr[2].inner.x, "\n");
+            finished = true;
+        }
+    }
+}
+
+network StructStateTest {
+    properties { test: { terminate: "s.finished" } }
+    s = new StructState();
+}

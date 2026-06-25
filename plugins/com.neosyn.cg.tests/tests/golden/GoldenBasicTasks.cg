@@ -1,0 +1,101 @@
+/*******************************************************************************
+ * Copyright (c) 2024 Neosyn. All rights reserved.
+ *
+ * Golden file test - Basic tasks for regression testing.
+ * Tests: simple state variables, arithmetic, output ports.
+ *******************************************************************************/
+package com.neosyn.test.golden;
+
+/**
+ * Minimal toggle task - tests boolean state and output.
+ * Based on: LED/BlankingLed.cg
+ */
+task BlankingLed {
+	out bool led;
+
+	bool state = false;
+
+	void loop() {
+		led.write(state);
+		state = !state;
+	}
+}
+
+/**
+ * Simple 8-bit counter with wrap-around.
+ * Tests: increment, overflow, output port.
+ */
+task Counter8 {
+	out u8 count;
+
+	u8 value = 0;
+
+	void loop() {
+		count.write(value);
+		value++;
+	}
+}
+
+/**
+ * Counter with configurable limit.
+ * Tests: comparison, conditional reset.
+ */
+task CounterWithLimit {
+	out u8 count;
+	out bool overflow;
+
+	u8 value = 0;
+
+	void loop() {
+		count.write(value);
+		if (value >= 255) {
+			overflow.write(true);
+			value = 0;
+		} else {
+			overflow.write(false);
+			value++;
+		}
+	}
+}
+
+/**
+ * Simple adder - two inputs, one output.
+ * Tests: multiple input ports, arithmetic.
+ */
+task Adder8 {
+	in u8 a, b;
+	out u8 sum;
+
+	void loop() {
+		sum.write((u8)(a.read() + b.read()));
+	}
+}
+
+/**
+ * Multiplier - tests larger arithmetic.
+ */
+task Multiplier8 {
+	in u8 a, b;
+	out u16 product;
+
+	void loop() {
+		product.write((u16)(a.read() * b.read()));
+	}
+}
+
+/**
+ * Bit manipulation task - tests shifts and masks.
+ */
+task BitManip {
+	in u8 data;
+	out u8 reversed;
+	out u8 swapped;
+
+	void loop() {
+		u8 d = data.read();
+		// Reverse high/low nibbles
+		reversed.write((u8)((d << 4) | (d >> 4)));
+		// Swap alternate bits
+		swapped.write((u8)(((d & 0xAA) >> 1) | ((d & 0x55) << 1)));
+	}
+}

@@ -1,0 +1,346 @@
+/*******************************************************************************
+ * Copyright (c) 2024 Neosyn. All rights reserved.
+ *
+ * This file is part of the Neosyn SDK Project.
+ *
+ * The Neosyn SDK Project cannot be copied and/or distributed without the express
+ * Originally developed by Synflow. Now maintained by Neosyn team.
+ *
+ * History:
+ *    Originally developed by Synflow until February 2021 under LGPL.
+ *    Now maintained and improved by Neosyn team since January 2024.
+ *******************************************************************************/
+
+package com.neosyn.cg.tests;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+import org.junit.Before;
+import org.junit.Test;
+
+import com.google.gson.JsonObject;
+import com.neosyn.models.dpn.DpnFactory;
+import com.neosyn.models.dpn.Instance;
+import com.neosyn.models.util.BuiltinPortTypeResolver;
+
+/**
+ * Unit tests for built-in entity detection (std.* components).
+ *
+ * Tests that the BuiltinPortTypeResolver correctly identifies built-in entities like:
+ * - std.mem.SinglePortRAM
+ * - std.mem.DualPortRAM
+ * - std.fifo.SynchronousFIFO
+ * - std.fifo.AsynchronousFIFO
+ * - std.lib.SynchronizerMux
+ *
+ * This is critical for bytecode simulation to use pre-compiled Java classes
+ * from the runtime library instead of trying to compile IR that cannot be resolved.
+ *
+ * @see BuiltinPortTypeResolver#isBuiltinType(String)
+ * @see BuiltinPortTypeResolver#getEntityTypeFromInstance(Instance)
+ * @see BuiltinPortTypeResolver#loadBuiltinEntity(String)
+ */
+public class BuiltinEntityDetectionTest {
+
+	@Before
+	public void setUp() {
+		// Clear the cache before each test
+		BuiltinPortTypeResolver.clearCache();
+	}
+
+	// =========================================================================
+	// Tests for isBuiltinType(String)
+	// =========================================================================
+
+	@Test
+	public void testIsBuiltinType_SinglePortRAM() {
+		assertTrue("std.mem.SinglePortRAM should be detected as built-in",
+				BuiltinPortTypeResolver.isBuiltinType("std.mem.SinglePortRAM"));
+	}
+
+	@Test
+	public void testIsBuiltinType_DualPortRAM() {
+		assertTrue("std.mem.DualPortRAM should be detected as built-in",
+				BuiltinPortTypeResolver.isBuiltinType("std.mem.DualPortRAM"));
+	}
+
+	@Test
+	public void testIsBuiltinType_SynchronousFIFO() {
+		assertTrue("std.fifo.SynchronousFIFO should be detected as built-in",
+				BuiltinPortTypeResolver.isBuiltinType("std.fifo.SynchronousFIFO"));
+	}
+
+	@Test
+	public void testIsBuiltinType_AsynchronousFIFO() {
+		assertTrue("std.fifo.AsynchronousFIFO should be detected as built-in",
+				BuiltinPortTypeResolver.isBuiltinType("std.fifo.AsynchronousFIFO"));
+	}
+
+	@Test
+	public void testIsBuiltinType_SynchronizerMux() {
+		assertTrue("std.lib.SynchronizerMux should be detected as built-in",
+				BuiltinPortTypeResolver.isBuiltinType("std.lib.SynchronizerMux"));
+	}
+
+	@Test
+	public void testIsBuiltinType_CustomEntity() {
+		assertFalse("Custom entity should NOT be detected as built-in",
+				BuiltinPortTypeResolver.isBuiltinType("com.myproject.MyTask"));
+	}
+
+	@Test
+	public void testIsBuiltinType_TestEntity() {
+		assertFalse("Test entity should NOT be detected as built-in",
+				BuiltinPortTypeResolver.isBuiltinType("test.SimpleMemTest"));
+	}
+
+	@Test
+	public void testIsBuiltinType_Null() {
+		assertFalse("Null should return false",
+				BuiltinPortTypeResolver.isBuiltinType(null));
+	}
+
+	@Test
+	public void testIsBuiltinType_EmptyString() {
+		assertFalse("Empty string should return false",
+				BuiltinPortTypeResolver.isBuiltinType(""));
+	}
+
+	@Test
+	public void testIsBuiltinType_PartialMatch() {
+		// "std" without a package shouldn't match
+		assertFalse("'std' alone should NOT match",
+				BuiltinPortTypeResolver.isBuiltinType("std"));
+
+		// "std.mem" without entity name shouldn't match
+		assertFalse("'std.mem' alone should NOT match",
+				BuiltinPortTypeResolver.isBuiltinType("std.mem"));
+	}
+
+	// =========================================================================
+	// Tests for getEntityTypeFromInstance(Instance)
+	// =========================================================================
+
+	@Test
+	public void testGetEntityTypeFromInstance_WithProperty() {
+		Instance instance = createInstanceWithEntityType("line1", "std.mem.SinglePortRAM");
+
+		String entityType = BuiltinPortTypeResolver.getEntityTypeFromInstance(instance);
+
+		assertEquals("Should return entityType from properties",
+				"std.mem.SinglePortRAM", entityType);
+	}
+
+	@Test
+	public void testGetEntityTypeFromInstance_NoProperty() {
+		Instance instance = DpnFactory.eINSTANCE.createInstance();
+		instance.setName("myInstance");
+		// No properties set
+
+		String entityType = BuiltinPortTypeResolver.getEntityTypeFromInstance(instance);
+
+		assertNull("Should return null when no entityType property",
+				entityType);
+	}
+
+	@Test
+	public void testGetEntityTypeFromInstance_EmptyProperties() {
+		Instance instance = DpnFactory.eINSTANCE.createInstance();
+		instance.setName("myInstance");
+		instance.setProperties(new JsonObject());
+
+		String entityType = BuiltinPortTypeResolver.getEntityTypeFromInstance(instance);
+
+		assertNull("Should return null when properties don't have entityType",
+				entityType);
+	}
+
+	// =========================================================================
+	// Tests for isBuiltinEntity(Instance) - using combination of methods
+	// =========================================================================
+
+	@Test
+	public void testIsBuiltinEntity_WithBuiltinType() {
+		Instance instance = createInstanceWithEntityType("ram", "std.mem.SinglePortRAM");
+
+		String entityType = BuiltinPortTypeResolver.getEntityTypeFromInstance(instance);
+		assertTrue("Instance with std.mem.SinglePortRAM entityType should be detected",
+				entityType != null && BuiltinPortTypeResolver.isBuiltinType(entityType));
+	}
+
+	@Test
+	public void testIsBuiltinEntity_WithFifoType() {
+		Instance instance = createInstanceWithEntityType("fifo", "std.fifo.SynchronousFIFO");
+
+		String entityType = BuiltinPortTypeResolver.getEntityTypeFromInstance(instance);
+		assertTrue("Instance with std.fifo.SynchronousFIFO entityType should be detected",
+				entityType != null && BuiltinPortTypeResolver.isBuiltinType(entityType));
+	}
+
+	@Test
+	public void testIsBuiltinEntity_WithCustomType() {
+		Instance instance = createInstanceWithEntityType("myTask", "com.myproject.MyTask");
+
+		String entityType = BuiltinPortTypeResolver.getEntityTypeFromInstance(instance);
+		assertFalse("Instance with custom entityType should NOT be detected",
+				entityType != null && BuiltinPortTypeResolver.isBuiltinType(entityType));
+	}
+
+	@Test
+	public void testIsBuiltinEntity_NoProperties() {
+		Instance instance = DpnFactory.eINSTANCE.createInstance();
+		instance.setName("orphan");
+
+		String entityType = BuiltinPortTypeResolver.getEntityTypeFromInstance(instance);
+		assertFalse("Instance without properties should NOT be detected",
+				entityType != null && BuiltinPortTypeResolver.isBuiltinType(entityType));
+	}
+
+	// =========================================================================
+	// Tests for getSimpleName(String)
+	// =========================================================================
+
+	@Test
+	public void testGetSimpleName_SinglePortRAM() {
+		String simpleName = BuiltinPortTypeResolver.getSimpleName("std.mem.SinglePortRAM");
+
+		assertEquals("Should extract simple name from qualified name",
+				"SinglePortRAM", simpleName);
+	}
+
+	@Test
+	public void testGetSimpleName_SynchronousFIFO() {
+		String simpleName = BuiltinPortTypeResolver.getSimpleName("std.fifo.SynchronousFIFO");
+
+		assertEquals("Should extract simple name from qualified name",
+				"SynchronousFIFO", simpleName);
+	}
+
+	@Test
+	public void testGetSimpleName_Null() {
+		String simpleName = BuiltinPortTypeResolver.getSimpleName(null);
+
+		assertNull("Should return null for null input",
+				simpleName);
+	}
+
+	// =========================================================================
+	// Tests for loadBuiltinEntity(String)
+	// =========================================================================
+
+	@Test
+	public void testLoadBuiltinEntity_SinglePortRAM() {
+		// This tests that the IR can be loaded from classpath
+		// It will succeed if builtin-ir/std/mem/SinglePortRAM.ir is in the classpath
+		com.neosyn.models.dpn.Entity entity = BuiltinPortTypeResolver.loadBuiltinEntity("std.mem.SinglePortRAM");
+
+		// Entity might be null if IR file isn't in classpath during test
+		// This is expected - the important thing is no exception
+		if (entity != null) {
+			assertNotNull("Loaded entity should have a name", entity.getName());
+			assertTrue("Entity name should contain SinglePortRAM",
+					entity.getName().contains("SinglePortRAM"));
+		}
+	}
+
+	@Test
+	public void testLoadBuiltinEntity_NonExistent() {
+		// Loading non-existent entity should return null without throwing
+		com.neosyn.models.dpn.Entity entity = BuiltinPortTypeResolver.loadBuiltinEntity("std.mem.NonExistent");
+
+		assertNull("Non-existent entity should return null",
+				entity);
+	}
+
+	// =========================================================================
+	// Tests for cache behavior
+	// =========================================================================
+
+	@Test
+	public void testCacheIsClearedOnClearCache() {
+		// First load an entity (may or may not succeed depending on classpath)
+		BuiltinPortTypeResolver.loadBuiltinEntity("std.mem.SinglePortRAM");
+
+		// Clear the cache
+		BuiltinPortTypeResolver.clearCache();
+
+		// No exception means test passes - we can't easily verify cache is empty
+		// without reflection, but we can verify the method doesn't throw
+		assertNotNull("BuiltinPortTypeResolver should still be usable after clearCache",
+				BuiltinPortTypeResolver.class);
+	}
+
+	// =========================================================================
+	// Tests for ceilLog2(int)
+	// =========================================================================
+
+	@Test
+	public void testCeilLog2_PowerOfTwo() {
+		assertEquals("ceilLog2(1) should be 0", 0, BuiltinPortTypeResolver.ceilLog2(1));
+		assertEquals("ceilLog2(2) should be 1", 1, BuiltinPortTypeResolver.ceilLog2(2));
+		assertEquals("ceilLog2(4) should be 2", 2, BuiltinPortTypeResolver.ceilLog2(4));
+		assertEquals("ceilLog2(8) should be 3", 3, BuiltinPortTypeResolver.ceilLog2(8));
+		assertEquals("ceilLog2(16) should be 4", 4, BuiltinPortTypeResolver.ceilLog2(16));
+		assertEquals("ceilLog2(256) should be 8", 8, BuiltinPortTypeResolver.ceilLog2(256));
+	}
+
+	@Test
+	public void testCeilLog2_NonPowerOfTwo() {
+		assertEquals("ceilLog2(3) should be 2", 2, BuiltinPortTypeResolver.ceilLog2(3));
+		assertEquals("ceilLog2(5) should be 3", 3, BuiltinPortTypeResolver.ceilLog2(5));
+		assertEquals("ceilLog2(6) should be 3", 3, BuiltinPortTypeResolver.ceilLog2(6));
+		assertEquals("ceilLog2(7) should be 3", 3, BuiltinPortTypeResolver.ceilLog2(7));
+		assertEquals("ceilLog2(9) should be 4", 4, BuiltinPortTypeResolver.ceilLog2(9));
+		assertEquals("ceilLog2(100) should be 7", 7, BuiltinPortTypeResolver.ceilLog2(100));
+	}
+
+	@Test
+	public void testCeilLog2_EdgeCases() {
+		assertEquals("ceilLog2(0) should be 0", 0, BuiltinPortTypeResolver.ceilLog2(0));
+	}
+
+	// =========================================================================
+	// Tests for getArgumentValue(Instance, String, int)
+	// =========================================================================
+
+	@Test
+	public void testGetArgumentValue_DefaultValue() {
+		// When instance has no arguments, should return default value
+		Instance instance = DpnFactory.eINSTANCE.createInstance();
+		instance.setName("noArgs");
+
+		int value = BuiltinPortTypeResolver.getArgumentValue(instance, "size", 42);
+
+		assertEquals("Should return default value when argument missing", 42, value);
+	}
+
+	@Test
+	public void testGetArgumentValue_NullInstance() {
+		// When instance is null, should return default value
+		int value = BuiltinPortTypeResolver.getArgumentValue(null, "size", 42);
+
+		assertEquals("Should return default value for null instance", 42, value);
+	}
+
+	// =========================================================================
+	// Helper methods
+	// =========================================================================
+
+	/**
+	 * Creates an instance with the given name and entityType property.
+	 */
+	private Instance createInstanceWithEntityType(String name, String entityType) {
+		Instance instance = DpnFactory.eINSTANCE.createInstance();
+		instance.setName(name);
+
+		JsonObject props = new JsonObject();
+		props.addProperty("entityType", entityType);
+		instance.setProperties(props);
+
+		return instance;
+	}
+}

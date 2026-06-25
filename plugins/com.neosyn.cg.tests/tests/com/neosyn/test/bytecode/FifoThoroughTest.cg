@@ -1,0 +1,46 @@
+/*
+ * Thorough SynchronousFIFO exercise. A producer writes 1..40 into a size-8 FIFO
+ * (so it is forced to stall on backpressure whenever the gapped consumer falls
+ * behind); the consumer reads all 40 with VARYING idle() gaps between reads
+ * (exercising hold-across-stall and the ready/valid handshake) and asserts the
+ * exact sequence 1,2,...,40 — no drops, duplicates, or reorders. Verified to
+ * pass identically on the bytecode sim and on iverilog (the silicon FIFO).
+ */
+package com.neosyn.test.bytecode;
+
+import std.fifo.SynchronousFIFO;
+
+network FifoThoroughTest {
+	properties { test: { terminate: "checker.finished" } }
+
+	fifo = new SynchronousFIFO({size: 8, width: 8});
+
+	producer = new task {
+		out stream u8 dout;
+		u8 n = 0;
+		void loop() {
+			if (n != 40) {
+				n++;
+				dout.write(n);
+			}
+		}
+	};
+
+	checker = new task {
+		in stream u8 din;
+		bool finished = false;
+		void setup() {
+			u8 i;
+			for (i = 1; i != 41; i++) {
+				u8 v = din.read;
+				assert(v == i);
+				idle(i & 3);   // varying 0..3-cycle gaps -> FIFO must hold across stalls
+			}
+			print("=== FifoThoroughTest PASSED (1..40 in order, no drops) ===\n");
+			finished = true;
+		}
+	};
+
+	fifo.reads(producer.dout);
+	checker.reads(fifo.dout);
+}

@@ -1,0 +1,42 @@
+package folding;
+
+/* This multi-line block comment must NOT produce a folding range:
+   VS Code's TextMate grammar already folds block comments, and the
+   CgFoldingRangeProvider suppresses LSP comment folding to avoid
+   duplicate fold controls. */
+bundle Defs {
+	typedef u8 byte_t;
+
+	struct Pair {
+		u8 lo;
+		u8 hi;
+	}
+
+	enum Color {
+		RED, GREEN, BLUE
+	}
+}
+
+task Worker {
+	in u8 a; out u8 q;
+
+	void loop() {
+		if (a.read() > 0) {
+			q.write(1);
+		} else {
+			q.write(0);
+		}
+		idle(1);
+	}
+}
+
+network Top {
+	w = new Worker();
+
+	mon = new task {
+		in u8 x;
+		void loop() {
+			idle(1);
+		}
+	};
+}

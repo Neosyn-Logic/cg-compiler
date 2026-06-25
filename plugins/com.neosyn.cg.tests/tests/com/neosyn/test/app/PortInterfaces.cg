@@ -1,0 +1,253 @@
+/*******************************************************************************
+ * Port Interface Keywords Test
+ * Tests the new simplified port interface syntax:
+ *   - push (replaces sync)
+ *   - stream (replaces sync ready)
+ *   - confirm (replaces sync ack)
+ *
+ * History:
+ *   Originally developed by Synflow until February 2021 under LGPL.
+ *   Now maintained and improved by Neosyn team since January 2024.
+ *******************************************************************************/
+package com.neosyn.test.app.portinterfaces;
+
+// Test 1: Push keyword (valid-only, fire-and-forget)
+// Equivalent to old 'sync' keyword
+network PushTest {
+
+	source = new task {
+		out push u8 dout;
+
+		void setup() {
+			dout.write(10);
+			dout.write(20);
+			dout.write(30);
+		}
+	};
+
+	sink = new task {
+		void setup() {
+			assert(source.dout.read() == 10);
+			assert(source.dout.read() == 20);
+			assert(source.dout.read() == 30);
+			print("*** PushTest completed successfully ***");
+		}
+	};
+
+}
+
+// Test 2: Stream keyword (flow control with backpressure)
+// Equivalent to old 'sync ready' keywords
+network StreamTest {
+
+	source = new task {
+		out stream u8 dout;
+
+		void setup() {
+			dout.write(1);
+			dout.write(2);
+			dout.write(3);
+			dout.write(4);
+			dout.write(5);
+		}
+	};
+
+	sink = new task {
+		void setup() {
+			assert(source.dout.read() == 1);
+			idle(1);
+			assert(source.dout.read() == 2);
+			idle(2);
+			assert(source.dout.read() == 3);
+			assert(source.dout.read() == 4);
+			assert(source.dout.read() == 5);
+			print("*** StreamTest completed successfully ***");
+		}
+	};
+
+}
+
+// Test 3: Confirm keyword (delivery confirmation)
+// Equivalent to old 'sync ack' keywords
+network ConfirmTest {
+
+	source = new task {
+		out confirm u8 dout;
+
+		void setup() {
+			dout.write(100);
+			dout.write(200);
+		}
+	};
+
+	sink = new task {
+		void setup() {
+			assert(source.dout.read() == 100);
+			assert(source.dout.read() == 200);
+			print("*** ConfirmTest completed successfully ***");
+		}
+	};
+
+}
+
+// Test 4: Block syntax with new keywords
+network BlockSyntaxTest {
+
+	producer = new task {
+		push {
+			out u8 pushPort;
+		}
+		stream {
+			out u16 streamPort;
+		}
+		confirm {
+			out u32 confirmPort;
+		}
+
+		void setup() {
+			pushPort.write(42);
+			streamPort.write(1000);
+			confirmPort.write(999999);
+		}
+	};
+
+	consumer = new task {
+		void setup() {
+			assert(producer.pushPort.read() == 42);
+			assert(producer.streamPort.read() == 1000);
+			assert(producer.confirmPort.read() == 999999);
+			print("*** BlockSyntaxTest completed successfully ***");
+		}
+	};
+
+}
+
+// Test 5: Parentheses syntax with new keywords
+network ParenSyntaxTest {
+
+	sender = new task {
+		out u8 p1(push);
+		out u16 p2(stream);
+		out u32 p3(confirm);
+
+		void setup() {
+			p1.write(11);
+			p2.write(2222);
+			p3.write(333333);
+		}
+	};
+
+	receiver = new task {
+		void setup() {
+			assert(sender.p1.read() == 11);
+			assert(sender.p2.read() == 2222);
+			assert(sender.p3.read() == 333333);
+			print("*** ParenSyntaxTest completed successfully ***");
+		}
+	};
+
+}
+
+// Test 6: Input ports with new keywords
+network InputPortsTest {
+
+	driver = new task {
+		out push u8 a;
+		out stream u8 b;
+		out confirm u8 c;
+
+		void setup() {
+			a.write(1);
+			b.write(2);
+			c.write(3);
+		}
+	};
+
+	processor = new task {
+		in push u8 inA;
+		in stream u8 inB;
+		in confirm u8 inC;
+		out push u8 result;
+
+		void setup() {
+			u8 sum = inA.read() + inB.read() + inC.read();
+			result.write(sum);
+		}
+	};
+	processor.reads(driver.a, driver.b, driver.c);
+
+	checker = new task {
+		void setup() {
+			assert(processor.result.read() == 6);
+			print("*** InputPortsTest completed successfully ***");
+		}
+	};
+
+}
+
+// Test 7: Mixed block syntax (multiple ports in one block)
+network MixedBlockTest {
+
+	source = new task {
+		stream {
+			out u8 data1;
+			out u8 data2;
+			out u16 data3;
+		}
+
+		void setup() {
+			data1.write(10);
+			data2.write(20);
+			data3.write(300);
+		}
+	};
+
+	sink = new task {
+		void setup() {
+			assert(source.data1.read() == 10);
+			assert(source.data2.read() == 20);
+			assert(source.data3.read() == 300);
+			print("*** MixedBlockTest completed successfully ***");
+		}
+	};
+
+}
+
+// Test 8: Chain of stream ports (backpressure propagation)
+network StreamChainTest {
+
+	source = new task {
+		out stream u4 dout;
+
+		void setup() {
+			dout.write(1);
+			dout.write(2);
+			dout.write(3);
+			dout.write(4);
+		}
+	};
+
+	middle = new task {
+		out stream u5 dout;
+
+		void loop() {
+			dout.write(source.dout.read() + 10);
+		}
+	};
+
+	sink = new task {
+		in stream u5 din;
+
+		void setup() {
+			assert(din.read() == 11);
+			idle(1);
+			assert(din.read() == 12);
+			assert(din.read() == 13);
+			idle(2);
+			assert(din.read() == 14);
+			print("*** StreamChainTest completed successfully ***");
+		}
+	};
+	sink.reads(middle.dout);
+
+}

@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<com.neosyn.models.dpn:Actor xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:com.neosyn.models.dpn="http://www.neosyn.io/2013/Dpn"
+    xmlns:com.neosyn.models.ir="http://www.neosyn.io/2013/Ir" fileName="/home/nicolas06/neosyn/neosyn-studio/plugins/com.neosyn.cg.tests/tests/golden/GoldenFSM.cg"
+    lineNumber="14" name="com.neosyn.test.golden.GCD" properties="{&quot;clocks&quot;:[&quot;clock&quot;],&quot;resets&quot;:[{&quot;type&quot;:&quot;asynchronous&quot;,&quot;active&quot;:&quot;low&quot;,&quot;name&quot;:&quot;reset_n&quot;}],&quot;copyright&quot;:[&quot;Copyright (c) 2024 Neosyn. All rights reserved.&quot;,&quot; *&quot;,&quot;Golden file test - FSM (Finite State Machine) patterns for regression testing.&quot;,&quot;Tests: state labels, transitions, while loops.&quot;],&quot;javadoc&quot;:[&quot;GCD (Greatest Common Divisor) using subtraction algorithm.&quot;,&quot;Based on: Arithmetic/GCD.cg&quot;,&quot;Tests: while loop generating FSM, multiple state transitions.&quot;],&quot;comments&quot;:{&quot;23&quot;:[&quot;Subtraction-based GCD (no modulo operator needed)&quot;]}}">
+  <inputs name="a" uses="#//@actions.0/@body/@blocks.0/@instructions.0/@value/@use">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+  </inputs>
+  <inputs name="b" uses="#//@actions.0/@body/@blocks.0/@instructions.1/@value/@use">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+  </inputs>
+  <outputs defs="#//@actions.2/@body/@blocks.0/@instructions.1/@target" name="result">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+  </outputs>
+  <variables assignable="true" defs="#//@actions.0/@body/@blocks.0/@instructions.0/@target #//@actions.1/@body/@blocks.1/@thenBlocks.0/@instructions.2/@target"
+      lineNumber="19" name="FSM_GCD_a_x" uses="#//@actions.1/@body/@blocks.0/@instructions.0/@source #//@actions.1/@body/@blocks.1/@thenBlocks.0/@instructions.0/@source #//@actions.1/@body/@blocks.1/@elseBlocks.0/@instructions.1/@source #//@actions.2/@body/@blocks.0/@instructions.0/@source #//@actions.1/@scheduler/@blocks.0/@instructions.0/@source #//@actions.2/@scheduler/@blocks.0/@instructions.0/@source">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+  </variables>
+  <variables assignable="true" defs="#//@actions.0/@body/@blocks.0/@instructions.1/@target #//@actions.1/@body/@blocks.1/@elseBlocks.0/@instructions.2/@target"
+      lineNumber="20" name="FSM_GCD_a_y" uses="#//@actions.1/@body/@blocks.0/@instructions.1/@source #//@actions.1/@body/@blocks.1/@thenBlocks.0/@instructions.1/@source #//@actions.1/@body/@blocks.1/@elseBlocks.0/@instructions.0/@source #//@actions.1/@scheduler/@blocks.0/@instructions.1/@source #//@actions.2/@scheduler/@blocks.0/@instructions.1/@source">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+  </variables>
+  <actions name="FSM_GCD_a">
+    <body lineNumber="19" name="FSM_GCD_a">
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="19">
+          <target variable="#//@variables.0"/>
+          <value xsi:type="com.neosyn.models.ir:ExprVar">
+            <use variable="#//@inputs.0"/>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="20">
+          <target variable="#//@variables.1"/>
+          <value xsi:type="com.neosyn.models.ir:ExprVar">
+            <use variable="#//@inputs.1"/>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.dpn:Goto" target="#//@fsm/@vertices.1"/>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </body>
+    <combinational lineNumber="19" name="comb_FSM_GCD_a">
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </combinational>
+    <inputPattern ports="#//@inputs.0 #//@inputs.1"/>
+    <outputPattern/>
+    <peekPattern/>
+    <scheduler lineNumber="19" name="isSchedulable_FSM_GCD_a">
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstReturn">
+          <value xsi:type="com.neosyn.models.ir:ExprBool" value="true"/>
+        </instructions>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </scheduler>
+  </actions>
+  <actions name="FSM_GCD_1_a">
+    <body lineNumber="24" name="FSM_GCD_1_a">
+      <locals assignable="true" defs="#//@actions.1/@body/@blocks.0/@instructions.0/@target"
+          lineNumber="24" name="x" uses="#//@actions.1/@body/@blocks.1/@condition/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.1/@body/@blocks.0/@instructions.1/@target"
+          lineNumber="24" name="y" uses="#//@actions.1/@body/@blocks.1/@condition/@e2/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.1/@body/@blocks.1/@thenBlocks.0/@instructions.0/@target"
+          lineNumber="25" name="x_0" uses="#//@actions.1/@body/@blocks.1/@thenBlocks.0/@instructions.2/@value/@expr/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.1/@body/@blocks.1/@thenBlocks.0/@instructions.1/@target"
+          lineNumber="25" name="y_0" uses="#//@actions.1/@body/@blocks.1/@thenBlocks.0/@instructions.2/@value/@expr/@e2/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.1/@body/@blocks.1/@elseBlocks.0/@instructions.0/@target"
+          lineNumber="27" name="y_1" uses="#//@actions.1/@body/@blocks.1/@elseBlocks.0/@instructions.2/@value/@expr/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.1/@body/@blocks.1/@elseBlocks.0/@instructions.1/@target"
+          lineNumber="27" name="x_1" uses="#//@actions.1/@body/@blocks.1/@elseBlocks.0/@instructions.2/@value/@expr/@e2/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="24">
+          <source variable="#//@variables.0"/>
+          <target variable="#//@actions.1/@body/@locals.0"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="24">
+          <source variable="#//@variables.1"/>
+          <target variable="#//@actions.1/@body/@locals.1"/>
+        </instructions>
+      </blocks>
+      <blocks xsi:type="com.neosyn.models.ir:BlockIf" lineNumber="24">
+        <condition xsi:type="com.neosyn.models.ir:ExprBinary" op="GT">
+          <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+            <use variable="#//@actions.1/@body/@locals.0"/>
+          </e1>
+          <e2 xsi:type="com.neosyn.models.ir:ExprVar">
+            <use variable="#//@actions.1/@body/@locals.1"/>
+          </e2>
+        </condition>
+        <elseBlocks xsi:type="com.neosyn.models.ir:BlockBasic">
+          <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="27">
+            <source variable="#//@variables.1"/>
+            <target variable="#//@actions.1/@body/@locals.4"/>
+          </instructions>
+          <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="27">
+            <source variable="#//@variables.0"/>
+            <target variable="#//@actions.1/@body/@locals.5"/>
+          </instructions>
+          <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="27">
+            <target variable="#//@variables.1"/>
+            <value xsi:type="com.neosyn.models.ir:ExprResize" targetSize="8">
+              <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="MINUS">
+                <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                  <use variable="#//@actions.1/@body/@locals.4"/>
+                </e1>
+                <e2 xsi:type="com.neosyn.models.ir:ExprVar">
+                  <use variable="#//@actions.1/@body/@locals.5"/>
+                </e2>
+              </expr>
+            </value>
+          </instructions>
+        </elseBlocks>
+        <joinBlock/>
+        <thenBlocks xsi:type="com.neosyn.models.ir:BlockBasic">
+          <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="25">
+            <source variable="#//@variables.0"/>
+            <target variable="#//@actions.1/@body/@locals.2"/>
+          </instructions>
+          <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="25">
+            <source variable="#//@variables.1"/>
+            <target variable="#//@actions.1/@body/@locals.3"/>
+          </instructions>
+          <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="25">
+            <target variable="#//@variables.0"/>
+            <value xsi:type="com.neosyn.models.ir:ExprResize" targetSize="8">
+              <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="MINUS">
+                <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                  <use variable="#//@actions.1/@body/@locals.2"/>
+                </e1>
+                <e2 xsi:type="com.neosyn.models.ir:ExprVar">
+                  <use variable="#//@actions.1/@body/@locals.3"/>
+                </e2>
+              </expr>
+            </value>
+          </instructions>
+        </thenBlocks>
+      </blocks>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.dpn:Goto" target="#//@fsm/@vertices.1"/>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </body>
+    <combinational lineNumber="24" name="comb_FSM_GCD_1_a">
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </combinational>
+    <inputPattern/>
+    <outputPattern/>
+    <peekPattern/>
+    <scheduler lineNumber="24" name="isSchedulable_FSM_GCD_1_a">
+      <locals assignable="true" defs="#//@actions.1/@scheduler/@blocks.0/@instructions.0/@target"
+          lineNumber="23" name="x" uses="#//@actions.1/@scheduler/@blocks.1/@instructions.0/@value/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.1/@scheduler/@blocks.0/@instructions.1/@target"
+          lineNumber="23" name="y" uses="#//@actions.1/@scheduler/@blocks.1/@instructions.0/@value/@e2/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.1/@scheduler/@blocks.1/@instructions.0/@target"
+          name="cond" uses="#//@actions.1/@scheduler/@blocks.1/@instructions.1/@value/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+      </locals>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad">
+          <source variable="#//@variables.0"/>
+          <target variable="#//@actions.1/@scheduler/@locals.0"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad">
+          <source variable="#//@variables.1"/>
+          <target variable="#//@actions.1/@scheduler/@locals.1"/>
+        </instructions>
+      </blocks>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.1/@scheduler/@locals.2"/>
+          <value xsi:type="com.neosyn.models.ir:ExprBinary" op="NE">
+            <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+              <use variable="#//@actions.1/@scheduler/@locals.0"/>
+            </e1>
+            <e2 xsi:type="com.neosyn.models.ir:ExprVar">
+              <use variable="#//@actions.1/@scheduler/@locals.1"/>
+            </e2>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstReturn">
+          <value xsi:type="com.neosyn.models.ir:ExprVar">
+            <use variable="#//@actions.1/@scheduler/@locals.2"/>
+          </value>
+        </instructions>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </scheduler>
+  </actions>
+  <actions name="FSM_GCD_1_b">
+    <body lineNumber="31" name="FSM_GCD_1_b">
+      <locals assignable="true" defs="#//@actions.2/@body/@blocks.0/@instructions.0/@target"
+          lineNumber="31" name="x" uses="#//@actions.2/@body/@blocks.0/@instructions.1/@value/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="31">
+          <source variable="#//@variables.0"/>
+          <target variable="#//@actions.2/@body/@locals.0"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="31">
+          <target variable="#//@outputs.0"/>
+          <value xsi:type="com.neosyn.models.ir:ExprVar">
+            <use variable="#//@actions.2/@body/@locals.0"/>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.dpn:Goto" target="#//@fsm/@vertices.0"/>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </body>
+    <combinational lineNumber="31" name="comb_FSM_GCD_1_b">
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </combinational>
+    <inputPattern/>
+    <outputPattern ports="#//@outputs.0"/>
+    <peekPattern/>
+    <scheduler lineNumber="31" name="isSchedulable_FSM_GCD_1_b">
+      <locals assignable="true" defs="#//@actions.2/@scheduler/@blocks.0/@instructions.0/@target"
+          name="x" uses="#//@actions.2/@scheduler/@blocks.1/@instructions.0/@value/@expr/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.2/@scheduler/@blocks.0/@instructions.1/@target"
+          name="y" uses="#//@actions.2/@scheduler/@blocks.1/@instructions.0/@value/@expr/@e2/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.2/@scheduler/@blocks.1/@instructions.0/@target"
+          name="cond" uses="#//@actions.2/@scheduler/@blocks.1/@instructions.1/@value/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+      </locals>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad">
+          <source variable="#//@variables.0"/>
+          <target variable="#//@actions.2/@scheduler/@locals.0"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad">
+          <source variable="#//@variables.1"/>
+          <target variable="#//@actions.2/@scheduler/@locals.1"/>
+        </instructions>
+      </blocks>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.2/@scheduler/@locals.2"/>
+          <value xsi:type="com.neosyn.models.ir:ExprUnary" op="LOGIC_NOT">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="NE">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.2/@scheduler/@locals.0"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.2/@scheduler/@locals.1"/>
+              </e2>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstReturn">
+          <value xsi:type="com.neosyn.models.ir:ExprVar">
+            <use variable="#//@actions.2/@scheduler/@locals.2"/>
+          </value>
+        </instructions>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </scheduler>
+  </actions>
+  <fsm initialState="#//@fsm/@vertices.0">
+    <edges xsi:type="com.neosyn.models.dpn:Transition" source="#//@fsm/@vertices.0"
+        target="#//@fsm/@vertices.1" action="#//@actions.0">
+      <lines>19</lines>
+      <lines>20</lines>
+    </edges>
+    <edges xsi:type="com.neosyn.models.dpn:Transition" source="#//@fsm/@vertices.1"
+        target="#//@fsm/@vertices.1" action="#//@actions.1">
+      <lines>24</lines>
+      <lines>25</lines>
+      <lines>27</lines>
+    </edges>
+    <edges xsi:type="com.neosyn.models.dpn:Transition" source="#//@fsm/@vertices.1"
+        target="#//@fsm/@vertices.0" action="#//@actions.2">
+      <lines>31</lines>
+    </edges>
+    <vertices xsi:type="com.neosyn.models.dpn:State" incoming="#//@fsm/@edges.2" outgoing="#//@fsm/@edges.0"
+        name="FSM_GCD"/>
+    <vertices xsi:type="com.neosyn.models.dpn:State" incoming="#//@fsm/@edges.0 #//@fsm/@edges.1"
+        outgoing="#//@fsm/@edges.1 #//@fsm/@edges.2" name="FSM_GCD_1"/>
+  </fsm>
+</com.neosyn.models.dpn:Actor>

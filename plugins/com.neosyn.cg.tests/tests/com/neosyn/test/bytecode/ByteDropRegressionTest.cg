@@ -1,0 +1,46 @@
+/*
+ * Regression test for the byte-drop scheduler codegen bug.
+ *
+ * Reproduces the same enqueue/shift/present pattern used by Intel-8088
+ * InstructionQueue. Uses the testbench-style `test: { port: [values] }`
+ * property so the framework auto-wraps the task with a stimulus actor
+ * (drives d_in) and an expected actor (asserts d_out matches).
+ *
+ * If the scheduler emits a broken enqueue+shift action that drops bytes,
+ * the expected actor will fail its assertion and the test exits non-zero.
+ */
+package com.neosyn.test.bytecode;
+
+task ByteDropRegressionTest {
+
+    properties {
+        test: {
+            d_in:  [0xA0, 0xA1, 0xA2, 0xA3, 0xA4],
+            d_out: [0xA0, 0xA1, 0xA2, 0xA3, 0xA4]
+        }
+    }
+
+    push { in u8 d_in; }
+    stream { out u8 d_out; }
+
+    u8 q[2];
+    u2 count;
+
+    void loop() {
+        // Consume FIRST: shift down when consumer accepts (uses OLD count)
+        if (d_out.ready && count != 0) {
+            q[0] = q[1];
+            count--;
+        }
+        // Enqueue: append to slot at NEW count (after potential consume)
+        if (d_in.available() && count < 2) {
+            q[count] = d_in.read();
+            count++;
+        }
+        // Always present queue head
+        if (count != 0) {
+            d_out.write(q[0]);
+        }
+    }
+
+}

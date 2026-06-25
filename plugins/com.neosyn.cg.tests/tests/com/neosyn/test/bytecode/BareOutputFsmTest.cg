@@ -1,0 +1,59 @@
+/*
+ * Test: Synchronous actor with bare output and FSM branches.
+ * Regression for hasCombinationalExecute() bug.
+ */
+package com.neosyn.test.bytecode;
+
+network BareOutputFsmTest {
+	properties {
+		test: { terminate: "checker.finished" }
+	}
+
+	dut = new task {
+		in push u8 opcode;
+		out u8 alu_op;
+		out push u16 result;
+
+		u8 saved_op;
+
+		void loop() {
+			saved_op = opcode.read();
+			fence;
+			alu_op.write(saved_op);
+			if (saved_op == 1) {
+				result.write(100);
+			} else if (saved_op == 2) {
+				result.write(200);
+			} else {
+				result.write(999);
+			}
+		}
+	};
+
+	checker = new task {
+		in push u16 actual;
+		bool finished;
+
+		void setup() {
+			dut.opcode.write(1);
+			idle(2);
+			u16 v1 = actual.read();
+			assert(v1 == 100);
+
+			dut.opcode.write(2);
+			idle(2);
+			u16 v2 = actual.read();
+			assert(v2 == 200);
+
+			dut.opcode.write(3);
+			idle(2);
+			u16 v3 = actual.read();
+			assert(v3 == 999);
+
+			print("Test PASSED");
+			finished = true;
+		}
+	};
+
+	checker.reads(dut.result);
+}

@@ -1,0 +1,69 @@
+/*
+ * Phase 1 timing test T05 — stream port backpressure. The producer
+ * generates a sequence of values into a stream port. The consumer
+ * intentionally paces consumption: it reads on every other cycle by
+ * toggling its action's input pattern via a `slow` flag. The producer
+ * must stall (not advance its counter) when the consumer isn't ready,
+ * so the consumer should still see the full sequence 1..5 in order
+ * with no drops.
+ *
+ * Expectation (both before and after Phase 2):
+ *   Stream backpressure works — the checker sees 1, 2, 3, 4, 5 in
+ *   order even though it only reads on alternate cycles. After 5 reads
+ *   it sets `finished` and the network terminates.
+ */
+package com.neosyn.test.bytecode.timing;
+
+network T05_StreamBackpressure {
+
+    properties {
+        test: { terminate: "checker.finished" }
+    }
+
+    producer = new task {
+        stream { out u8 value; }
+        u8 count;
+
+        void setup() {
+            count = 0;
+        }
+
+        void loop() {
+            count++;
+            value.write(count);
+        }
+    };
+
+    checker = new task {
+        stream { in u8 incoming; }
+
+        u8 expected;
+        bool toggle;
+        bool finished;
+
+        void setup() {
+            expected = 1;
+            toggle = false;
+            finished = false;
+        }
+
+        void loop() {
+            // Pace: read only on alternate cycles by gating with `toggle`.
+            if (!finished) {
+                if (toggle) {
+                    u8 v = incoming.read();
+                    assert(v == expected);
+                    if (expected == 5) {
+                        print("T05_StreamBackpressure PASS\n");
+                        finished = true;
+                    } else {
+                        expected++;
+                    }
+                }
+                toggle = !toggle;
+            }
+        }
+    };
+
+    checker.reads(producer.value);
+}

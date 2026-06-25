@@ -1,0 +1,94 @@
+/*
+ * break / continue FSM lowering (2026-06-10). The scheduler decomposes a loop
+ * carrying break/continue into FSM states: break -> loop exit, continue -> loop
+ * header (a `for` runs its increment first). Asserts the computed values so a
+ * scheduler regression is caught (a silent-wrong loop exit is the worst trap).
+ *
+ * The network is intentionally NOT named "*Test": a capital-"Test" network name
+ * routes the sim through the testbench-special path, which does not terminate
+ * cleanly for a multi-cycle (FSM-lowered) checker loop().
+ */
+package com.neosyn.test.bytecode;
+
+network BreakContinueLoops {
+    properties { test: { terminate: "checker.finished" } }
+
+    checker = new task {
+        bool finished;
+
+        void setup() {
+            finished = false;
+        }
+
+        void loop() {
+            if (!finished) {
+                // while + continue, loop var updated BEFORE the continue:
+                // sum 0..4 skipping 2 -> 0+1+3+4 = 8
+                int<32> wc = 0;
+                int<32> i = 0;
+                while (i < 5) {
+                    int<32> cur = i;
+                    i = (int<32>) (i + 1);
+                    if (cur == 2) { continue; }
+                    wc = (int<32>) (wc + cur);
+                }
+                assert(wc == 8);
+
+                // for + continue: the increment must still run on continue
+                // sum 0..4 skipping 2 -> 8
+                int<32> fc = 0;
+                for (int<32> a = 0; a < 5; a = (int<32>) (a + 1)) {
+                    if (a == 2) { continue; }
+                    fc = (int<32>) (fc + a);
+                }
+                assert(fc == 8);
+
+                // for + break: stop at 4 -> 0+1+2+3 = 6
+                int<32> fb = 0;
+                for (int<32> b = 0; b < 10; b = (int<32>) (b + 1)) {
+                    if (b == 4) { break; }
+                    fb = (int<32>) (fb + b);
+                }
+                assert(fb == 6);
+
+                // for + break + continue together: skip 2, stop at 6
+                // -> 0+1+3+4+5 = 13
+                int<32> fbc = 0;
+                for (int<32> c = 0; c < 100; c = (int<32>) (c + 1)) {
+                    if (c == 2) { continue; }
+                    if (c == 6) { break; }
+                    fbc = (int<32>) (fbc + c);
+                }
+                assert(fbc == 13);
+
+                // nested: inner break binds to the inner loop only
+                // outer 0..2, inner 0..2 stopping at j==2 -> each outer adds 0+1=1
+                // -> 3
+                int<32> nst = 0;
+                for (int<32> x = 0; x < 3; x = (int<32>) (x + 1)) {
+                    for (int<32> y = 0; y < 3; y = (int<32>) (y + 1)) {
+                        if (y == 2) { break; }
+                        nst = (int<32>) (nst + y);
+                    }
+                }
+                assert(nst == 3);
+
+                // statement after break is unreachable (must be dropped)
+                int<32> ur = 0;
+                int<32> k = 0;
+                while (k < 10) {
+                    if (k == 3) {
+                        break;
+                        ur = (int<32>) (ur + 100);
+                    }
+                    ur = (int<32>) (ur + k);
+                    k = (int<32>) (k + 1);
+                }
+                assert(ur == 3);
+
+                print("*** BreakContinueLoops completed ***\n");
+                finished = true;
+            }
+        }
+    };
+}

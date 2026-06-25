@@ -1,0 +1,55 @@
+/*
+ * L1 Structs Tier 2.4 fixture — NON-BARE (push) struct ports across tasks.
+ * Validates the shared-handshake fan-out: a `push Pair` port flattens to
+ * per-field data ports (`p$lo`, `p$hi`) where only the FIRST field carries the
+ * push handshake (valid) and the rest are bare data, so one shared valid gates
+ * the whole struct atomically. Exercises whole-struct push write
+ * (`port.write(p)`) and gated read (`q = port.read()`) cross-task.
+ *
+ * See .claude/L1_STRUCT_DESIGN.md and PLAN.md Tier 2.4.
+ */
+package com.neosyn.test.bytecode;
+
+network PushStructPortTest {
+    properties { test: { terminate: "tester.finished" } }
+
+    struct Pair {
+        u8 lo;
+        u16 hi;
+    }
+
+    processor = new task {
+        in push Pair in_pair;
+        out push Pair out_pair;
+
+        void loop() {
+            Pair p = in_pair.read();
+            out_pair.write(p);
+        }
+    };
+
+    tester = new task {
+        bool finished;
+
+        void setup() {
+            finished = false;
+        }
+
+        void loop() {
+            if (!finished) {
+                Pair p;
+                p.lo = 7;
+                p.hi = 0x123;
+                processor.in_pair.write(p);
+
+                idle(2);
+
+                Pair r = processor.out_pair.read();
+                assert(r.lo == 7);
+                assert(r.hi == 0x123);
+                print("=== PushStructPortTest PASSED ===\n");
+                finished = true;
+            }
+        }
+    };
+}

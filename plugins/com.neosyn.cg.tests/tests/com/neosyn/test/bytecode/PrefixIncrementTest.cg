@@ -1,0 +1,41 @@
+/*
+ * Prefix ++ / -- operators (2026-06-08). Exercises the prefix forms in a
+ * statement and a for-step; postfix still works (regression guard). Asserts
+ * the computed values so a parser/IR regression is caught.
+ */
+package com.neosyn.test.bytecode;
+
+network PrefixIncrementTest {
+    properties { test: { terminate: "checker.finished" } }
+
+    checker = new task {
+        bool finished;
+
+        void setup() {
+            finished = false;
+        }
+
+        void loop() {
+            if (!finished) {
+                // prefix as a plain statement
+                u8 k = 3;
+                ++k;                 // 4
+                --k;                 // 3
+                assert(k == 3);
+
+                // prefix in a for-step
+                int<32> s = 0;
+                for (int i = 0; i < 4; ++i) { s = (int<32>) (s + i); }   // 0+1+2+3
+                assert(s == 6);
+
+                // postfix still works (regression guard)
+                int<32> t = 0;
+                for (u8 j = 0; j < 4; j++) { t = (int<32>) (t + (int<32>) j); }
+                assert(t == 6);
+
+                print("*** PrefixIncrementTest completed ***\n");
+                finished = true;
+            }
+        }
+    };
+}

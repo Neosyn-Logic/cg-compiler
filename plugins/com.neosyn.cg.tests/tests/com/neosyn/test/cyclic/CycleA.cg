@@ -1,0 +1,11 @@
+package com.neosyn.test.cyclic;
+
+import com.neosyn.test.cyclic.CycleB.B_VAL;
+
+// CycleA imports CycleB, which imports CycleA back — a mutual bundle import
+// cycle. Before the InstantiatorImpl cycle guard (Session 119), instantiating
+// either bundle recursed until a StackOverflowError. Now the validator reports
+// errCyclicImport and the instantiator breaks the recursion.
+bundle CycleA {
+  const u8 A_VAL = B_VAL;
+}

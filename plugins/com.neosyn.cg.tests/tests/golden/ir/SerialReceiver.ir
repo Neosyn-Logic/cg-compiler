@@ -1,0 +1,1018 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<com.neosyn.models.dpn:Actor xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:com.neosyn.models.dpn="http://www.neosyn.io/2013/Dpn"
+    xmlns:com.neosyn.models.ir="http://www.neosyn.io/2013/Ir" fileName="/home/nicolas06/neosyn/neosyn-studio/plugins/com.neosyn.cg.tests/tests/golden/GoldenFSM.cg"
+    lineNumber="125" name="com.neosyn.test.golden.SerialReceiver" properties="{&quot;clocks&quot;:[&quot;clock&quot;],&quot;resets&quot;:[{&quot;type&quot;:&quot;asynchronous&quot;,&quot;active&quot;:&quot;low&quot;,&quot;name&quot;:&quot;reset_n&quot;}],&quot;copyright&quot;:[&quot;Copyright (c) 2024 Neosyn. All rights reserved.&quot;,&quot; *&quot;,&quot;Golden file test - FSM (Finite State Machine) patterns for regression testing.&quot;,&quot;Tests: state labels, transitions, while loops.&quot;],&quot;javadoc&quot;:[&quot;Serial receiver - simplified UART-like.&quot;,&quot;Tests: for loop in FSM, bit shifting.&quot;],&quot;comments&quot;:{&quot;143&quot;:[&quot;Idle - wait for start bit (low)&quot;],&quot;151&quot;:[&quot;Receiving - shift in bits&quot;]}}">
+  <inputs name="rx" uses="#//@actions.1/@scheduler/@blocks.1/@instructions.1/@value/@expr/@use #//@actions.2/@scheduler/@blocks.1/@instructions.1/@value/@use #//@actions.3/@scheduler/@blocks.1/@instructions.2/@value/@use #//@actions.4/@scheduler/@blocks.1/@instructions.2/@value/@use #//@actions.5/@scheduler/@blocks.1/@instructions.2/@value/@expr/@use #//@actions.6/@scheduler/@blocks.1/@instructions.2/@value/@expr/@use">
+    <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+  </inputs>
+  <outputs defs="#//@actions.3/@body/@blocks.0/@instructions.7/@target #//@actions.5/@body/@blocks.0/@instructions.5/@target"
+      name="data">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+  </outputs>
+  <outputs defs="#//@actions.1/@body/@blocks.0/@instructions.0/@target #//@actions.2/@body/@blocks.0/@instructions.0/@target #//@actions.3/@body/@blocks.0/@instructions.8/@target #//@actions.4/@body/@blocks.0/@instructions.6/@target #//@actions.5/@body/@blocks.0/@instructions.6/@target #//@actions.6/@body/@blocks.0/@instructions.4/@target"
+      name="valid">
+    <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+  </outputs>
+  <variables assignable="true" defs="#//@actions.0/@body/@blocks.0/@instructions.0/@target #//@actions.1/@body/@blocks.0/@instructions.1/@target #//@actions.3/@body/@blocks.0/@instructions.9/@target #//@actions.5/@body/@blocks.0/@instructions.7/@target"
+      lineNumber="130" name="state" uses="#//@actions.1/@scheduler/@blocks.0/@instructions.0/@source #//@actions.2/@scheduler/@blocks.0/@instructions.0/@source #//@actions.3/@scheduler/@blocks.0/@instructions.0/@source #//@actions.4/@scheduler/@blocks.0/@instructions.0/@source #//@actions.5/@scheduler/@blocks.0/@instructions.0/@source #//@actions.6/@scheduler/@blocks.0/@instructions.0/@source">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="2"/>
+  </variables>
+  <variables assignable="true" defs="#//@actions.0/@body/@blocks.0/@instructions.1/@target #//@actions.1/@body/@blocks.0/@instructions.2/@target #//@actions.3/@body/@blocks.0/@instructions.5/@target #//@actions.4/@body/@blocks.0/@instructions.5/@target #//@actions.5/@body/@blocks.0/@instructions.3/@target #//@actions.6/@body/@blocks.0/@instructions.3/@target"
+      lineNumber="131" name="bitCount" uses="#//@actions.3/@body/@blocks.0/@instructions.4/@source #//@actions.4/@body/@blocks.0/@instructions.4/@source #//@actions.5/@body/@blocks.0/@instructions.2/@source #//@actions.6/@body/@blocks.0/@instructions.2/@source #//@actions.3/@scheduler/@blocks.0/@instructions.2/@source #//@actions.4/@scheduler/@blocks.0/@instructions.2/@source #//@actions.5/@scheduler/@blocks.0/@instructions.2/@source #//@actions.6/@scheduler/@blocks.0/@instructions.2/@source">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="3"/>
+  </variables>
+  <variables assignable="true" defs="#//@actions.0/@body/@blocks.0/@instructions.2/@target #//@actions.1/@body/@blocks.0/@instructions.3/@target #//@actions.3/@body/@blocks.0/@instructions.1/@target #//@actions.3/@body/@blocks.0/@instructions.3/@target #//@actions.4/@body/@blocks.0/@instructions.1/@target #//@actions.4/@body/@blocks.0/@instructions.3/@target #//@actions.5/@body/@blocks.0/@instructions.1/@target #//@actions.6/@body/@blocks.0/@instructions.1/@target"
+      lineNumber="132" name="rxByte" uses="#//@actions.3/@body/@blocks.0/@instructions.0/@source #//@actions.3/@body/@blocks.0/@instructions.2/@source #//@actions.3/@body/@blocks.0/@instructions.6/@source #//@actions.4/@body/@blocks.0/@instructions.0/@source #//@actions.4/@body/@blocks.0/@instructions.2/@source #//@actions.5/@body/@blocks.0/@instructions.0/@source #//@actions.5/@body/@blocks.0/@instructions.4/@source #//@actions.6/@body/@blocks.0/@instructions.0/@source #//@actions.3/@scheduler/@blocks.0/@instructions.1/@source #//@actions.4/@scheduler/@blocks.0/@instructions.1/@source #//@actions.5/@scheduler/@blocks.0/@instructions.1/@source #//@actions.6/@scheduler/@blocks.0/@instructions.1/@source">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+  </variables>
+  <actions name="FSM_SerialReceiver_a">
+    <body lineNumber="135" name="FSM_SerialReceiver_a">
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="135">
+          <target variable="#//@variables.0"/>
+          <value xsi:type="com.neosyn.models.ir:ExprInt" value="0"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="136">
+          <target variable="#//@variables.1"/>
+          <value xsi:type="com.neosyn.models.ir:ExprInt" value="0"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="137">
+          <target variable="#//@variables.2"/>
+          <value xsi:type="com.neosyn.models.ir:ExprInt" value="0"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.dpn:Goto" target="#//@fsm/@vertices.1"/>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </body>
+    <combinational lineNumber="135" name="comb_FSM_SerialReceiver_a">
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </combinational>
+    <inputPattern/>
+    <outputPattern/>
+    <peekPattern/>
+    <scheduler lineNumber="135" name="isSchedulable_FSM_SerialReceiver_a">
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstReturn">
+          <value xsi:type="com.neosyn.models.ir:ExprBool" value="true"/>
+        </instructions>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </scheduler>
+  </actions>
+  <actions name="FSM_SerialReceiver_1_a">
+    <body lineNumber="145" name="FSM_SerialReceiver_1_a">
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="143">
+          <target variable="#//@outputs.1"/>
+          <value xsi:type="com.neosyn.models.ir:ExprBool"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="145">
+          <target variable="#//@variables.0"/>
+          <value xsi:type="com.neosyn.models.ir:ExprInt" value="1"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="146">
+          <target variable="#//@variables.1"/>
+          <value xsi:type="com.neosyn.models.ir:ExprInt" value="0"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="147">
+          <target variable="#//@variables.2"/>
+          <value xsi:type="com.neosyn.models.ir:ExprInt" value="0"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.dpn:Goto" target="#//@fsm/@vertices.1"/>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </body>
+    <combinational lineNumber="145" name="comb_FSM_SerialReceiver_1_a">
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </combinational>
+    <inputPattern ports="#//@inputs.0"/>
+    <outputPattern ports="#//@outputs.1"/>
+    <peekPattern ports="#//@inputs.0"/>
+    <scheduler lineNumber="145" name="isSchedulable_FSM_SerialReceiver_1_a">
+      <locals assignable="true" defs="#//@actions.1/@scheduler/@blocks.0/@instructions.0/@target #//@actions.1/@scheduler/@blocks.1/@instructions.2/@target"
+          name="state_0" uses="#//@actions.1/@scheduler/@blocks.1/@instructions.0/@value/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="2"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.1/@scheduler/@blocks.1/@instructions.0/@target"
+          name="cond" uses="#//@actions.1/@scheduler/@blocks.1/@instructions.3/@value/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.1/@scheduler/@blocks.1/@instructions.1/@target"
+          name="cond_0" uses="#//@actions.1/@scheduler/@blocks.1/@instructions.3/@value/@e2/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+      </locals>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad">
+          <source variable="#//@variables.0"/>
+          <target variable="#//@actions.1/@scheduler/@locals.0"/>
+        </instructions>
+      </blocks>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.1/@scheduler/@locals.1"/>
+          <value xsi:type="com.neosyn.models.ir:ExprBinary" op="EQ">
+            <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+              <use variable="#//@actions.1/@scheduler/@locals.0"/>
+            </e1>
+            <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="0"/>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.1/@scheduler/@locals.2"/>
+          <value xsi:type="com.neosyn.models.ir:ExprUnary" op="LOGIC_NOT">
+            <expr xsi:type="com.neosyn.models.ir:ExprVar">
+              <use variable="#//@inputs.0"/>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.1/@scheduler/@locals.0"/>
+          <value xsi:type="com.neosyn.models.ir:ExprInt" value="1"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstReturn">
+          <value xsi:type="com.neosyn.models.ir:ExprBinary" op="LOGIC_AND">
+            <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+              <use variable="#//@actions.1/@scheduler/@locals.1"/>
+            </e1>
+            <e2 xsi:type="com.neosyn.models.ir:ExprVar">
+              <use variable="#//@actions.1/@scheduler/@locals.2"/>
+            </e2>
+          </value>
+        </instructions>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </scheduler>
+  </actions>
+  <actions name="FSM_SerialReceiver_1_b">
+    <body lineNumber="143" name="FSM_SerialReceiver_1_b">
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="143">
+          <target variable="#//@outputs.1"/>
+          <value xsi:type="com.neosyn.models.ir:ExprBool"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.dpn:Goto" target="#//@fsm/@vertices.1"/>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </body>
+    <combinational lineNumber="143" name="comb_FSM_SerialReceiver_1_b">
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </combinational>
+    <inputPattern ports="#//@inputs.0"/>
+    <outputPattern ports="#//@outputs.1"/>
+    <peekPattern ports="#//@inputs.0"/>
+    <scheduler lineNumber="143" name="isSchedulable_FSM_SerialReceiver_1_b">
+      <locals assignable="true" defs="#//@actions.2/@scheduler/@blocks.0/@instructions.0/@target"
+          name="state_0" uses="#//@actions.2/@scheduler/@blocks.1/@instructions.0/@value/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="2"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.2/@scheduler/@blocks.1/@instructions.0/@target"
+          name="cond" uses="#//@actions.2/@scheduler/@blocks.1/@instructions.2/@value/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.2/@scheduler/@blocks.1/@instructions.1/@target"
+          name="cond_0" uses="#//@actions.2/@scheduler/@blocks.1/@instructions.2/@value/@e2/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+      </locals>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad">
+          <source variable="#//@variables.0"/>
+          <target variable="#//@actions.2/@scheduler/@locals.0"/>
+        </instructions>
+      </blocks>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.2/@scheduler/@locals.1"/>
+          <value xsi:type="com.neosyn.models.ir:ExprBinary" op="EQ">
+            <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+              <use variable="#//@actions.2/@scheduler/@locals.0"/>
+            </e1>
+            <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="0"/>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.2/@scheduler/@locals.2"/>
+          <value xsi:type="com.neosyn.models.ir:ExprVar">
+            <use variable="#//@inputs.0"/>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstReturn">
+          <value xsi:type="com.neosyn.models.ir:ExprBinary" op="LOGIC_AND">
+            <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+              <use variable="#//@actions.2/@scheduler/@locals.1"/>
+            </e1>
+            <e2 xsi:type="com.neosyn.models.ir:ExprVar">
+              <use variable="#//@actions.2/@scheduler/@locals.2"/>
+            </e2>
+          </value>
+        </instructions>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </scheduler>
+  </actions>
+  <actions name="FSM_SerialReceiver_1_c">
+    <body lineNumber="151" name="FSM_SerialReceiver_1_c">
+      <locals assignable="true" defs="#//@actions.3/@body/@blocks.0/@instructions.0/@target"
+          lineNumber="151" name="rxByte_0" uses="#//@actions.3/@body/@blocks.0/@instructions.1/@value/@expr/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.3/@body/@blocks.0/@instructions.2/@target"
+          lineNumber="153" name="rxByte_1" uses="#//@actions.3/@body/@blocks.0/@instructions.3/@value/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.3/@body/@blocks.0/@instructions.4/@target"
+          name="bitCount_0" uses="#//@actions.3/@body/@blocks.0/@instructions.5/@value/@expr/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="3"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.3/@body/@blocks.0/@instructions.6/@target"
+          lineNumber="157" name="rxByte_2" uses="#//@actions.3/@body/@blocks.0/@instructions.7/@value/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="151">
+          <source variable="#//@variables.2"/>
+          <target variable="#//@actions.3/@body/@locals.0"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="151">
+          <target variable="#//@variables.2"/>
+          <value xsi:type="com.neosyn.models.ir:ExprResize" targetSize="8">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="SHIFT_RIGHT">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.3/@body/@locals.0"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="1"/>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="153">
+          <source variable="#//@variables.2"/>
+          <target variable="#//@actions.3/@body/@locals.1"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="153">
+          <target variable="#//@variables.2"/>
+          <value xsi:type="com.neosyn.models.ir:ExprBinary" op="BITOR">
+            <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+              <use variable="#//@actions.3/@body/@locals.1"/>
+            </e1>
+            <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="128"/>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad">
+          <source variable="#//@variables.1"/>
+          <target variable="#//@actions.3/@body/@locals.2"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="155">
+          <target variable="#//@variables.1"/>
+          <value xsi:type="com.neosyn.models.ir:ExprResize" targetSize="3">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="PLUS">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.3/@body/@locals.2"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="1"/>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="157">
+          <source variable="#//@variables.2"/>
+          <target variable="#//@actions.3/@body/@locals.3"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="157">
+          <target variable="#//@outputs.0"/>
+          <value xsi:type="com.neosyn.models.ir:ExprVar">
+            <use variable="#//@actions.3/@body/@locals.3"/>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="158">
+          <target variable="#//@outputs.1"/>
+          <value xsi:type="com.neosyn.models.ir:ExprBool" value="true"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="159">
+          <target variable="#//@variables.0"/>
+          <value xsi:type="com.neosyn.models.ir:ExprInt" value="0"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.dpn:Goto" target="#//@fsm/@vertices.1"/>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </body>
+    <combinational lineNumber="151" name="comb_FSM_SerialReceiver_1_c">
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </combinational>
+    <inputPattern ports="#//@inputs.0"/>
+    <outputPattern ports="#//@outputs.0 #//@outputs.1"/>
+    <peekPattern ports="#//@inputs.0"/>
+    <scheduler lineNumber="151" name="isSchedulable_FSM_SerialReceiver_1_c">
+      <locals assignable="true" defs="#//@actions.3/@scheduler/@blocks.0/@instructions.0/@target #//@actions.3/@scheduler/@blocks.1/@instructions.6/@target"
+          name="state_0" uses="#//@actions.3/@scheduler/@blocks.1/@instructions.0/@value/@expr/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="2"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.3/@scheduler/@blocks.1/@instructions.0/@target"
+          name="cond" uses="#//@actions.3/@scheduler/@blocks.1/@instructions.7/@value/@e1/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.3/@scheduler/@blocks.0/@instructions.1/@target #//@actions.3/@scheduler/@blocks.1/@instructions.1/@target #//@actions.3/@scheduler/@blocks.1/@instructions.3/@target"
+          lineNumber="151" name="rxByte_0" uses="#//@actions.3/@scheduler/@blocks.1/@instructions.1/@value/@expr/@e1/@use #//@actions.3/@scheduler/@blocks.1/@instructions.3/@value/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.3/@scheduler/@blocks.1/@instructions.2/@target"
+          name="cond_0" uses="#//@actions.3/@scheduler/@blocks.1/@instructions.7/@value/@e1/@e2/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.3/@scheduler/@blocks.0/@instructions.2/@target #//@actions.3/@scheduler/@blocks.1/@instructions.4/@target"
+          name="bitCount_0" uses="#//@actions.3/@scheduler/@blocks.1/@instructions.4/@value/@expr/@e1/@use #//@actions.3/@scheduler/@blocks.1/@instructions.5/@value/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="3"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.3/@scheduler/@blocks.1/@instructions.5/@target"
+          name="cond_1" uses="#//@actions.3/@scheduler/@blocks.1/@instructions.7/@value/@e2/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+      </locals>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad">
+          <source variable="#//@variables.0"/>
+          <target variable="#//@actions.3/@scheduler/@locals.0"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad">
+          <source variable="#//@variables.2"/>
+          <target variable="#//@actions.3/@scheduler/@locals.2"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad">
+          <source variable="#//@variables.1"/>
+          <target variable="#//@actions.3/@scheduler/@locals.4"/>
+        </instructions>
+      </blocks>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.3/@scheduler/@locals.1"/>
+          <value xsi:type="com.neosyn.models.ir:ExprUnary" op="LOGIC_NOT">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="EQ">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.3/@scheduler/@locals.0"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="0"/>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.3/@scheduler/@locals.2"/>
+          <value xsi:type="com.neosyn.models.ir:ExprResize" targetSize="8">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="SHIFT_RIGHT">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.3/@scheduler/@locals.2"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="1"/>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.3/@scheduler/@locals.3"/>
+          <value xsi:type="com.neosyn.models.ir:ExprVar">
+            <use variable="#//@inputs.0"/>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.3/@scheduler/@locals.2"/>
+          <value xsi:type="com.neosyn.models.ir:ExprBinary" op="BITOR">
+            <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+              <use variable="#//@actions.3/@scheduler/@locals.2"/>
+            </e1>
+            <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="128"/>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.3/@scheduler/@locals.4"/>
+          <value xsi:type="com.neosyn.models.ir:ExprResize" targetSize="3">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="PLUS">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.3/@scheduler/@locals.4"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="1"/>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.3/@scheduler/@locals.5"/>
+          <value xsi:type="com.neosyn.models.ir:ExprBinary" op="GE">
+            <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+              <use variable="#//@actions.3/@scheduler/@locals.4"/>
+            </e1>
+            <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="8"/>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.3/@scheduler/@locals.0"/>
+          <value xsi:type="com.neosyn.models.ir:ExprInt" value="0"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstReturn">
+          <value xsi:type="com.neosyn.models.ir:ExprBinary" op="LOGIC_AND">
+            <e1 xsi:type="com.neosyn.models.ir:ExprBinary" op="LOGIC_AND">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.3/@scheduler/@locals.1"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.3/@scheduler/@locals.3"/>
+              </e2>
+            </e1>
+            <e2 xsi:type="com.neosyn.models.ir:ExprVar">
+              <use variable="#//@actions.3/@scheduler/@locals.5"/>
+            </e2>
+          </value>
+        </instructions>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </scheduler>
+  </actions>
+  <actions name="FSM_SerialReceiver_1_d">
+    <body lineNumber="151" name="FSM_SerialReceiver_1_d">
+      <locals assignable="true" defs="#//@actions.4/@body/@blocks.0/@instructions.0/@target"
+          lineNumber="151" name="rxByte_0" uses="#//@actions.4/@body/@blocks.0/@instructions.1/@value/@expr/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.4/@body/@blocks.0/@instructions.2/@target"
+          lineNumber="153" name="rxByte_1" uses="#//@actions.4/@body/@blocks.0/@instructions.3/@value/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.4/@body/@blocks.0/@instructions.4/@target"
+          name="bitCount_0" uses="#//@actions.4/@body/@blocks.0/@instructions.5/@value/@expr/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="3"/>
+      </locals>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="151">
+          <source variable="#//@variables.2"/>
+          <target variable="#//@actions.4/@body/@locals.0"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="151">
+          <target variable="#//@variables.2"/>
+          <value xsi:type="com.neosyn.models.ir:ExprResize" targetSize="8">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="SHIFT_RIGHT">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.4/@body/@locals.0"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="1"/>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="153">
+          <source variable="#//@variables.2"/>
+          <target variable="#//@actions.4/@body/@locals.1"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="153">
+          <target variable="#//@variables.2"/>
+          <value xsi:type="com.neosyn.models.ir:ExprBinary" op="BITOR">
+            <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+              <use variable="#//@actions.4/@body/@locals.1"/>
+            </e1>
+            <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="128"/>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad">
+          <source variable="#//@variables.1"/>
+          <target variable="#//@actions.4/@body/@locals.2"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="155">
+          <target variable="#//@variables.1"/>
+          <value xsi:type="com.neosyn.models.ir:ExprResize" targetSize="3">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="PLUS">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.4/@body/@locals.2"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="1"/>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="161">
+          <target variable="#//@outputs.1"/>
+          <value xsi:type="com.neosyn.models.ir:ExprBool"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.dpn:Goto" target="#//@fsm/@vertices.1"/>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </body>
+    <combinational lineNumber="151" name="comb_FSM_SerialReceiver_1_d">
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </combinational>
+    <inputPattern ports="#//@inputs.0"/>
+    <outputPattern ports="#//@outputs.1"/>
+    <peekPattern ports="#//@inputs.0"/>
+    <scheduler lineNumber="151" name="isSchedulable_FSM_SerialReceiver_1_d">
+      <locals assignable="true" defs="#//@actions.4/@scheduler/@blocks.0/@instructions.0/@target"
+          name="state_0" uses="#//@actions.4/@scheduler/@blocks.1/@instructions.0/@value/@expr/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="2"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.4/@scheduler/@blocks.1/@instructions.0/@target"
+          name="cond" uses="#//@actions.4/@scheduler/@blocks.1/@instructions.6/@value/@e1/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.4/@scheduler/@blocks.0/@instructions.1/@target #//@actions.4/@scheduler/@blocks.1/@instructions.1/@target #//@actions.4/@scheduler/@blocks.1/@instructions.3/@target"
+          lineNumber="151" name="rxByte_0" uses="#//@actions.4/@scheduler/@blocks.1/@instructions.1/@value/@expr/@e1/@use #//@actions.4/@scheduler/@blocks.1/@instructions.3/@value/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.4/@scheduler/@blocks.1/@instructions.2/@target"
+          name="cond_0" uses="#//@actions.4/@scheduler/@blocks.1/@instructions.6/@value/@e1/@e2/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.4/@scheduler/@blocks.0/@instructions.2/@target #//@actions.4/@scheduler/@blocks.1/@instructions.4/@target"
+          name="bitCount_0" uses="#//@actions.4/@scheduler/@blocks.1/@instructions.4/@value/@expr/@e1/@use #//@actions.4/@scheduler/@blocks.1/@instructions.5/@value/@expr/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="3"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.4/@scheduler/@blocks.1/@instructions.5/@target"
+          name="cond_1" uses="#//@actions.4/@scheduler/@blocks.1/@instructions.6/@value/@e2/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+      </locals>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad">
+          <source variable="#//@variables.0"/>
+          <target variable="#//@actions.4/@scheduler/@locals.0"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad">
+          <source variable="#//@variables.2"/>
+          <target variable="#//@actions.4/@scheduler/@locals.2"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad">
+          <source variable="#//@variables.1"/>
+          <target variable="#//@actions.4/@scheduler/@locals.4"/>
+        </instructions>
+      </blocks>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.4/@scheduler/@locals.1"/>
+          <value xsi:type="com.neosyn.models.ir:ExprUnary" op="LOGIC_NOT">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="EQ">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.4/@scheduler/@locals.0"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="0"/>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.4/@scheduler/@locals.2"/>
+          <value xsi:type="com.neosyn.models.ir:ExprResize" targetSize="8">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="SHIFT_RIGHT">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.4/@scheduler/@locals.2"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="1"/>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.4/@scheduler/@locals.3"/>
+          <value xsi:type="com.neosyn.models.ir:ExprVar">
+            <use variable="#//@inputs.0"/>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.4/@scheduler/@locals.2"/>
+          <value xsi:type="com.neosyn.models.ir:ExprBinary" op="BITOR">
+            <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+              <use variable="#//@actions.4/@scheduler/@locals.2"/>
+            </e1>
+            <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="128"/>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.4/@scheduler/@locals.4"/>
+          <value xsi:type="com.neosyn.models.ir:ExprResize" targetSize="3">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="PLUS">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.4/@scheduler/@locals.4"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="1"/>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.4/@scheduler/@locals.5"/>
+          <value xsi:type="com.neosyn.models.ir:ExprUnary" op="LOGIC_NOT">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="GE">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.4/@scheduler/@locals.4"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="8"/>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstReturn">
+          <value xsi:type="com.neosyn.models.ir:ExprBinary" op="LOGIC_AND">
+            <e1 xsi:type="com.neosyn.models.ir:ExprBinary" op="LOGIC_AND">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.4/@scheduler/@locals.1"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.4/@scheduler/@locals.3"/>
+              </e2>
+            </e1>
+            <e2 xsi:type="com.neosyn.models.ir:ExprVar">
+              <use variable="#//@actions.4/@scheduler/@locals.5"/>
+            </e2>
+          </value>
+        </instructions>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </scheduler>
+  </actions>
+  <actions name="FSM_SerialReceiver_1_e">
+    <body lineNumber="151" name="FSM_SerialReceiver_1_e">
+      <locals assignable="true" defs="#//@actions.5/@body/@blocks.0/@instructions.0/@target"
+          lineNumber="151" name="rxByte_0" uses="#//@actions.5/@body/@blocks.0/@instructions.1/@value/@expr/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.5/@body/@blocks.0/@instructions.2/@target"
+          name="bitCount_0" uses="#//@actions.5/@body/@blocks.0/@instructions.3/@value/@expr/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="3"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.5/@body/@blocks.0/@instructions.4/@target"
+          lineNumber="157" name="rxByte_1" uses="#//@actions.5/@body/@blocks.0/@instructions.5/@value/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="151">
+          <source variable="#//@variables.2"/>
+          <target variable="#//@actions.5/@body/@locals.0"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="151">
+          <target variable="#//@variables.2"/>
+          <value xsi:type="com.neosyn.models.ir:ExprResize" targetSize="8">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="SHIFT_RIGHT">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.5/@body/@locals.0"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="1"/>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad">
+          <source variable="#//@variables.1"/>
+          <target variable="#//@actions.5/@body/@locals.1"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="155">
+          <target variable="#//@variables.1"/>
+          <value xsi:type="com.neosyn.models.ir:ExprResize" targetSize="3">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="PLUS">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.5/@body/@locals.1"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="1"/>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="157">
+          <source variable="#//@variables.2"/>
+          <target variable="#//@actions.5/@body/@locals.2"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="157">
+          <target variable="#//@outputs.0"/>
+          <value xsi:type="com.neosyn.models.ir:ExprVar">
+            <use variable="#//@actions.5/@body/@locals.2"/>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="158">
+          <target variable="#//@outputs.1"/>
+          <value xsi:type="com.neosyn.models.ir:ExprBool" value="true"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="159">
+          <target variable="#//@variables.0"/>
+          <value xsi:type="com.neosyn.models.ir:ExprInt" value="0"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.dpn:Goto" target="#//@fsm/@vertices.1"/>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </body>
+    <combinational lineNumber="151" name="comb_FSM_SerialReceiver_1_e">
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </combinational>
+    <inputPattern ports="#//@inputs.0"/>
+    <outputPattern ports="#//@outputs.0 #//@outputs.1"/>
+    <peekPattern ports="#//@inputs.0"/>
+    <scheduler lineNumber="151" name="isSchedulable_FSM_SerialReceiver_1_e">
+      <locals assignable="true" defs="#//@actions.5/@scheduler/@blocks.0/@instructions.0/@target #//@actions.5/@scheduler/@blocks.1/@instructions.5/@target"
+          name="state_0" uses="#//@actions.5/@scheduler/@blocks.1/@instructions.0/@value/@expr/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="2"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.5/@scheduler/@blocks.1/@instructions.0/@target"
+          name="cond" uses="#//@actions.5/@scheduler/@blocks.1/@instructions.6/@value/@e1/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.5/@scheduler/@blocks.0/@instructions.1/@target #//@actions.5/@scheduler/@blocks.1/@instructions.1/@target"
+          lineNumber="151" name="rxByte_0" uses="#//@actions.5/@scheduler/@blocks.1/@instructions.1/@value/@expr/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.5/@scheduler/@blocks.1/@instructions.2/@target"
+          name="cond_0" uses="#//@actions.5/@scheduler/@blocks.1/@instructions.6/@value/@e1/@e2/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.5/@scheduler/@blocks.0/@instructions.2/@target #//@actions.5/@scheduler/@blocks.1/@instructions.3/@target"
+          name="bitCount_0" uses="#//@actions.5/@scheduler/@blocks.1/@instructions.3/@value/@expr/@e1/@use #//@actions.5/@scheduler/@blocks.1/@instructions.4/@value/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="3"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.5/@scheduler/@blocks.1/@instructions.4/@target"
+          name="cond_1" uses="#//@actions.5/@scheduler/@blocks.1/@instructions.6/@value/@e2/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+      </locals>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad">
+          <source variable="#//@variables.0"/>
+          <target variable="#//@actions.5/@scheduler/@locals.0"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad">
+          <source variable="#//@variables.2"/>
+          <target variable="#//@actions.5/@scheduler/@locals.2"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad">
+          <source variable="#//@variables.1"/>
+          <target variable="#//@actions.5/@scheduler/@locals.4"/>
+        </instructions>
+      </blocks>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.5/@scheduler/@locals.1"/>
+          <value xsi:type="com.neosyn.models.ir:ExprUnary" op="LOGIC_NOT">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="EQ">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.5/@scheduler/@locals.0"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="0"/>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.5/@scheduler/@locals.2"/>
+          <value xsi:type="com.neosyn.models.ir:ExprResize" targetSize="8">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="SHIFT_RIGHT">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.5/@scheduler/@locals.2"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="1"/>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.5/@scheduler/@locals.3"/>
+          <value xsi:type="com.neosyn.models.ir:ExprUnary" op="LOGIC_NOT">
+            <expr xsi:type="com.neosyn.models.ir:ExprVar">
+              <use variable="#//@inputs.0"/>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.5/@scheduler/@locals.4"/>
+          <value xsi:type="com.neosyn.models.ir:ExprResize" targetSize="3">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="PLUS">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.5/@scheduler/@locals.4"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="1"/>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.5/@scheduler/@locals.5"/>
+          <value xsi:type="com.neosyn.models.ir:ExprBinary" op="GE">
+            <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+              <use variable="#//@actions.5/@scheduler/@locals.4"/>
+            </e1>
+            <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="8"/>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.5/@scheduler/@locals.0"/>
+          <value xsi:type="com.neosyn.models.ir:ExprInt" value="0"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstReturn">
+          <value xsi:type="com.neosyn.models.ir:ExprBinary" op="LOGIC_AND">
+            <e1 xsi:type="com.neosyn.models.ir:ExprBinary" op="LOGIC_AND">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.5/@scheduler/@locals.1"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.5/@scheduler/@locals.3"/>
+              </e2>
+            </e1>
+            <e2 xsi:type="com.neosyn.models.ir:ExprVar">
+              <use variable="#//@actions.5/@scheduler/@locals.5"/>
+            </e2>
+          </value>
+        </instructions>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </scheduler>
+  </actions>
+  <actions name="FSM_SerialReceiver_1_f">
+    <body lineNumber="151" name="FSM_SerialReceiver_1_f">
+      <locals assignable="true" defs="#//@actions.6/@body/@blocks.0/@instructions.0/@target"
+          lineNumber="151" name="rxByte_0" uses="#//@actions.6/@body/@blocks.0/@instructions.1/@value/@expr/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.6/@body/@blocks.0/@instructions.2/@target"
+          name="bitCount_0" uses="#//@actions.6/@body/@blocks.0/@instructions.3/@value/@expr/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="3"/>
+      </locals>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="151">
+          <source variable="#//@variables.2"/>
+          <target variable="#//@actions.6/@body/@locals.0"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="151">
+          <target variable="#//@variables.2"/>
+          <value xsi:type="com.neosyn.models.ir:ExprResize" targetSize="8">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="SHIFT_RIGHT">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.6/@body/@locals.0"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="1"/>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad">
+          <source variable="#//@variables.1"/>
+          <target variable="#//@actions.6/@body/@locals.1"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="155">
+          <target variable="#//@variables.1"/>
+          <value xsi:type="com.neosyn.models.ir:ExprResize" targetSize="3">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="PLUS">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.6/@body/@locals.1"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="1"/>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="161">
+          <target variable="#//@outputs.1"/>
+          <value xsi:type="com.neosyn.models.ir:ExprBool"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.dpn:Goto" target="#//@fsm/@vertices.1"/>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </body>
+    <combinational lineNumber="151" name="comb_FSM_SerialReceiver_1_f">
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </combinational>
+    <inputPattern ports="#//@inputs.0"/>
+    <outputPattern ports="#//@outputs.1"/>
+    <peekPattern ports="#//@inputs.0"/>
+    <scheduler lineNumber="151" name="isSchedulable_FSM_SerialReceiver_1_f">
+      <locals assignable="true" defs="#//@actions.6/@scheduler/@blocks.0/@instructions.0/@target"
+          name="state_0" uses="#//@actions.6/@scheduler/@blocks.1/@instructions.0/@value/@expr/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="2"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.6/@scheduler/@blocks.1/@instructions.0/@target"
+          name="cond" uses="#//@actions.6/@scheduler/@blocks.1/@instructions.5/@value/@e1/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.6/@scheduler/@blocks.0/@instructions.1/@target #//@actions.6/@scheduler/@blocks.1/@instructions.1/@target"
+          lineNumber="151" name="rxByte_0" uses="#//@actions.6/@scheduler/@blocks.1/@instructions.1/@value/@expr/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.6/@scheduler/@blocks.1/@instructions.2/@target"
+          name="cond_0" uses="#//@actions.6/@scheduler/@blocks.1/@instructions.5/@value/@e1/@e2/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.6/@scheduler/@blocks.0/@instructions.2/@target #//@actions.6/@scheduler/@blocks.1/@instructions.3/@target"
+          name="bitCount_0" uses="#//@actions.6/@scheduler/@blocks.1/@instructions.3/@value/@expr/@e1/@use #//@actions.6/@scheduler/@blocks.1/@instructions.4/@value/@expr/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="3"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.6/@scheduler/@blocks.1/@instructions.4/@target"
+          name="cond_1" uses="#//@actions.6/@scheduler/@blocks.1/@instructions.5/@value/@e2/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+      </locals>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad">
+          <source variable="#//@variables.0"/>
+          <target variable="#//@actions.6/@scheduler/@locals.0"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad">
+          <source variable="#//@variables.2"/>
+          <target variable="#//@actions.6/@scheduler/@locals.2"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad">
+          <source variable="#//@variables.1"/>
+          <target variable="#//@actions.6/@scheduler/@locals.4"/>
+        </instructions>
+      </blocks>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.6/@scheduler/@locals.1"/>
+          <value xsi:type="com.neosyn.models.ir:ExprUnary" op="LOGIC_NOT">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="EQ">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.6/@scheduler/@locals.0"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="0"/>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.6/@scheduler/@locals.2"/>
+          <value xsi:type="com.neosyn.models.ir:ExprResize" targetSize="8">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="SHIFT_RIGHT">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.6/@scheduler/@locals.2"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="1"/>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.6/@scheduler/@locals.3"/>
+          <value xsi:type="com.neosyn.models.ir:ExprUnary" op="LOGIC_NOT">
+            <expr xsi:type="com.neosyn.models.ir:ExprVar">
+              <use variable="#//@inputs.0"/>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.6/@scheduler/@locals.4"/>
+          <value xsi:type="com.neosyn.models.ir:ExprResize" targetSize="3">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="PLUS">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.6/@scheduler/@locals.4"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="1"/>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.6/@scheduler/@locals.5"/>
+          <value xsi:type="com.neosyn.models.ir:ExprUnary" op="LOGIC_NOT">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="GE">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.6/@scheduler/@locals.4"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="8"/>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstReturn">
+          <value xsi:type="com.neosyn.models.ir:ExprBinary" op="LOGIC_AND">
+            <e1 xsi:type="com.neosyn.models.ir:ExprBinary" op="LOGIC_AND">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.6/@scheduler/@locals.1"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.6/@scheduler/@locals.3"/>
+              </e2>
+            </e1>
+            <e2 xsi:type="com.neosyn.models.ir:ExprVar">
+              <use variable="#//@actions.6/@scheduler/@locals.5"/>
+            </e2>
+          </value>
+        </instructions>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </scheduler>
+  </actions>
+  <fsm initialState="#//@fsm/@vertices.0">
+    <edges xsi:type="com.neosyn.models.dpn:Transition" source="#//@fsm/@vertices.0"
+        target="#//@fsm/@vertices.1" action="#//@actions.0">
+      <lines>135</lines>
+      <lines>136</lines>
+      <lines>137</lines>
+    </edges>
+    <edges xsi:type="com.neosyn.models.dpn:Transition" source="#//@fsm/@vertices.1"
+        target="#//@fsm/@vertices.1" action="#//@actions.1">
+      <lines>145</lines>
+      <lines>146</lines>
+      <lines>147</lines>
+      <lines>143</lines>
+    </edges>
+    <edges xsi:type="com.neosyn.models.dpn:Transition" source="#//@fsm/@vertices.1"
+        target="#//@fsm/@vertices.1" action="#//@actions.2">
+      <lines>143</lines>
+    </edges>
+    <edges xsi:type="com.neosyn.models.dpn:Transition" source="#//@fsm/@vertices.1"
+        target="#//@fsm/@vertices.1" action="#//@actions.3">
+      <lines>151</lines>
+      <lines>153</lines>
+      <lines>155</lines>
+      <lines>159</lines>
+      <lines>157</lines>
+      <lines>158</lines>
+    </edges>
+    <edges xsi:type="com.neosyn.models.dpn:Transition" source="#//@fsm/@vertices.1"
+        target="#//@fsm/@vertices.1" action="#//@actions.4">
+      <lines>151</lines>
+      <lines>153</lines>
+      <lines>155</lines>
+      <lines>161</lines>
+    </edges>
+    <edges xsi:type="com.neosyn.models.dpn:Transition" source="#//@fsm/@vertices.1"
+        target="#//@fsm/@vertices.1" action="#//@actions.5">
+      <lines>151</lines>
+      <lines>155</lines>
+      <lines>159</lines>
+      <lines>157</lines>
+      <lines>158</lines>
+    </edges>
+    <edges xsi:type="com.neosyn.models.dpn:Transition" source="#//@fsm/@vertices.1"
+        target="#//@fsm/@vertices.1" action="#//@actions.6">
+      <lines>151</lines>
+      <lines>155</lines>
+      <lines>161</lines>
+    </edges>
+    <vertices xsi:type="com.neosyn.models.dpn:State" outgoing="#//@fsm/@edges.0" name="FSM_SerialReceiver"/>
+    <vertices xsi:type="com.neosyn.models.dpn:State" incoming="#//@fsm/@edges.0 #//@fsm/@edges.1 #//@fsm/@edges.2 #//@fsm/@edges.3 #//@fsm/@edges.4 #//@fsm/@edges.5 #//@fsm/@edges.6"
+        outgoing="#//@fsm/@edges.1 #//@fsm/@edges.2 #//@fsm/@edges.3 #//@fsm/@edges.4 #//@fsm/@edges.5 #//@fsm/@edges.6"
+        name="FSM_SerialReceiver_1"/>
+  </fsm>
+</com.neosyn.models.dpn:Actor>

@@ -1,0 +1,63 @@
+/*
+ * L1 Structs Tier 2.1 fixture — whole-struct copy/assign.
+ * Validates the field-wise copy lowering for:
+ *   - struct-typed local initializer  (`Pair q = p;`)
+ *   - whole-struct reassignment        (`r = q;`)
+ * end-to-end through IR-gen + bytecode sim.
+ *
+ * v1 still deferred (NOT exercised here): struct-typed ports / whole-struct
+ * read from a port (Tier 2.2), arrays of struct / nested structs (Tier 2.3).
+ *
+ * See .claude/L1_STRUCT_DESIGN.md.
+ */
+package com.neosyn.test.bytecode;
+
+network StructCopyTest {
+    properties { test: { terminate: "user.finished" } }
+
+    user = new task {
+        struct Pair {
+            u8 lo;
+            u16 hi;
+        }
+
+        bool finished;
+
+        void setup() {
+            finished = false;
+        }
+
+        void loop() {
+            if (!finished) {
+                Pair p;
+                p.lo = 3;
+                p.hi = 0x100;
+
+                // (1) whole-struct copy via initializer
+                Pair q = p;
+                assert(q.lo == 3);
+                assert(q.hi == 0x100);
+
+                // copy is a value copy — mutating the source must not change q
+                p.lo = 9;
+                assert(q.lo == 3);
+                assert(p.lo == 9);
+
+                // (2) whole-struct copy via reassignment
+                Pair r;
+                r = q;
+                assert(r.lo == 3);
+                assert(r.hi == 0x100);
+
+                // chained reassignment after mutating r's source
+                q.hi = 0x200;
+                r = q;
+                assert(r.hi == 0x200);
+                assert(r.lo == 3);
+
+                print("=== StructCopyTest PASSED ===\n");
+                finished = true;
+            }
+        }
+    };
+}

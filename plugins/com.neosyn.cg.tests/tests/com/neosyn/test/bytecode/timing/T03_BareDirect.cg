@@ -1,0 +1,67 @@
+/*
+ * Phase 1 timing test T03 — sequential producer → sequential consumer
+ * via a bare port. Bare ports are not double-buffered: a write becomes
+ * visible immediately to anyone executing later in the same phase, in
+ * topological order.
+ *
+ * The point of this test is to confirm that bare ports propagate
+ * differently from push ports, and that the consumer sees the producer's
+ * value within the same cycle when topological order is honored.
+ *
+ * Expectation (both before and after Phase 2):
+ *   The consumer sees each producer value with no delay. After 5 readCount
+ *   it sets `finished` and the network terminates.
+ */
+package com.neosyn.test.bytecode.timing;
+
+network T03_BareDirect {
+
+    properties {
+        test: { terminate: "checker.finished" }
+    }
+
+    producer = new task {
+        out u8 value;
+        u8 count;
+
+        void setup() {
+            count = 0;
+        }
+
+        void loop() {
+            count++;
+            value.write(count);
+        }
+    };
+
+    checker = new task {
+        in u8 incoming;
+
+        u8 expected;
+        u8 readCount;
+        bool finished;
+
+        void setup() {
+            expected = 1;
+            readCount = 0;
+            finished = false;
+        }
+
+        void loop() {
+            if (!finished) {
+                u8 v = incoming.read();
+                if (v == expected) {
+                    readCount++;
+                    if (readCount == 5) {
+                        print("T03_BareDirect PASS\n");
+                        finished = true;
+                    } else {
+                        expected++;
+                    }
+                }
+            }
+        }
+    };
+
+    checker.reads(producer.value);
+}

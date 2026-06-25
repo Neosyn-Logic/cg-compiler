@@ -1,0 +1,173 @@
+/*
+ * Phase 1 timing test T14 — Full memory read pipeline.
+ *
+ * Self-contained test replicating the Intel 8088 CPU's memory read path.
+ *
+ * BUG FOUND: When decode has `if (exec_ready) { read..fence..read..fence.. }`,
+ * the scheduler applies the exec_ready check to ALL FSM states, not just the
+ * first. So when Execute sets exec_ready=false after consuming the decoded
+ * instruction, decode can't proceed to read displacement bytes → deadlock.
+ *
+ * FIX: exec_ready is checked in a separate initial state, then decode
+ * proceeds unconditionally through the remaining states.
+ */
+package com.neosyn.test.bytecode.timing;
+
+network T14_FullMemoryRead {
+
+    properties {
+        test: { terminate: "execute.finished" }
+    }
+
+    // Instruction queue: feeds bytes one at a time
+    instr_queue = new task {
+        out stream u8 instr;
+
+        u8 pc;
+        u8 program[8];
+
+        void setup() {
+            program[0] = 0x8B;  // MOV r16, r/m16
+            program[1] = 0x06;  // modrm: mod=00, reg=000, r/m=110 (direct)
+            program[2] = 0x03;  // disp low byte
+            program[3] = 0x00;  // disp high byte
+            pc = 0;
+        }
+
+        void loop() {
+            if (pc < 4) {
+                instr.write(program[pc]);
+                pc = (u8)(pc + 1);
+            }
+        }
+    };
+
+    // Decoder: reads bytes, writes control signals for execute + compute_ea.
+    // exec_ready is polled in a dedicated wait state, then decode proceeds
+    // unconditionally through the remaining states.
+    decode = new task {
+        // For Execute
+        out push u2 mod;
+        out push u3 reg, r_m;
+        out push bool d;
+        // Duplicates for ComputeEA
+        out push u2 ea_mod;
+        out push u3 ea_rm;
+        // Displacement (later cycle)
+        out push u16 disp;
+
+        u2 saved_mod;
+        u3 saved_rm;
+
+        void loop() {
+            // Phase 1: read opcode (only when execute is ready)
+            u8 opcode = instr_queue.instr.read();
+            fence;
+
+            // Phase 2: read modrm, write control signals
+            u8 modrm = instr_queue.instr.read();
+            saved_mod = (u2)((modrm >> 6) & 3);
+            saved_rm = (u3)(modrm & 7);
+            u3 reg_val = (u3)((modrm >> 3) & 7);
+
+            mod.write(saved_mod);
+            r_m.write(saved_rm);
+            reg.write(reg_val);
+            d.write(true);
+
+            ea_mod.write(saved_mod);
+            ea_rm.write(saved_rm);
+            fence;
+
+            // Phase 3: read displacement bytes (no exec_ready check here!)
+            if (saved_mod == 0 && saved_rm == 6) {
+                u8 lo = instr_queue.instr.read();
+                fence;
+                u8 hi = instr_queue.instr.read();
+                disp.write((u16)((u16)(hi << 8) | lo));
+            }
+        }
+    };
+
+    // Execute: reads control signals, waits for memory data
+    execute = new task {
+        out bool exec_ready;
+        bool finished;
+
+        void setup() {
+            finished = false;
+        }
+
+        void loop() {
+            if (!finished) {
+                exec_ready.write(true);
+                fence;
+
+                u2 m = decode.mod.read();
+                decode.r_m.read();
+                decode.reg.read();
+                decode.d.read();
+                exec_ready.write(false);
+                fence;
+
+                // Memory-to-register read: wait for data
+                if (m != 3) {
+                    u8 data = mem_bus.response.read();
+                    if (data == 42) {
+                        print("T14_FullMemoryRead PASS data=", data);
+                    } else {
+                        print("T14_FullMemoryRead FAIL data=", data, " expected=42");
+                    }
+                    finished = true;
+                }
+            }
+        }
+    };
+
+    // ComputeEA: reads EA signals, then disp, writes addr
+    compute_ea = new task {
+        out push u8 addr;
+
+        void loop() {
+            u2 m = decode.ea_mod.read();
+            decode.ea_rm.read();
+            fence;
+
+            if (m == 0) {
+                addr.write((u8) decode.disp.read());
+            }
+        }
+    };
+
+    // MemRequest: passes addr through
+    mem_request = new task {
+        out push u8 addr_out;
+
+        void loop() {
+            if (compute_ea.addr.available()) {
+                addr_out.write(compute_ea.addr.read());
+            }
+        }
+    };
+
+    // Bus: reads addr, looks up memory, writes response
+    mem_bus = new task {
+        out push u8 response;
+        u8 memory[8];
+
+        void setup() {
+            memory[0] = 10;
+            memory[1] = 20;
+            memory[2] = 30;
+            memory[3] = 42;
+            memory[4] = 50;
+        }
+
+        void loop() {
+            if (mem_request.addr_out.available()) {
+                u8 a = mem_request.addr_out.read();
+                response.write(memory[a]);
+            }
+        }
+    };
+}

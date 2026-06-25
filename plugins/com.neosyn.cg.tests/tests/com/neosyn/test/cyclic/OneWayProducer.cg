@@ -1,0 +1,8 @@
+package com.neosyn.test.cyclic;
+
+// A bundle that imports nothing — the producer end of a one-directional
+// dependency. Used to assert the cyclic-import check does not flag acyclic
+// import graphs.
+bundle OneWayProducer {
+  const u8 P_VAL = 7;
+}

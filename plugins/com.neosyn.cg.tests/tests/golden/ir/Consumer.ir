@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<com.neosyn.models.dpn:Actor xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:com.neosyn.models.dpn="http://www.neosyn.io/2013/Dpn"
+    xmlns:com.neosyn.models.ir="http://www.neosyn.io/2013/Ir" fileName="/home/nicolas06/neosyn/neosyn-studio/plugins/com.neosyn.cg.tests/tests/golden/GoldenNetworks.cg"
+    lineNumber="26" name="com.neosyn.test.golden.Consumer" properties="{&quot;clocks&quot;:[&quot;clock&quot;],&quot;resets&quot;:[{&quot;type&quot;:&quot;asynchronous&quot;,&quot;active&quot;:&quot;low&quot;,&quot;name&quot;:&quot;reset_n&quot;}],&quot;copyright&quot;:[&quot;Copyright (c) 2024 Neosyn. All rights reserved.&quot;,&quot; *&quot;,&quot;Golden file test - Network compositions for regression testing.&quot;,&quot;Tests: task instantiation, port connections, inline tasks.&quot;],&quot;javadoc&quot;:[&quot;Simple consumer task - reads and accumulates values.&quot;],&quot;comments&quot;:{}}">
+  <inputs name="data" uses="#//@actions.0/@body/@blocks.0/@instructions.1/@value/@expr/@e2/@use">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+  </inputs>
+  <outputs defs="#//@actions.0/@body/@blocks.0/@instructions.3/@target" name="sum">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="16"/>
+  </outputs>
+  <variables assignable="true" defs="#//@actions.0/@body/@blocks.0/@instructions.1/@target"
+      lineNumber="30" name="total" uses="#//@actions.0/@body/@blocks.0/@instructions.0/@source #//@actions.0/@body/@blocks.0/@instructions.2/@source">
+    <initialValue xsi:type="com.neosyn.models.ir:ExprInt" value="0"/>
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="16"/>
+  </variables>
+  <actions name="FSM_Consumer_a">
+    <body lineNumber="33" name="FSM_Consumer_a">
+      <locals assignable="true" defs="#//@actions.0/@body/@blocks.0/@instructions.0/@target"
+          lineNumber="33" name="total_0" uses="#//@actions.0/@body/@blocks.0/@instructions.1/@value/@expr/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="16"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@body/@blocks.0/@instructions.2/@target"
+          lineNumber="34" name="total_1" uses="#//@actions.0/@body/@blocks.0/@instructions.3/@value/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="16"/>
+      </locals>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="33">
+          <source variable="#//@variables.0"/>
+          <target variable="#//@actions.0/@body/@locals.0"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="33">
+          <target variable="#//@variables.0"/>
+          <value xsi:type="com.neosyn.models.ir:ExprResize" targetSize="16">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="PLUS">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.0/@body/@locals.0"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@inputs.0"/>
+              </e2>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="34">
+          <source variable="#//@variables.0"/>
+          <target variable="#//@actions.0/@body/@locals.1"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="34">
+          <target variable="#//@outputs.0"/>
+          <value xsi:type="com.neosyn.models.ir:ExprVar">
+            <use variable="#//@actions.0/@body/@locals.1"/>
+          </value>
+        </instructions>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </body>
+    <combinational lineNumber="33" name="comb_FSM_Consumer_a">
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </combinational>
+    <inputPattern ports="#//@inputs.0"/>
+    <outputPattern ports="#//@outputs.0"/>
+    <peekPattern/>
+    <scheduler lineNumber="33" name="isSchedulable_FSM_Consumer_a">
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstReturn">
+          <value xsi:type="com.neosyn.models.ir:ExprBool" value="true"/>
+        </instructions>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </scheduler>
+  </actions>
+</com.neosyn.models.dpn:Actor>

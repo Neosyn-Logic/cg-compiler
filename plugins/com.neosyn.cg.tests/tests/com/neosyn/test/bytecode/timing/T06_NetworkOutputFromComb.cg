@@ -1,0 +1,102 @@
+/*
+ * Phase 1 timing test T06 — combinational task writes a network's
+ * output port. This is the exact shape of Intel-8088's BIU.compute_real,
+ * which reads BusController.offset and writes BIU.bus_addr (a network
+ * output forwarded out to the parent CPU).
+ *
+ * Topology:
+ *
+ *   Top network:
+ *     prod (seq, push out u8)            ──┐
+ *     fwdNet (network, push in / push out)  │
+ *         ↑                                 │
+ *         │  in  (push u8)                  │
+ *         └──── prod.value ─────────────────┘
+ *
+ *     fwdNet internals:
+ *         comb_inside (combinational task)
+ *             reads parent network's `in`
+ *             writes parent network's `out`
+ *
+ *     check (seq, push in)
+ *     check.reads(fwdNet.out)
+ *
+ * The combinational task inside fwdNet doubles the input. The checker in
+ * the top network reads the network output and asserts the doubled values.
+ *
+ * If T02 passes but T06 fails, the bug is specifically in the
+ * combinational-task-writes-network-output path, not in seq→comb→seq
+ * generally. That's the Fibonacci bug.
+ */
+package com.neosyn.test.bytecode.timing;
+
+network FwdNet {
+    in push u8 vin;
+    out push u8 vout;
+
+    comb_inside = new task {
+        properties { type: "combinational" }
+        in push u8 cin;
+        out push u8 cout;
+
+        void loop() {
+            if (cin.available()) {
+                cout.write((u8)(cin.read() * 2));
+            }
+        }
+    };
+
+    comb_inside.reads(vin);
+    this.reads(comb_inside.cout);
+}
+
+network T06_NetworkOutputFromComb {
+
+    properties {
+        test: { terminate: "checker.finished" }
+    }
+
+    producer = new task {
+        out push u8 value;
+        u8 count;
+
+        void setup() {
+            count = 0;
+        }
+
+        void loop() {
+            count++;
+            value.write(count);
+        }
+    };
+
+    fwd = new FwdNet();
+    fwd.reads(producer.value);
+
+    checker = new task {
+        in push u8 doubled;
+
+        u8 expected;
+        bool finished;
+
+        void setup() {
+            expected = 2;
+            finished = false;
+        }
+
+        void loop() {
+            if (!finished) {
+                u8 v = doubled.read();
+                assert(v == expected);
+                if (expected == 10) {
+                    print("T06_NetworkOutputFromComb PASS\n");
+                    finished = true;
+                } else {
+                    expected = (u8)(expected + 2);
+                }
+            }
+        }
+    };
+
+    checker.reads(fwd.vout);
+}

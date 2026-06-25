@@ -1,0 +1,71 @@
+/*
+ * T17 — Fibonacci deadlock pattern with stream port.
+ *
+ * decode reads from a stream port (data persists until consumed)
+ * and is gated by exec_ready (bare signal). exec_ready goes false
+ * after decode consumes the first byte, but the stream data for
+ * the second byte is still available.
+ *
+ * This reproduces InstrDecode's pattern: stream instr + bare exec_ready.
+ */
+package com.neosyn.test.bytecode.timing;
+
+network T17_ExecReadyDeadlock {
+
+    properties {
+        test: { terminate: "execute.finished" }
+    }
+
+    source = new task {
+        out stream u8 data;
+
+        u8 count;
+
+        void setup() {
+            count = 0;
+        }
+
+        void loop() {
+            if (count < 6) {
+                data.write(count);
+                count = (u8)(count + 1);
+            }
+        }
+    };
+
+    execute = new task {
+        out bool exec_ready;
+        bool finished;
+
+        void setup() {
+            finished = false;
+            exec_ready.write(true);
+        }
+
+        void loop() {
+            if (!finished) {
+                if (decode.result.available()) {
+                    u8 v = decode.result.read();
+                    // Re-arm for next instruction
+                    exec_ready.write(true);
+                    if (v == 9) {
+                        print("T17_ExecReadyDeadlock PASS v=", v);
+                        finished = true;
+                    }
+                }
+            }
+        }
+    };
+
+    decode = new task {
+        out push u8 result;
+
+        void loop() {
+            if (execute.exec_ready) {
+                u8 b0 = source.data.read();
+                u8 b1 = source.data.read();
+                result.write((u8)(b0 + b1));
+            }
+        }
+    };
+}

@@ -1,0 +1,55 @@
+/*
+ * Regression test for push-port fan-out in the bytecode sim.
+ *
+ * A push output is a BROADCAST (valid-only, no backpressure): every reader must
+ * see every pushed token. Before the fix, BodyCompiler.consumePort() cleared the
+ * shared Port's valid after the first reader read it, starving any co-reader
+ * that read the same push output later in the same cycle (the root cause of the
+ * UART prescaler tick — read by both rxFilter and rxTask — being lost).
+ *
+ * src pushes a strictly-incrementing counter every cycle to TWO readers. drain
+ * is just there to create the fan-out; checker asserts it sees consecutive
+ * values (no gaps from a stolen token) and finishes. If push were consumed, the
+ * checker would see gaps (assert fails) or never advance (timeout).
+ */
+package com.neosyn.test.bytecode;
+
+network FanoutPushTest {
+	properties { test: { terminate: "checker.finished" } }
+
+	src = new task {
+		out push u8 p;
+		u8 n = 0;
+		void loop() { n++; p.write(n); }
+	};
+
+	// Second reader on the same push output — creates the fan-out.
+	drain = new task {
+		in push u8 p;
+		void loop() { u8 v = p.read; }
+	};
+
+	checker = new task {
+		in push u8 p;
+		u8 prev = 0;
+		int count = 0;
+		bool finished = false;
+		void loop() {
+			u8 cur = p.read;
+			count++;
+			if (count >= 2) {
+				// Consecutive: each pushed value is prev+1. A consumed token
+				// would create a gap (cur == prev+2) and fail this assert.
+				assert(cur == (u8) (prev + 1));
+			}
+			prev = cur;
+			if (count == 20) {
+				print("=== FanoutPushTest PASSED (20 consecutive, no stolen tokens) ===\n");
+				finished = true;
+			}
+		}
+	};
+
+	drain.reads(src.p);
+	checker.reads(src.p);
+}

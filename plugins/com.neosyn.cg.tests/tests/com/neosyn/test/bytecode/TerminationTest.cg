@@ -1,0 +1,57 @@
+/*
+ * Tests that SimulationRunner terminates correctly via test.terminate property.
+ * Verifies the initialize() → loop → terminated() flow.
+ */
+package com.neosyn.test.bytecode;
+
+network TerminationTest {
+    properties {
+        test: { terminate: "checker.done" }
+    }
+
+    // Producer counts from 1 to 10
+    producer = new task {
+        out push u8 value;
+
+        u8 count;
+
+        void setup() {
+            count = 0;
+        }
+
+        void loop() {
+            count++;
+            value.write(count);
+        }
+    };
+
+    // Checker verifies producer output and terminates after 10 values
+    checker = new task {
+        in push u8 actual;
+
+        u8 expected;
+        u8 received;
+        bool done;
+
+        void setup() {
+            expected = 1;
+            received = 0;
+            done = false;
+        }
+
+        void loop() {
+            if (!done) {
+                u8 v = actual.read;
+                assert(v == expected);
+                expected++;
+                received++;
+                if (received >= 10) {
+                    print("TerminationTest PASSED (10 values verified)\n");
+                    done = true;
+                }
+            }
+        }
+    };
+
+    checker.reads(producer.value);
+}

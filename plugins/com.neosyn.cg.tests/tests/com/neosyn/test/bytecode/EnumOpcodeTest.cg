@@ -1,0 +1,57 @@
+/*
+ * L2 Enums Tier 0 — iter #2 fixture: explicit underlying type and explicit
+ * literal values.
+ *
+ * Surface exercised (.claude/L2_ENUM_DESIGN.md §1 + §9):
+ *   - `enum N : u<W>` explicit underlying type
+ *   - `LIT = N` explicit literal values (gap-filled C-style)
+ *   - mix of explicit and implicit values
+ *
+ * Asserts:
+ *   - ADD == 0, SUB == 1, MUL == 2, NOP == 8 (gap fills resume from previous+1)
+ *   - underlying width is u4 → values fit
+ */
+package com.neosyn.test.bytecode;
+
+network EnumOpcodeTest {
+    properties { test: { terminate: "user.finished" } }
+
+    user = new task {
+        enum opcode_t : u4 {
+            ADD = 0,
+            SUB,            // implicit = 1
+            MUL,            // implicit = 2
+            JMP = 8,
+            NOP             // implicit = 9
+        }
+
+        bool finished;
+
+        void setup() {
+            finished = false;
+        }
+
+        void loop() {
+            if (!finished) {
+                opcode_t op = ADD;
+
+                assert(op == ADD);
+                assert(ADD == 0);
+                assert(SUB == 1);
+                assert(MUL == 2);
+                assert(JMP == 8);
+                assert(NOP == 9);
+
+                op = JMP;
+                assert(op == JMP);
+                assert(op == opcode_t.JMP);
+
+                op = NOP;
+                assert(op == 9);
+
+                print("=== EnumOpcodeTest PASSED ===\n");
+                finished = true;
+            }
+        }
+    };
+}

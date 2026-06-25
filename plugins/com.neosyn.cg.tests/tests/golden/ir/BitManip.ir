@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<com.neosyn.models.dpn:Actor xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:com.neosyn.models.dpn="http://www.neosyn.io/2013/Dpn"
+    xmlns:com.neosyn.models.ir="http://www.neosyn.io/2013/Ir" fileName="/home/nicolas06/neosyn/neosyn-studio/plugins/com.neosyn.cg.tests/tests/golden/GoldenBasicTasks.cg"
+    lineNumber="89" name="com.neosyn.test.golden.BitManip" properties="{&quot;clocks&quot;:[&quot;clock&quot;],&quot;resets&quot;:[{&quot;type&quot;:&quot;asynchronous&quot;,&quot;active&quot;:&quot;low&quot;,&quot;name&quot;:&quot;reset_n&quot;}],&quot;copyright&quot;:[&quot;Copyright (c) 2024 Neosyn. All rights reserved.&quot;,&quot; *&quot;,&quot;Golden file test - Basic tasks for regression testing.&quot;,&quot;Tests: simple state variables, arithmetic, output ports.&quot;],&quot;javadoc&quot;:[&quot;Bit manipulation task - tests shifts and masks.&quot;],&quot;comments&quot;:{&quot;97&quot;:[&quot;Reverse high/low nibbles&quot;],&quot;99&quot;:[&quot;Swap alternate bits&quot;]}}">
+  <inputs name="data" uses="#//@actions.0/@body/@blocks.0/@instructions.0/@value/@use">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+  </inputs>
+  <outputs defs="#//@actions.0/@body/@blocks.0/@instructions.1/@target" name="reversed">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+  </outputs>
+  <outputs defs="#//@actions.0/@body/@blocks.0/@instructions.2/@target" name="swapped">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+  </outputs>
+  <actions name="FSM_BitManip_a">
+    <body lineNumber="95" name="FSM_BitManip_a">
+      <locals assignable="true" defs="#//@actions.0/@body/@blocks.0/@instructions.0/@target"
+          lineNumber="95" name="d" uses="#//@actions.0/@body/@blocks.0/@instructions.1/@value/@expr/@e1/@e1/@use #//@actions.0/@body/@blocks.0/@instructions.1/@value/@expr/@e2/@e1/@use #//@actions.0/@body/@blocks.0/@instructions.2/@value/@expr/@e1/@e1/@e1/@use #//@actions.0/@body/@blocks.0/@instructions.2/@value/@expr/@e2/@e1/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstAssign">
+          <target variable="#//@actions.0/@body/@locals.0"/>
+          <value xsi:type="com.neosyn.models.ir:ExprVar">
+            <use variable="#//@inputs.0"/>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="97">
+          <target variable="#//@outputs.0"/>
+          <value xsi:type="com.neosyn.models.ir:ExprResize" targetSize="8">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="BITOR">
+              <e1 xsi:type="com.neosyn.models.ir:ExprBinary" op="SHIFT_LEFT">
+                <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                  <use variable="#//@actions.0/@body/@locals.0"/>
+                </e1>
+                <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="4"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprBinary" op="SHIFT_RIGHT">
+                <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                  <use variable="#//@actions.0/@body/@locals.0"/>
+                </e1>
+                <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="4"/>
+              </e2>
+            </expr>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="99">
+          <target variable="#//@outputs.1"/>
+          <value xsi:type="com.neosyn.models.ir:ExprResize" targetSize="8">
+            <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="BITOR">
+              <e1 xsi:type="com.neosyn.models.ir:ExprBinary" op="SHIFT_RIGHT">
+                <e1 xsi:type="com.neosyn.models.ir:ExprBinary">
+                  <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                    <use variable="#//@actions.0/@body/@locals.0"/>
+                  </e1>
+                  <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="170"/>
+                </e1>
+                <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="1"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprBinary" op="SHIFT_LEFT">
+                <e1 xsi:type="com.neosyn.models.ir:ExprBinary">
+                  <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                    <use variable="#//@actions.0/@body/@locals.0"/>
+                  </e1>
+                  <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="85"/>
+                </e1>
+                <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="1"/>
+              </e2>
+            </expr>
+          </value>
+        </instructions>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </body>
+    <combinational lineNumber="95" name="comb_FSM_BitManip_a">
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </combinational>
+    <inputPattern ports="#//@inputs.0"/>
+    <outputPattern ports="#//@outputs.0 #//@outputs.1"/>
+    <peekPattern/>
+    <scheduler lineNumber="95" name="isSchedulable_FSM_BitManip_a">
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstReturn">
+          <value xsi:type="com.neosyn.models.ir:ExprBool" value="true"/>
+        </instructions>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </scheduler>
+  </actions>
+</com.neosyn.models.dpn:Actor>

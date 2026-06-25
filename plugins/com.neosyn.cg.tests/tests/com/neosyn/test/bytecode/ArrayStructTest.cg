@@ -1,0 +1,64 @@
+/*
+ * L1 Structs Tier 2.3 fixture — arrays of struct with per-element field access.
+ * Validates the recursive flatten + per-segment indexing for:
+ *   - literal-index element field access  (`ps[0].lo = 1`, `ps[1].hi`)
+ *   - variable-index element field access  (`ps[i].lo = 9`)
+ *   - nested struct array element access    (`os[0].lo.a`, `os[1].hi.b`)
+ * end-to-end through IR-gen + bytecode sim. `Pair ps[4]` flattens to per-field
+ * arrays `ps$lo[4]`, `ps$hi[4]`; `Outer os[2]` to `os$lo$a[2]` etc.; the index
+ * on the member access selects the element.
+ *
+ * See .claude/L1_STRUCT_DESIGN.md and PLAN.md Tier 2.3.
+ */
+package com.neosyn.test.bytecode;
+
+network ArrayStructTest {
+    properties { test: { terminate: "user.finished" } }
+
+    user = new task {
+        struct Pair { u8 lo; u16 hi; }
+        struct Inner { u8 a; u16 b; }
+        struct Outer { Inner lo; Inner hi; }
+
+        bool finished;
+
+        void setup() {
+            finished = false;
+        }
+
+        void loop() {
+            if (!finished) {
+                Pair ps[4];
+
+                // literal-index writes + reads
+                ps[0].lo = 1; ps[0].hi = 0x10;
+                ps[1].lo = 2; ps[1].hi = 0x20;
+                ps[3].lo = 4; ps[3].hi = 0x40;
+                assert(ps[0].lo == 1);
+                assert(ps[0].hi == 0x10);
+                assert(ps[1].lo == 2);
+                assert(ps[3].hi == 0x40);
+
+                // variable-index write + read
+                u8 i;
+                i = 2;
+                ps[i].lo = 9;
+                ps[i].hi = 0x99;
+                assert(ps[2].lo == 9);
+                assert(ps[i].hi == 0x99);
+
+                // nested struct array (Outer os[2], each element has Inner lo/hi)
+                Outer os[2];
+                os[0].lo.a = 5; os[0].lo.b = 0x111;
+                os[1].hi.a = 7; os[1].hi.b = 0x222;
+                assert(os[0].lo.a == 5);
+                assert(os[0].lo.b == 0x111);
+                assert(os[1].hi.a == 7);
+                assert(os[1].hi.b == 0x222);
+
+                print("=== ArrayStructTest PASSED ===\n");
+                finished = true;
+            }
+        }
+    };
+}

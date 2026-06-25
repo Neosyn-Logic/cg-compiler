@@ -1,0 +1,59 @@
+/*
+ * Phase 1 timing test T15 — Scheduler condition leak across fences.
+ *
+ * Reproduces the Intel 8088 exec_ready pattern:
+ * - Consumer sets gate=true, writes data, then sets gate=false (2 states)
+ * - Decoder checks gate before starting, then reads data across fences
+ * - When decoder reaches state 2 (after fence), gate is already false
+ * - BUG: scheduler re-checks gate in state 2 → deadlock
+ */
+package com.neosyn.test.bytecode.timing;
+
+network T15_SchedulerConditionLeak {
+
+    properties {
+        test: { terminate: "decoder.finished" }
+    }
+
+    // Consumer: sets gate=true, writes data, next cycle sets gate=false
+    consumer = new task {
+        out bool gate;
+        out push u8 data_a;
+        out push u8 data_b;
+
+        void setup() {
+            gate.write(true);
+            data_a.write(10);
+            fence;
+            gate.write(false);
+            data_b.write(20);
+        }
+    };
+
+    // Decoder: checks gate, reads data_a, fences, reads data_b
+    // The fence-created state 2 should NOT re-check gate
+    decoder = new task {
+        bool finished;
+
+        void setup() {
+            finished = false;
+        }
+
+        void loop() {
+            if (!finished) {
+                if (consumer.gate) {
+                    u8 a = consumer.data_a.read();
+                    fence;
+                    u8 b = consumer.data_b.read();
+                    u8 total = (u8)(a + b);
+                    if (total == 30) {
+                        print("T15_SchedulerConditionLeak PASS total=", total);
+                    } else {
+                        print("T15_SchedulerConditionLeak FAIL total=", total);
+                    }
+                    finished = true;
+                }
+            }
+        }
+    };
+}

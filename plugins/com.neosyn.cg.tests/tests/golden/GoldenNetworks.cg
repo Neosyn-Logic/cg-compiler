@@ -1,0 +1,165 @@
+/*******************************************************************************
+ * Copyright (c) 2024 Neosyn. All rights reserved.
+ *
+ * Golden file test - Network compositions for regression testing.
+ * Tests: task instantiation, port connections, inline tasks.
+ *******************************************************************************/
+package com.neosyn.test.golden;
+
+/**
+ * Simple producer task - generates incrementing values.
+ */
+task Producer {
+	out u8 data;
+
+	u8 value = 0;
+
+	void loop() {
+		data.write(value);
+		value++;
+	}
+}
+
+/**
+ * Simple consumer task - reads and accumulates values.
+ */
+task Consumer {
+	in u8 data;
+	out u16 sum;
+
+	u16 total = 0;
+
+	void loop() {
+		total = (u16)(total + data.read());
+		sum.write(total);
+	}
+}
+
+/**
+ * Basic network - connects producer to consumer.
+ * Tests: simple point-to-point connection.
+ */
+network BasicPipeline {
+	properties { test: true }
+
+	producer = new Producer();
+	consumer = new Consumer();
+
+	consumer.reads(producer.data);
+}
+
+/**
+ * Network with inline task.
+ * Tests: inline task definition, connection to inline task.
+ */
+network InlineTaskNetwork {
+	properties { test: true }
+
+	source = new Producer();
+
+	// Inline task that doubles input
+	doubler = new task {
+		in u8 input;
+		out u8 output;
+
+		void loop() {
+			output.write((u8)(input.read() * 2));
+		}
+	};
+
+	sink = new Consumer();
+
+	doubler.reads(source.data);
+	sink.reads(doubler.output);
+}
+
+/**
+ * Network with multiple connections per task.
+ * Tests: fan-out from single source, multiple input reads.
+ */
+network FanOutNetwork {
+	properties { test: true }
+
+	source = new Producer();
+
+	adder = new task {
+		in u8 a, b;
+		out u8 sum;
+
+		void loop() {
+			sum.write((u8)(a.read() + b.read()));
+		}
+	};
+
+	// Source feeds both inputs (fan-out)
+	adder.reads(source.data, source.data);
+}
+
+/**
+ * Network with feedback (not a real loop, just demonstrating structure).
+ * Tests: complex connection patterns.
+ */
+network ProcessingChain {
+	properties { test: true }
+
+	// Stage 1: Generate data
+	generator = new task {
+		out u8 data;
+		u8 val = 1;
+		void loop() {
+			data.write(val);
+			val = (u8)(val + 1);
+		}
+	};
+
+	// Stage 2: Square the value
+	squarer = new task {
+		in u8 input;
+		out u16 squared;
+		void loop() {
+			u8 x = input.read();
+			squared.write((u16)(x * x));
+		}
+	};
+
+	// Stage 3: Accumulate
+	accumulator = new task {
+		in u16 input;
+		out u32 total;
+		u32 sum = 0;
+		void loop() {
+			sum = (u32)(sum + input.read());
+			total.write(sum);
+		}
+	};
+
+	squarer.reads(generator.data);
+	accumulator.reads(squarer.squared);
+}
+
+/**
+ * Network demonstrating sync ports.
+ * Tests: sync qualifier on ports.
+ */
+network SyncNetwork {
+	properties { test: true }
+
+	sender = new task {
+		out sync u8 data;
+		u8 val = 0;
+		void loop() {
+			data.write(val);
+			val++;
+		}
+	};
+
+	receiver = new task {
+		in sync u8 data;
+		out u8 lastValue;
+		void loop() {
+			lastValue.write(data.read());
+		}
+	};
+
+	receiver.reads(sender.data);
+}

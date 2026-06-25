@@ -1,0 +1,500 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<com.neosyn.models.dpn:Actor xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:com.neosyn.models.dpn="http://www.neosyn.io/2013/Dpn"
+    xmlns:com.neosyn.models.ir="http://www.neosyn.io/2013/Ir" fileName="/home/nicolas06/neosyn/neosyn-studio/plugins/com.neosyn.cg.tests/tests/golden/GoldenCombinational.cg"
+    lineNumber="226" name="com.neosyn.test.golden.NestedIfCombinational" properties="{&quot;type&quot;:&quot;combinational&quot;,&quot;clocks&quot;:[],&quot;resets&quot;:[],&quot;copyright&quot;:[&quot;Copyright (c) 2024 Neosyn. All rights reserved.&quot;,&quot; *&quot;,&quot;Golden file test - Combinational logic for regression testing.&quot;,&quot;Tests: properties { type: \&quot;combinational\&quot; }, pure logic without state.&quot;],&quot;javadoc&quot;:[&quot;NestedIfCombinational - Tests nested if-else in combinational logic.&quot;,&quot; *&quot;,&quot;Additional regression test for combinational scheduler to ensure&quot;,&quot;deeply nested conditionals don't get split into multiple actions.&quot;],&quot;comments&quot;:{&quot;236&quot;:[&quot;Read port values first (required in C⏚)&quot;],&quot;246&quot;:[&quot;Nested structure - outer if based on high bits, inner on low bits&quot;]}}">
+  <inputs name="sel" uses="#//@actions.0/@combinational/@blocks.0/@instructions.0/@source">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="4"/>
+  </inputs>
+  <inputs name="a" uses="#//@actions.0/@combinational/@blocks.0/@instructions.2/@source">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+  </inputs>
+  <inputs name="b" uses="#//@actions.0/@combinational/@blocks.0/@instructions.4/@source">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+  </inputs>
+  <inputs name="c" uses="#//@actions.0/@combinational/@blocks.0/@instructions.6/@source">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+  </inputs>
+  <inputs name="d" uses="#//@actions.0/@combinational/@blocks.0/@instructions.8/@source">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+  </inputs>
+  <outputs defs="#//@actions.0/@combinational/@blocks.2/@instructions.1/@target" name="result"
+      synchronous="false">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+  </outputs>
+  <outputs defs="#//@actions.0/@combinational/@blocks.2/@instructions.3/@target" name="valid"
+      synchronous="false">
+    <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+  </outputs>
+  <actions name="FSM_NestedIfCombinational_a">
+    <body lineNumber="236" name="comb_FSM_NestedIfCombinational_a">
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </body>
+    <combinational lineNumber="236" name="FSM_NestedIfCombinational_a">
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.0/@instructions.1/@target"
+          lineNumber="236" name="s" uses="#//@actions.0/@combinational/@blocks.0/@instructions.11/@source #//@actions.0/@combinational/@blocks.1/@thenBlocks.0/@instructions.0/@source #//@actions.0/@combinational/@blocks.1/@elseBlocks.0/@instructions.0/@source #//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@thenBlocks.0/@instructions.0/@source #//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@elseBlocks.0/@instructions.0/@source #//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@elseBlocks.1/@elseBlocks.0/@instructions.0/@source">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="4"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.0/@instructions.0/@target"
+          lineNumber="236" name="sel_0" uses="#//@actions.0/@combinational/@blocks.0/@instructions.1/@value/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="4"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.0/@instructions.3/@target"
+          lineNumber="237" name="va" uses="#//@actions.0/@combinational/@blocks.1/@thenBlocks.1/@thenBlocks.0/@instructions.0/@source #//@actions.0/@combinational/@blocks.1/@thenBlocks.1/@elseBlocks.0/@instructions.0/@source #//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@elseBlocks.1/@thenBlocks.0/@instructions.0/@source">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.0/@instructions.2/@target"
+          lineNumber="237" name="a_0" uses="#//@actions.0/@combinational/@blocks.0/@instructions.3/@value/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.0/@instructions.5/@target"
+          lineNumber="238" name="vb" uses="#//@actions.0/@combinational/@blocks.1/@thenBlocks.1/@thenBlocks.0/@instructions.1/@source #//@actions.0/@combinational/@blocks.1/@thenBlocks.1/@elseBlocks.0/@instructions.1/@source #//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@elseBlocks.1/@elseBlocks.1/@thenBlocks.0/@instructions.0/@source">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.0/@instructions.4/@target"
+          lineNumber="238" name="b_0" uses="#//@actions.0/@combinational/@blocks.0/@instructions.5/@value/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.0/@instructions.7/@target"
+          lineNumber="239" name="vc" uses="#//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@thenBlocks.1/@thenBlocks.0/@instructions.0/@source #//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@thenBlocks.1/@elseBlocks.0/@instructions.0/@source #//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@elseBlocks.1/@thenBlocks.0/@instructions.1/@source">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.0/@instructions.6/@target"
+          lineNumber="239" name="c_0" uses="#//@actions.0/@combinational/@blocks.0/@instructions.7/@value/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.0/@instructions.9/@target"
+          lineNumber="240" name="vd" uses="#//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@thenBlocks.1/@thenBlocks.0/@instructions.1/@source #//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@thenBlocks.1/@elseBlocks.0/@instructions.1/@source #//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@elseBlocks.1/@elseBlocks.1/@thenBlocks.0/@instructions.1/@source">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.0/@instructions.8/@target"
+          lineNumber="240" name="d_0" uses="#//@actions.0/@combinational/@blocks.0/@instructions.9/@value/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.0/@instructions.10/@target #//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@elseBlocks.1/@elseBlocks.1/@elseBlocks.0/@instructions.1/@target"
+          lineNumber="242" name="v" uses="#//@actions.0/@combinational/@blocks.2/@instructions.2/@source">
+        <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.1/@thenBlocks.1/@thenBlocks.0/@instructions.2/@target #//@actions.0/@combinational/@blocks.1/@thenBlocks.1/@elseBlocks.0/@instructions.2/@target #//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@thenBlocks.1/@thenBlocks.0/@instructions.2/@target #//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@thenBlocks.1/@elseBlocks.0/@instructions.2/@target #//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@elseBlocks.1/@thenBlocks.0/@instructions.2/@target #//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@elseBlocks.1/@elseBlocks.1/@thenBlocks.0/@instructions.2/@target #//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@elseBlocks.1/@elseBlocks.1/@elseBlocks.0/@instructions.0/@target"
+          lineNumber="243" name="r" uses="#//@actions.0/@combinational/@blocks.2/@instructions.0/@source">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.0/@instructions.11/@target"
+          lineNumber="246" name="s_0" uses="#//@actions.0/@combinational/@blocks.1/@condition/@e1/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="4"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.1/@thenBlocks.0/@instructions.0/@target"
+          lineNumber="247" name="s_1" uses="#//@actions.0/@combinational/@blocks.1/@thenBlocks.1/@condition/@e1/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="4"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.1/@thenBlocks.1/@thenBlocks.0/@instructions.0/@target"
+          lineNumber="248" name="va_0" uses="#//@actions.0/@combinational/@blocks.1/@thenBlocks.1/@thenBlocks.0/@instructions.2/@value/@expr/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.1/@thenBlocks.1/@thenBlocks.0/@instructions.1/@target"
+          lineNumber="248" name="vb_0" uses="#//@actions.0/@combinational/@blocks.1/@thenBlocks.1/@thenBlocks.0/@instructions.2/@value/@expr/@e2/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.1/@thenBlocks.1/@elseBlocks.0/@instructions.0/@target"
+          lineNumber="250" name="va_1" uses="#//@actions.0/@combinational/@blocks.1/@thenBlocks.1/@elseBlocks.0/@instructions.2/@value/@expr/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.1/@thenBlocks.1/@elseBlocks.0/@instructions.1/@target"
+          lineNumber="250" name="vb_1" uses="#//@actions.0/@combinational/@blocks.1/@thenBlocks.1/@elseBlocks.0/@instructions.2/@value/@expr/@e2/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.1/@elseBlocks.0/@instructions.0/@target"
+          lineNumber="252" name="s_2" uses="#//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@condition/@e1/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="4"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@thenBlocks.0/@instructions.0/@target"
+          lineNumber="253" name="s_3" uses="#//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@thenBlocks.1/@condition/@e1/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="4"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@thenBlocks.1/@thenBlocks.0/@instructions.0/@target"
+          lineNumber="254" name="vc_0" uses="#//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@thenBlocks.1/@thenBlocks.0/@instructions.2/@value/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@thenBlocks.1/@thenBlocks.0/@instructions.1/@target"
+          lineNumber="254" name="vd_0" uses="#//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@thenBlocks.1/@thenBlocks.0/@instructions.2/@value/@e2/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@thenBlocks.1/@elseBlocks.0/@instructions.0/@target"
+          lineNumber="256" name="vc_1" uses="#//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@thenBlocks.1/@elseBlocks.0/@instructions.2/@value/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@thenBlocks.1/@elseBlocks.0/@instructions.1/@target"
+          lineNumber="256" name="vd_1" uses="#//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@thenBlocks.1/@elseBlocks.0/@instructions.2/@value/@e2/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@elseBlocks.0/@instructions.0/@target"
+          lineNumber="258" name="s_4" uses="#//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@elseBlocks.1/@condition/@e1/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="4"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@elseBlocks.1/@thenBlocks.0/@instructions.0/@target"
+          lineNumber="259" name="va_2" uses="#//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@elseBlocks.1/@thenBlocks.0/@instructions.2/@value/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@elseBlocks.1/@thenBlocks.0/@instructions.1/@target"
+          lineNumber="259" name="vc_2" uses="#//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@elseBlocks.1/@thenBlocks.0/@instructions.2/@value/@e2/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@elseBlocks.1/@elseBlocks.0/@instructions.0/@target"
+          lineNumber="260" name="s_5" uses="#//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@elseBlocks.1/@elseBlocks.1/@condition/@e1/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="4"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@elseBlocks.1/@elseBlocks.1/@thenBlocks.0/@instructions.0/@target"
+          lineNumber="261" name="vb_2" uses="#//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@elseBlocks.1/@elseBlocks.1/@thenBlocks.0/@instructions.2/@value/@e1/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@elseBlocks.1/@elseBlocks.1/@thenBlocks.0/@instructions.1/@target"
+          lineNumber="261" name="vd_2" uses="#//@actions.0/@combinational/@blocks.1/@elseBlocks.1/@elseBlocks.1/@elseBlocks.1/@thenBlocks.0/@instructions.2/@value/@e2/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.2/@instructions.0/@target"
+          lineNumber="267" name="r_0" uses="#//@actions.0/@combinational/@blocks.2/@instructions.1/@value/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
+      </locals>
+      <locals assignable="true" defs="#//@actions.0/@combinational/@blocks.2/@instructions.2/@target"
+          lineNumber="268" name="v_0" uses="#//@actions.0/@combinational/@blocks.2/@instructions.3/@value/@use">
+        <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+      </locals>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="236">
+          <source variable="#//@inputs.0"/>
+          <target variable="#//@actions.0/@combinational/@locals.1"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="236">
+          <target variable="#//@actions.0/@combinational/@locals.0"/>
+          <value xsi:type="com.neosyn.models.ir:ExprVar">
+            <use variable="#//@actions.0/@combinational/@locals.1"/>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="237">
+          <source variable="#//@inputs.1"/>
+          <target variable="#//@actions.0/@combinational/@locals.3"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="237">
+          <target variable="#//@actions.0/@combinational/@locals.2"/>
+          <value xsi:type="com.neosyn.models.ir:ExprVar">
+            <use variable="#//@actions.0/@combinational/@locals.3"/>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="238">
+          <source variable="#//@inputs.2"/>
+          <target variable="#//@actions.0/@combinational/@locals.5"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="238">
+          <target variable="#//@actions.0/@combinational/@locals.4"/>
+          <value xsi:type="com.neosyn.models.ir:ExprVar">
+            <use variable="#//@actions.0/@combinational/@locals.5"/>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="239">
+          <source variable="#//@inputs.3"/>
+          <target variable="#//@actions.0/@combinational/@locals.7"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="239">
+          <target variable="#//@actions.0/@combinational/@locals.6"/>
+          <value xsi:type="com.neosyn.models.ir:ExprVar">
+            <use variable="#//@actions.0/@combinational/@locals.7"/>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="240">
+          <source variable="#//@inputs.4"/>
+          <target variable="#//@actions.0/@combinational/@locals.9"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="240">
+          <target variable="#//@actions.0/@combinational/@locals.8"/>
+          <value xsi:type="com.neosyn.models.ir:ExprVar">
+            <use variable="#//@actions.0/@combinational/@locals.9"/>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="242">
+          <target variable="#//@actions.0/@combinational/@locals.10"/>
+          <value xsi:type="com.neosyn.models.ir:ExprBool" value="true"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="246">
+          <source variable="#//@actions.0/@combinational/@locals.0"/>
+          <target variable="#//@actions.0/@combinational/@locals.12"/>
+        </instructions>
+      </blocks>
+      <blocks xsi:type="com.neosyn.models.ir:BlockIf" lineNumber="246">
+        <condition xsi:type="com.neosyn.models.ir:ExprBinary" op="NE">
+          <e1 xsi:type="com.neosyn.models.ir:ExprBinary">
+            <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+              <use variable="#//@actions.0/@combinational/@locals.12"/>
+            </e1>
+            <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="8"/>
+          </e1>
+          <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="0"/>
+        </condition>
+        <elseBlocks xsi:type="com.neosyn.models.ir:BlockBasic">
+          <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="252">
+            <source variable="#//@actions.0/@combinational/@locals.0"/>
+            <target variable="#//@actions.0/@combinational/@locals.18"/>
+          </instructions>
+        </elseBlocks>
+        <elseBlocks xsi:type="com.neosyn.models.ir:BlockIf" lineNumber="246">
+          <condition xsi:type="com.neosyn.models.ir:ExprBinary" op="NE">
+            <e1 xsi:type="com.neosyn.models.ir:ExprBinary">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.0/@combinational/@locals.18"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="4"/>
+            </e1>
+            <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="0"/>
+          </condition>
+          <elseBlocks xsi:type="com.neosyn.models.ir:BlockBasic">
+            <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="258">
+              <source variable="#//@actions.0/@combinational/@locals.0"/>
+              <target variable="#//@actions.0/@combinational/@locals.24"/>
+            </instructions>
+          </elseBlocks>
+          <elseBlocks xsi:type="com.neosyn.models.ir:BlockIf" lineNumber="246">
+            <condition xsi:type="com.neosyn.models.ir:ExprBinary" op="NE">
+              <e1 xsi:type="com.neosyn.models.ir:ExprBinary">
+                <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                  <use variable="#//@actions.0/@combinational/@locals.24"/>
+                </e1>
+                <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="2"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="0"/>
+            </condition>
+            <elseBlocks xsi:type="com.neosyn.models.ir:BlockBasic">
+              <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="260">
+                <source variable="#//@actions.0/@combinational/@locals.0"/>
+                <target variable="#//@actions.0/@combinational/@locals.27"/>
+              </instructions>
+            </elseBlocks>
+            <elseBlocks xsi:type="com.neosyn.models.ir:BlockIf" lineNumber="246">
+              <condition xsi:type="com.neosyn.models.ir:ExprBinary" op="NE">
+                <e1 xsi:type="com.neosyn.models.ir:ExprBinary">
+                  <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                    <use variable="#//@actions.0/@combinational/@locals.27"/>
+                  </e1>
+                  <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="1"/>
+                </e1>
+                <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="0"/>
+              </condition>
+              <elseBlocks xsi:type="com.neosyn.models.ir:BlockBasic">
+                <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="263">
+                  <target variable="#//@actions.0/@combinational/@locals.11"/>
+                  <value xsi:type="com.neosyn.models.ir:ExprInt" value="0"/>
+                </instructions>
+                <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="264">
+                  <target variable="#//@actions.0/@combinational/@locals.10"/>
+                  <value xsi:type="com.neosyn.models.ir:ExprBool"/>
+                </instructions>
+              </elseBlocks>
+              <joinBlock/>
+              <thenBlocks xsi:type="com.neosyn.models.ir:BlockBasic">
+                <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="261">
+                  <source variable="#//@actions.0/@combinational/@locals.4"/>
+                  <target variable="#//@actions.0/@combinational/@locals.28"/>
+                </instructions>
+                <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="261">
+                  <source variable="#//@actions.0/@combinational/@locals.8"/>
+                  <target variable="#//@actions.0/@combinational/@locals.29"/>
+                </instructions>
+                <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="261">
+                  <target variable="#//@actions.0/@combinational/@locals.11"/>
+                  <value xsi:type="com.neosyn.models.ir:ExprBinary" op="BITXOR">
+                    <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                      <use variable="#//@actions.0/@combinational/@locals.28"/>
+                    </e1>
+                    <e2 xsi:type="com.neosyn.models.ir:ExprVar">
+                      <use variable="#//@actions.0/@combinational/@locals.29"/>
+                    </e2>
+                  </value>
+                </instructions>
+              </thenBlocks>
+            </elseBlocks>
+            <joinBlock/>
+            <thenBlocks xsi:type="com.neosyn.models.ir:BlockBasic">
+              <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="259">
+                <source variable="#//@actions.0/@combinational/@locals.2"/>
+                <target variable="#//@actions.0/@combinational/@locals.25"/>
+              </instructions>
+              <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="259">
+                <source variable="#//@actions.0/@combinational/@locals.6"/>
+                <target variable="#//@actions.0/@combinational/@locals.26"/>
+              </instructions>
+              <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="259">
+                <target variable="#//@actions.0/@combinational/@locals.11"/>
+                <value xsi:type="com.neosyn.models.ir:ExprBinary" op="BITXOR">
+                  <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                    <use variable="#//@actions.0/@combinational/@locals.25"/>
+                  </e1>
+                  <e2 xsi:type="com.neosyn.models.ir:ExprVar">
+                    <use variable="#//@actions.0/@combinational/@locals.26"/>
+                  </e2>
+                </value>
+              </instructions>
+            </thenBlocks>
+          </elseBlocks>
+          <joinBlock/>
+          <thenBlocks xsi:type="com.neosyn.models.ir:BlockBasic">
+            <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="253">
+              <source variable="#//@actions.0/@combinational/@locals.0"/>
+              <target variable="#//@actions.0/@combinational/@locals.19"/>
+            </instructions>
+          </thenBlocks>
+          <thenBlocks xsi:type="com.neosyn.models.ir:BlockIf" lineNumber="253">
+            <condition xsi:type="com.neosyn.models.ir:ExprBinary" op="NE">
+              <e1 xsi:type="com.neosyn.models.ir:ExprBinary">
+                <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                  <use variable="#//@actions.0/@combinational/@locals.19"/>
+                </e1>
+                <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="2"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="0"/>
+            </condition>
+            <elseBlocks xsi:type="com.neosyn.models.ir:BlockBasic">
+              <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="256">
+                <source variable="#//@actions.0/@combinational/@locals.6"/>
+                <target variable="#//@actions.0/@combinational/@locals.22"/>
+              </instructions>
+              <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="256">
+                <source variable="#//@actions.0/@combinational/@locals.8"/>
+                <target variable="#//@actions.0/@combinational/@locals.23"/>
+              </instructions>
+              <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="256">
+                <target variable="#//@actions.0/@combinational/@locals.11"/>
+                <value xsi:type="com.neosyn.models.ir:ExprBinary" op="BITOR">
+                  <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                    <use variable="#//@actions.0/@combinational/@locals.22"/>
+                  </e1>
+                  <e2 xsi:type="com.neosyn.models.ir:ExprVar">
+                    <use variable="#//@actions.0/@combinational/@locals.23"/>
+                  </e2>
+                </value>
+              </instructions>
+            </elseBlocks>
+            <joinBlock/>
+            <thenBlocks xsi:type="com.neosyn.models.ir:BlockBasic">
+              <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="254">
+                <source variable="#//@actions.0/@combinational/@locals.6"/>
+                <target variable="#//@actions.0/@combinational/@locals.20"/>
+              </instructions>
+              <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="254">
+                <source variable="#//@actions.0/@combinational/@locals.8"/>
+                <target variable="#//@actions.0/@combinational/@locals.21"/>
+              </instructions>
+              <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="254">
+                <target variable="#//@actions.0/@combinational/@locals.11"/>
+                <value xsi:type="com.neosyn.models.ir:ExprBinary">
+                  <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                    <use variable="#//@actions.0/@combinational/@locals.20"/>
+                  </e1>
+                  <e2 xsi:type="com.neosyn.models.ir:ExprVar">
+                    <use variable="#//@actions.0/@combinational/@locals.21"/>
+                  </e2>
+                </value>
+              </instructions>
+            </thenBlocks>
+          </thenBlocks>
+        </elseBlocks>
+        <joinBlock/>
+        <thenBlocks xsi:type="com.neosyn.models.ir:BlockBasic">
+          <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="247">
+            <source variable="#//@actions.0/@combinational/@locals.0"/>
+            <target variable="#//@actions.0/@combinational/@locals.13"/>
+          </instructions>
+        </thenBlocks>
+        <thenBlocks xsi:type="com.neosyn.models.ir:BlockIf" lineNumber="247">
+          <condition xsi:type="com.neosyn.models.ir:ExprBinary" op="NE">
+            <e1 xsi:type="com.neosyn.models.ir:ExprBinary">
+              <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                <use variable="#//@actions.0/@combinational/@locals.13"/>
+              </e1>
+              <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="1"/>
+            </e1>
+            <e2 xsi:type="com.neosyn.models.ir:ExprInt" value="0"/>
+          </condition>
+          <elseBlocks xsi:type="com.neosyn.models.ir:BlockBasic">
+            <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="250">
+              <source variable="#//@actions.0/@combinational/@locals.2"/>
+              <target variable="#//@actions.0/@combinational/@locals.16"/>
+            </instructions>
+            <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="250">
+              <source variable="#//@actions.0/@combinational/@locals.4"/>
+              <target variable="#//@actions.0/@combinational/@locals.17"/>
+            </instructions>
+            <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="250">
+              <target variable="#//@actions.0/@combinational/@locals.11"/>
+              <value xsi:type="com.neosyn.models.ir:ExprResize" targetSize="8">
+                <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="MINUS">
+                  <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                    <use variable="#//@actions.0/@combinational/@locals.16"/>
+                  </e1>
+                  <e2 xsi:type="com.neosyn.models.ir:ExprVar">
+                    <use variable="#//@actions.0/@combinational/@locals.17"/>
+                  </e2>
+                </expr>
+              </value>
+            </instructions>
+          </elseBlocks>
+          <joinBlock/>
+          <thenBlocks xsi:type="com.neosyn.models.ir:BlockBasic">
+            <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="248">
+              <source variable="#//@actions.0/@combinational/@locals.2"/>
+              <target variable="#//@actions.0/@combinational/@locals.14"/>
+            </instructions>
+            <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="248">
+              <source variable="#//@actions.0/@combinational/@locals.4"/>
+              <target variable="#//@actions.0/@combinational/@locals.15"/>
+            </instructions>
+            <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="248">
+              <target variable="#//@actions.0/@combinational/@locals.11"/>
+              <value xsi:type="com.neosyn.models.ir:ExprResize" targetSize="8">
+                <expr xsi:type="com.neosyn.models.ir:ExprBinary" op="PLUS">
+                  <e1 xsi:type="com.neosyn.models.ir:ExprVar">
+                    <use variable="#//@actions.0/@combinational/@locals.14"/>
+                  </e1>
+                  <e2 xsi:type="com.neosyn.models.ir:ExprVar">
+                    <use variable="#//@actions.0/@combinational/@locals.15"/>
+                  </e2>
+                </expr>
+              </value>
+            </instructions>
+          </thenBlocks>
+        </thenBlocks>
+      </blocks>
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="267">
+          <source variable="#//@actions.0/@combinational/@locals.11"/>
+          <target variable="#//@actions.0/@combinational/@locals.30"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="267">
+          <target variable="#//@outputs.0"/>
+          <value xsi:type="com.neosyn.models.ir:ExprVar">
+            <use variable="#//@actions.0/@combinational/@locals.30"/>
+          </value>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstLoad" lineNumber="268">
+          <source variable="#//@actions.0/@combinational/@locals.10"/>
+          <target variable="#//@actions.0/@combinational/@locals.31"/>
+        </instructions>
+        <instructions xsi:type="com.neosyn.models.ir:InstStore" lineNumber="268">
+          <target variable="#//@outputs.1"/>
+          <value xsi:type="com.neosyn.models.ir:ExprVar">
+            <use variable="#//@actions.0/@combinational/@locals.31"/>
+          </value>
+        </instructions>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeVoid"/>
+    </combinational>
+    <inputPattern/>
+    <outputPattern ports="#//@outputs.0 #//@outputs.1"/>
+    <peekPattern/>
+    <scheduler lineNumber="236" name="isSchedulable_FSM_NestedIfCombinational_a">
+      <blocks xsi:type="com.neosyn.models.ir:BlockBasic">
+        <instructions xsi:type="com.neosyn.models.ir:InstReturn">
+          <value xsi:type="com.neosyn.models.ir:ExprBool" value="true"/>
+        </instructions>
+      </blocks>
+      <returnType xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </scheduler>
+  </actions>
+</com.neosyn.models.dpn:Actor>

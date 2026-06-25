@@ -1,0 +1,51 @@
+/*
+ * Cross-task write test - one inline task writes to another's input port.
+ * Tests the cross-task write bytecode simulation path.
+ *
+ * Tester writes 42 to processor.input_val (cross-task write).
+ * Processor reads the value and writes it to output_val (pass-through).
+ * Tester reads the result from processor.output_val (cross-task read).
+ *
+ * Uses bare ports (no sync/push interface).
+ */
+package com.neosyn.test.bytecode;
+
+network CrossTaskWriteTest {
+    properties {
+        test: { terminate: "tester.finished" }
+    }
+
+    processor = new task {
+        in u16 input_val;
+        out u16 output_val;
+
+        void loop() {
+            output_val.write(input_val.read());
+        }
+    };
+
+    tester = new task {
+        bool finished;
+
+        void setup() {
+            finished = false;
+        }
+
+        void loop() {
+            if (!finished) {
+                // Cross-task write: write to another inline task's input port
+                processor.input_val.write(42);
+
+                idle(2);
+
+                // Cross-task read: read from another inline task's output port
+                u16 result = processor.output_val.read();
+
+                print("result = ", result, "\n");
+                assert(result == 42);
+                print("=== CrossTaskWriteTest PASSED ===\n");
+                finished = true;
+            }
+        }
+    };
+}

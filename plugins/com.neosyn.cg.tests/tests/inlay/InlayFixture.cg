@@ -1,0 +1,11 @@
+package inlay;
+
+task Probe {
+	in u8 a;
+	out u16 q;
+
+	void loop() {
+		u8 local = 3;
+		q.write((u16) (a.read() + local));
+	}
+}

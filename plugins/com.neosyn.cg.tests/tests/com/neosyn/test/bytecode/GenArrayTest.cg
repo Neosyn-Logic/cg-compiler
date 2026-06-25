@@ -1,0 +1,35 @@
+package com.neosyn.test.bytecode;
+
+/*
+ * L3 Generics Tier 1 — array-depth parameter + default-vs-override. Buffer is
+ * parameterized by DEPTH; the array mem[DEPTH] and the for-loop bound are both
+ * sized by it. b4 uses the default DEPTH (sum 0+1+2+3=6); b8 overrides to 8
+ * (sum 0..7=28). Distinct sums prove DEPTH specializes the array + loop per
+ * instance; b4 also proves an unspecified parameter keeps its default.
+ */
+task Buffer {
+    const int DEPTH = 4;
+    const int EXPECT_SUM = 6;
+    uint<8> mem[DEPTH];
+    bool finished;
+    void setup() { finished = false; }
+    void loop() {
+        if (!finished) {
+            u8 i;
+            u32 sum = 0;
+            for (i = 0; i < DEPTH; i = (u8)(i + 1)) {
+                mem[i] = i;
+                sum = (u32)(sum + mem[i]);
+            }
+            assert(sum == EXPECT_SUM);
+            print("DEPTH=", DEPTH, " sum=", sum, " (expected ", EXPECT_SUM, ")\n");
+            finished = true;
+        }
+    }
+}
+
+network GenArrayTest {
+    properties { test: { terminate: "b8.finished" } }
+    b4 = new Buffer();
+    b8 = new Buffer({DEPTH: 8, EXPECT_SUM: 28});
+}

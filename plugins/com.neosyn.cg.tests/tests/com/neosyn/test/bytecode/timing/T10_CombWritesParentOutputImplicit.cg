@@ -1,0 +1,96 @@
+/*
+ * Phase 1 timing test T10 — combinational task inside a sub-network
+ * writes to the parent network's OUTPUT port via implicit reference
+ * (no `out` port declaration on the combinational task itself, no
+ * `this.reads(...)` forwarding clause).
+ *
+ * This is the EXACT pattern Intel-8088 BIU.compute_real uses:
+ *
+ *     compute_real = new task {
+ *         properties { type: "combinational" }
+ *         void loop() {
+ *             if (ctrl.offset.available()) {
+ *                 bus_addr.write(...);   // bus_addr is the BIU's own output
+ *             }
+ *         }
+ *     };
+ *
+ * The combinational task has NO `out push u20 bus_addr` declaration of
+ * its own; the compiler is supposed to bind the unqualified
+ * `bus_addr.write` to the parent network's output port directly.
+ *
+ * Hypothesis (from disassembly of BIU): the bytecode generator gives
+ * the combinational task a private shadow Port named after the parent
+ * port, but the parent network's commit() never copies that shadow
+ * port to its own output. The shadow is dead-end and the parent's
+ * output stays at zero/valid=false forever.
+ *
+ * Expected: this test FAILS, reproducing the Fibonacci bug.
+ */
+package com.neosyn.test.bytecode.timing;
+
+network ImplicitFwdNet {
+    in push u8 vin;
+    out push u8 vout;
+
+    fwd_inside = new task {
+        properties { type: "combinational" }
+
+        void loop() {
+            if (vin.available()) {
+                vout.write((u8)(vin.read() * 2));
+            }
+        }
+    };
+}
+
+network T10_CombWritesParentOutputImplicit {
+
+    properties {
+        test: { terminate: "checker.finished" }
+    }
+
+    producer = new task {
+        out push u8 value;
+        u8 count;
+
+        void setup() {
+            count = 0;
+        }
+
+        void loop() {
+            count++;
+            value.write(count);
+        }
+    };
+
+    fwd = new ImplicitFwdNet();
+    fwd.reads(producer.value);
+
+    checker = new task {
+        in push u8 doubled;
+
+        u8 expected;
+        bool finished;
+
+        void setup() {
+            expected = 2;
+            finished = false;
+        }
+
+        void loop() {
+            if (!finished) {
+                u8 v = doubled.read();
+                assert(v == expected);
+                if (expected == 10) {
+                    print("T10_CombWritesParentOutputImplicit PASS\n");
+                    finished = true;
+                } else {
+                    expected = (u8)(expected + 2);
+                }
+            }
+        }
+    };
+
+    checker.reads(fwd.vout);
+}

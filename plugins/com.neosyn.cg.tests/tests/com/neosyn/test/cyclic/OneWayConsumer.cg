@@ -1,0 +1,9 @@
+package com.neosyn.test.cyclic;
+
+import com.neosyn.test.cyclic.OneWayProducer.P_VAL;
+
+// Imports OneWayProducer but is not imported back — acyclic, must not be
+// flagged by the cyclic-import check.
+bundle OneWayConsumer {
+  const u8 C_VAL = P_VAL;
+}

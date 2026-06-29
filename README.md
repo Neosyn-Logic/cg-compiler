@@ -56,6 +56,12 @@ permission to compile.
 
 Read more about the open-core model at **https://neosyn.io/open**.
 
+## Get it
+
+**Prebuilt jar (no build needed):** download `cg-language-server.jar` from the
+[latest release](https://github.com/Neosyn-Logic/cg-compiler/releases/latest)
+and run it with JDK 17+ — see [Use it](#use-it). Or build from source below.
+
 ## Build from source
 
 Requirements: **JDK 17+** and **Maven 3.9+** (Tycho 4 needs 3.9, not 3.8).

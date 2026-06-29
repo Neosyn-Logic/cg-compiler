@@ -74,7 +74,7 @@ import com.neosyn.cg.ide.CgIdeModule;
  */
 public class CgLanguageServerMain {
 
-    private static final String VERSION = "2.6.8";
+    private static final String VERSION = "2.6.9";
 
     public static void main(String[] args) {
         // The open-source Verilog compiler runs with no license gate.

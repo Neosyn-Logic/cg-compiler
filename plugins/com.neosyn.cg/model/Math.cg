@@ -1,0 +1,80 @@
+/*******************************************************************************
+ * Copyright (c) 2024-2025 Neosyn. All rights reserved.
+ * https://neosyn.io
+ *
+ * C⏚ Standard Library - Integer Arithmetic Primitives (std.math)
+ *
+ * Built-in arithmetic blocks that map to hand-written Verilog/VHDL primitives
+ * instead of a bare `/` or `*` operator:
+ *
+ * - Divide:   signed integer divider. use_hard=0 (default) is a portable
+ *             sequential shift/subtract engine (~width cycles, high Fmax);
+ *             use_hard=1 emits a single-cycle native `$signed(a)/$signed(b)`.
+ * - Multiply: signed integer multiplier that REGISTERS the full-width product
+ *             (1-cycle latency), so the long multiply path can retime into a
+ *             DSP block's pipeline registers.
+ *
+ * Both are width-parameterised and use the `sync ready` handshake, so they
+ * back-pressure their producers and present one result per operand pair.
+ ******************************************************************************/
+package std.math;
+
+/**
+ * Signed integer divider built-in. C⏚ emits no hardware `/`; this maps the
+ * instantiation to a hand-written Verilog/VHDL primitive instead.
+ *
+ * Two engines, chosen at elaboration by `use_hard`:
+ *   use_hard = 0 (default) — a portable sequential shift/subtract divider that
+ *     synthesizes to a shift register + one subtractor + a small FSM on ANY
+ *     FPGA (short critical path, high Fmax, ~width cycles per quotient). A
+ *     power-of-two divisor is special-cased to a single-cycle arithmetic shift.
+ *   use_hard = 1 — a single-cycle native `$signed(a)/$signed(b)`, for parts
+ *     that provide a hardware divider / DSP block (otherwise `/` bloats logic
+ *     and caps Fmax).
+ *
+ * Signed, width-parameterised, truncated toward zero (b == 0 is undefined, as
+ * for `/` in RTL). `sync ready` handshake: the divider back-pressures its
+ * producers while it computes and presents one quotient per (a, b) pair.
+ */
+task Divide {
+
+	properties {
+		implementation: {type: "builtin"}
+	}
+
+	const int width = 32;
+	const int use_hard = 0;
+
+	sync ready {
+		in int<width> a;
+		in int<width> b;
+		out int<width> q;
+	}
+}
+
+/**
+ * Signed integer multiplier built-in. A bare `*` is single-cycle and DSP-mapped,
+ * but a product of two wide operands is one combinational multiplier that can cap
+ * Fmax. This primitive REGISTERS the product (1-cycle latency), breaking that path
+ * so the tool can place/retime it into the DSP pipeline registers.
+ *
+ * `p = a * b`, signed, full-width (`p` is 2*width bits, so no product bit is lost).
+ * `sync ready` handshake: p is held until the consumer takes it, and the producers
+ * are back-pressured while a product is in flight — the same handshake as
+ * std.math.Divide.
+ */
+task Multiply {
+
+	properties {
+		implementation: {type: "builtin"}
+	}
+
+	const int width = 32;
+	const int pwidth = width * 2;
+
+	sync ready {
+		in int<width> a;
+		in int<width> b;
+		out int<pwidth> p;
+	}
+}

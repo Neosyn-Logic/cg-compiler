@@ -160,6 +160,13 @@ public class ComponentScope extends AbstractScope {
 		registerBuiltin("std.mem.SinglePortRAM", "Mem", "builtin-cg/Mem.cg", i++);
 		registerBuiltin("std.mem.DualPortRAM", "Mem", "builtin-cg/Mem.cg", i++);
 		registerBuiltin("std.mem.PseudoDualPortRAM", "Mem", "builtin-cg/Mem.cg", i++);
+
+		// ========== std.math package ==========
+		// Source: plugins/com.neosyn.cg/model/Math.cg
+		// Contains: Divide (index 0), Multiply (index 1)
+		i = 0;
+		registerBuiltin("std.math.Divide", "Math", "builtin-cg/Math.cg", i++);
+		registerBuiltin("std.math.Multiply", "Math", "builtin-cg/Math.cg", i++);
 	}
 
 	/**

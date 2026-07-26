@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<com.neosyn.models.dpn:Actor xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:com.neosyn.models.dpn="http://www.neosyn.io/2013/Dpn"
+    xmlns:com.neosyn.models.ir="http://www.neosyn.io/2013/Ir" fileName="/home/nicolas06/neosyn/neosyn-studio/plugins/com.neosyn.cg/model/Math.cg"
+    lineNumber="52" name="std.math.Multiply" properties="{&quot;implementation&quot;:{&quot;type&quot;:&quot;builtin&quot;},&quot;clocks&quot;:[&quot;clock&quot;],&quot;resets&quot;:[{&quot;type&quot;:&quot;asynchronous&quot;,&quot;active&quot;:&quot;low&quot;,&quot;name&quot;:&quot;reset_n&quot;}],&quot;copyright&quot;:[&quot;Copyright (c) 2024-2026 Neosyn (neosyn.io). All rights reserved.&quot;,&quot;SPDX-License-Identifier: LicenseRef-Neosyn-Proprietary&quot;,&quot;Proprietary software of Neosyn; licensed, not sold. Provided \&quot;AS IS\&quot;.&quot;],&quot;javadoc&quot;:[&quot;Signed integer multiplier built-in. A bare `*` is single-cycle and DSP-mapped,&quot;,&quot;but a product of two wide operands is one combinational multiplier that can cap&quot;,&quot;Fmax. This primitive REGISTERS the product (1-cycle latency), breaking that path&quot;,&quot;so the tool can place/retime it into the DSP pipeline registers.&quot;,&quot; *&quot;,&quot;`p = a * b`, signed, full-width (`p` is 2*width bits, so no product bit is lost).&quot;,&quot;`sync ready` handshake: p is held until the consumer takes it, and the producers&quot;,&quot;are back-pressured while a product is in flight — the same handshake as&quot;,&quot;std.math.Divide.&quot;],&quot;comments&quot;:{}}">
+  <inputs name="a" interface="SYNC_READY">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" signed="true" size="32"/>
+    <additionalInputs assignable="true" name="a_valid">
+      <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </additionalInputs>
+    <additionalOutputs assignable="true" name="a_ready">
+      <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </additionalOutputs>
+  </inputs>
+  <inputs name="b" interface="SYNC_READY">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" signed="true" size="32"/>
+    <additionalInputs assignable="true" name="b_valid">
+      <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </additionalInputs>
+    <additionalOutputs assignable="true" name="b_ready">
+      <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </additionalOutputs>
+  </inputs>
+  <outputs name="p" interface="SYNC_READY">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" signed="true" size="64"/>
+    <additionalInputs assignable="true" name="p_ready">
+      <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </additionalInputs>
+    <additionalOutputs assignable="true" name="p_valid">
+      <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </additionalOutputs>
+  </outputs>
+  <variables lineNumber="58" name="width">
+    <initialValue xsi:type="com.neosyn.models.ir:ExprInt" value="32"/>
+    <type xsi:type="com.neosyn.models.ir:TypeInt" signed="true" size="32"/>
+  </variables>
+  <variables lineNumber="59" name="pwidth">
+    <initialValue xsi:type="com.neosyn.models.ir:ExprInt" value="64"/>
+    <type xsi:type="com.neosyn.models.ir:TypeInt" signed="true" size="32"/>
+  </variables>
+</com.neosyn.models.dpn:Actor>

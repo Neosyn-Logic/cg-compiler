@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<com.neosyn.models.dpn:Actor xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:com.neosyn.models.dpn="http://www.neosyn.io/2013/Dpn"
+    xmlns:com.neosyn.models.ir="http://www.neosyn.io/2013/Ir" fileName="/home/nicolas06/neosyn/neosyn-studio/plugins/com.neosyn.cg/model/Math.cg"
+    lineNumber="25" name="std.math.Divide" properties="{&quot;implementation&quot;:{&quot;type&quot;:&quot;builtin&quot;},&quot;clocks&quot;:[&quot;clock&quot;],&quot;resets&quot;:[{&quot;type&quot;:&quot;asynchronous&quot;,&quot;active&quot;:&quot;low&quot;,&quot;name&quot;:&quot;reset_n&quot;}],&quot;copyright&quot;:[&quot;Copyright (c) 2024-2026 Neosyn (neosyn.io). All rights reserved.&quot;,&quot;SPDX-License-Identifier: LicenseRef-Neosyn-Proprietary&quot;,&quot;Proprietary software of Neosyn; licensed, not sold. Provided \&quot;AS IS\&quot;.&quot;],&quot;javadoc&quot;:[&quot;Signed integer divider built-in. C⏚ emits no hardware `/`; this maps the&quot;,&quot;instantiation to a hand-written Verilog/VHDL primitive instead.&quot;,&quot; *&quot;,&quot;Two engines, chosen at elaboration by `use_hard`:&quot;,&quot;  use_hard = 0 (default) — a portable sequential shift/subtract divider that&quot;,&quot;    synthesizes to a shift register + one subtractor + a small FSM on ANY&quot;,&quot;    FPGA (short critical path, high Fmax, ~width cycles per quotient). A&quot;,&quot;    power-of-two divisor is special-cased to a single-cycle arithmetic shift.&quot;,&quot;  use_hard = 1 — a single-cycle native `$signed(a)/$signed(b)`, for parts&quot;,&quot;    that provide a hardware divider / DSP block (otherwise `/` bloats logic&quot;,&quot;    and caps Fmax).&quot;,&quot; *&quot;,&quot;Signed, width-parameterised, truncated toward zero (b == 0 is undefined, as&quot;,&quot;for `/` in RTL). `sync ready` handshake: the divider back-pressures its&quot;,&quot;producers while it computes and presents one quotient per (a, b) pair.&quot;],&quot;comments&quot;:{}}">
+  <inputs name="a" interface="SYNC_READY">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" signed="true" size="32"/>
+    <additionalInputs assignable="true" name="a_valid">
+      <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </additionalInputs>
+    <additionalOutputs assignable="true" name="a_ready">
+      <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </additionalOutputs>
+  </inputs>
+  <inputs name="b" interface="SYNC_READY">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" signed="true" size="32"/>
+    <additionalInputs assignable="true" name="b_valid">
+      <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </additionalInputs>
+    <additionalOutputs assignable="true" name="b_ready">
+      <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </additionalOutputs>
+  </inputs>
+  <outputs name="q" interface="SYNC_READY">
+    <type xsi:type="com.neosyn.models.ir:TypeInt" signed="true" size="32"/>
+    <additionalInputs assignable="true" name="q_ready">
+      <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </additionalInputs>
+    <additionalOutputs assignable="true" name="q_valid">
+      <type xsi:type="com.neosyn.models.ir:TypeBool"/>
+    </additionalOutputs>
+  </outputs>
+  <variables lineNumber="31" name="width">
+    <initialValue xsi:type="com.neosyn.models.ir:ExprInt" value="32"/>
+    <type xsi:type="com.neosyn.models.ir:TypeInt" signed="true" size="32"/>
+  </variables>
+  <variables lineNumber="32" name="use_hard">
+    <initialValue xsi:type="com.neosyn.models.ir:ExprInt" value="0"/>
+    <type xsi:type="com.neosyn.models.ir:TypeInt" signed="true" size="32"/>
+  </variables>
+</com.neosyn.models.dpn:Actor>

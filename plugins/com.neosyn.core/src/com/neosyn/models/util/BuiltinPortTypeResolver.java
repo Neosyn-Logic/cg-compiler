@@ -70,7 +70,8 @@ public final class BuiltinPortTypeResolver {
 	private static final String[] BUILTIN_PREFIXES = {
 		"std.mem.",
 		"std.fifo.",
-		"std.lib."
+		"std.lib.",
+		"std.math."
 	};
 
 	/** Thread-safe cache for loaded built-in entities */

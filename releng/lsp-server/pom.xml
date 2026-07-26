@@ -263,6 +263,7 @@
                                         <include>Mem.cg</include>
                                         <include>Fifo.cg</include>
                                         <include>Lib.cg</include>
+                                        <include>Math.cg</include>
                                     </includes>
                                 </resource>
                             </resources>

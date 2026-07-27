@@ -308,7 +308,18 @@ public class FunctionTransformer extends CgSwitch<EObject>implements Transformer
 		// 0 and the multiply is signed*positive with a full-width product — no N-bit
 		// magic-number wraparound to reason about.
 		Var mag = builder.createLocal(line, ir.createTypeInt(mBits + 1, true), "tmp_sdivm");
-		builder.add(ir.createInstAssign(mag, ir.createExprInt(m)));
+		// Widen the LITERAL with a real cast node, not just a computedType tweak. M is POSITIVE
+		// but its top magnitude bit is set (0x92492493 for d=7), so at its natural mBits width
+		// the MSB reads as a sign bit. The VHDL backend prints a literal at its own width
+		// (`x"92492493"` = 32 bits => -1840700269 once VHDL types it `signed` by context), which
+		// negates the whole reciprocal multiply — wrong for EVERY dividend, both signs.
+		// `computedType` is derived and is NOT serialized into the .ir the HDL backends read
+		// back, so it cannot carry this; an ExprCast is a real node that survives. Casting from
+		// UNSIGNED mBits to SIGNED mBits+1 zero-extends, keeping the leading 0 that makes M
+		// unambiguously positive in both backends.
+		Expression magLiteral = ir.cast(ir.createTypeInt(mBits + 1, true),
+				ir.createTypeInt(mBits, false), ir.createExprInt(m));
+		builder.add(ir.createInstAssign(mag, magLiteral));
 
 		Var product = builder.createLocal(line, ir.createTypeInt(width + mBits + 1, true),
 				"tmp_sdivprod");
@@ -321,16 +332,30 @@ public class FunctionTransformer extends CgSwitch<EObject>implements Transformer
 				SHIFT_RIGHT, ir.createExprInt(s))));
 
 		// q = q0 + (dividend < 0 ? 1 : 0) = q0 - (dividend >> (width - 1))
+		// PIN THE SIGNEDNESS OF THIS SUBTRACTION. Later passes fold q0 away, leaving its
+		// definition inlined as a BIT-SELECT of the wide product — and a Verilog bit-select is
+		// UNSIGNED. One unsigned operand makes the whole expression unsigned, which silently
+		// turns the `>>>` sign-mask below into a LOGICAL shift: the correction becomes +1
+		// instead of -1 and every negative quotient lands 2 too low. Casting unsigned->signed at
+		// the same width adds no resize, only an explicit $signed(...), which keeps the
+		// subtraction (and therefore the shift) arithmetic no matter how q0 is inlined.
+		Expression q0Signed = ir.cast(ir.createTypeInt(width, true), ir.createTypeInt(width, false),
+				ir.createExprVar(q0), false);
 		Var q = builder.createLocal(line, ir.createTypeInt(width, true), "tmp_sdivq");
-		builder.add(ir.createInstAssign(q, ir.createExprBinary(ir.createExprVar(q0), MINUS,
+		builder.add(ir.createInstAssign(q, ir.createExprBinary(q0Signed, MINUS,
 				ir.createExprBinary(ir.createExprVar(dividend), SHIFT_RIGHT,
 						ir.createExprInt(width - 1)))));
 
 		if (op == DIV) {
 			return ir.createExprVar(q);
 		}
+		// Same trap as the magic constant above, second literal: this DIVISOR multiplies a
+		// SIGNED quotient, so VHDL types it signed by context. At its natural width d=7 is
+		// "111", which reads as -1 and negates the remainder. Widen by one bit for a leading 0.
+		Expression divisor = ir.cast(ir.createTypeInt(d.bitLength() + 1, true),
+				ir.createTypeInt(d.bitLength(), false), ir.createExprInt(d));
 		return ir.createExprBinary(ir.createExprVar(dividend), MINUS,
-				ir.createExprBinary(ir.createExprVar(q), TIMES, ir.createExprInt(d)));
+				ir.createExprBinary(ir.createExprVar(q), TIMES, divisor));
 	}
 
 	@Override

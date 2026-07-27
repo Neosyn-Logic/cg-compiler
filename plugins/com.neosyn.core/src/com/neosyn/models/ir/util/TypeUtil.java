@@ -583,13 +583,14 @@ public class TypeUtil {
 
 		TypeInt typeInt = (TypeInt) IrUtil.copy(t1);
 		if (op == OpBinary.DIV) {
-			// valid because we know "n" is a multiple of two (see validator)
+			// quotient of an W-bit value by n needs at most W - floor(log2 n) bits, and never
+			// fewer than 1 (a divisor larger than the operand yields a constant 0).
 			int size = BigInteger.valueOf(n - 1).bitLength();
-			typeInt.setSize(typeInt.getSize() - size);
+			typeInt.setSize(Math.max(1, typeInt.getSize() - size));
 		} else if (op == OpBinary.MOD) {
-			// valid because we know "n" is a multiple of two (see validator)
+			// remainder is < n AND <= the dividend, so it fits in min(ceil(log2 n), W) bits.
 			int size = BigInteger.valueOf(n - 1).bitLength();
-			typeInt.setSize(size);
+			typeInt.setSize(Math.min(size, typeInt.getSize()));
 		} else if (op == OpBinary.SHIFT_LEFT) {
 			typeInt.setSize(typeInt.getSize() + n);
 		} else if (op == OpBinary.SHIFT_RIGHT) {

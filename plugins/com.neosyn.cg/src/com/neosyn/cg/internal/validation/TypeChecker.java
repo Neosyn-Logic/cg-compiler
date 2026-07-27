@@ -461,16 +461,19 @@ public class TypeChecker extends Checker {
 		if ("/".equals(op) || "%".equals(op)) {
 			Object value = instantiator.evaluate(entity, expr.getRight());
 			if (value == null || !ValueUtil.isInt(value)) {
-				error("The right operand of operator " + op + " must be constant", expr, null,
+				error("The right operand of operator " + op
+						+ " must be a compile-time constant"
+						+ " (use the std.math.Divide built-in for a variable divisor)", expr, null,
 						ERR_DIV_MOD_NOT_CONST_POW_Of_TWO);
 				return;
 			}
 
-			int v = ((BigInteger) value).intValue();
-			if (!ValueUtil.isPowerOfTwo(v)) {
-				error("The right operand of operator " + op
-						+ " must be a power of two and greater than zero", expr, null,
-						ERR_DIV_MOD_NOT_CONST_POW_Of_TWO);
+			// Any positive constant is synthesizable: a power of two lowers to a shift/mask,
+			// every other divisor to a reciprocal multiply (see FunctionTransformer). Only zero
+			// and negative divisors are rejected.
+			if (((BigInteger) value).signum() <= 0) {
+				error("The right operand of operator " + op + " must be a positive constant", expr,
+						null, ERR_DIV_MOD_NOT_CONST_POW_Of_TWO);
 			}
 		} else if ("<<".equals(op) || ">>".equals(op)) {
 			Object value = instantiator.evaluate(entity, expr.getRight());

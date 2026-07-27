@@ -117,7 +117,16 @@ class VerilogExpressionPrinter extends ExpressionPrinter {
 
 		switch (typeName.substring(0, index)) {
 			case "trunc": '''«expr»[«targetSize - 1» : 0]'''
-			case "sext": '''{{«targetSize - sourceSize»{«expr»[«sourceSize - 1»]}}, «expr»}'''
+			// A Verilog CONCATENATION IS ALWAYS UNSIGNED (IEEE 1364 / 1800), even when every
+			// operand is signed. A bare `{{k{x[msb]}}, x}` therefore produced a sign-extended
+			// BIT PATTERN inside an UNSIGNED expression, and Verilog's rule that one unsigned
+			// operand makes the whole expression unsigned then silently degraded the enclosing
+			// operators: `*` became an unsigned multiply and `>>>` an ordinary logical shift.
+			// That miscompiled every signed value with its high bit set — the reciprocal-multiply
+			// lowering of `x / 7` returned 930884682 instead of -142857142 for x = -1000000000,
+			// in the HARDWARE. $signed() restores the declared signedness without changing a
+			// single bit, so the multiply stays full-width and `>>>` stays arithmetic.
+			case "sext": '''$signed({{«targetSize - sourceSize»{«expr»[«sourceSize - 1»]}}, «expr»})'''
 			case "zext": '''{«targetSize - sourceSize»'b0, «expr»}'''
 		}
 	}

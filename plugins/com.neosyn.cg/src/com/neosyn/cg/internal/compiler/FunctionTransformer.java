@@ -14,9 +14,12 @@ import static com.neosyn.cg.CgConstants.PROP_LENGTH;
 import static com.neosyn.cg.internal.TransformerUtil.getStartLine;
 import static com.neosyn.models.ir.OpBinary.BITAND;
 import static com.neosyn.models.ir.OpBinary.DIV;
+import static com.neosyn.models.ir.OpBinary.MINUS;
 import static com.neosyn.models.ir.OpBinary.MOD;
+import static com.neosyn.models.ir.OpBinary.PLUS;
 import static com.neosyn.models.ir.OpBinary.SHIFT_LEFT;
 import static com.neosyn.models.ir.OpBinary.SHIFT_RIGHT;
+import static com.neosyn.models.ir.OpBinary.TIMES;
 import static java.math.BigInteger.ONE;
 
 import java.math.BigInteger;
@@ -75,8 +78,10 @@ import com.neosyn.models.ir.OpBinary;
 import com.neosyn.models.ir.OpUnary;
 import com.neosyn.models.ir.Procedure;
 import com.neosyn.models.ir.Type;
+import com.neosyn.models.ir.TypeInt;
 import com.neosyn.models.ir.Var;
 import com.neosyn.models.ir.util.IrUtil;
+import com.neosyn.models.ir.util.TypeUtil;
 import com.neosyn.models.ir.util.ValueUtil;
 
 /**
@@ -129,46 +134,203 @@ public class FunctionTransformer extends CgSwitch<EObject>implements Transformer
 		Expression e2;
 
 		if (op == DIV || op == MOD || op == SHIFT_LEFT || op == SHIFT_RIGHT) {
-			// No hardware divider / variable shifter is emitted: /, %, <<, >> need
-			// a compile-time-constant right operand, and / and % additionally need
-			// a power of two (div -> shift, mod -> mask). Reject anything else with
-			// a clear message instead of NPE-ing on the cast below or silently
-			// miscompiling (e.g. `x % 3` -> `x & 2`).
+			// /, %, <<, >> have no runtime datapath inlined here: each needs a
+			// compile-time-constant right operand. A / or % by a NON-power-of-two
+			// constant is lowered to a reciprocal (magic-number) multiply below; a
+			// variable divisor must go through the std.math.Divide built-in instead.
 			Object value = builder.instantiator.evaluate(builder.entity, expression.getRight());
 			if (!(value instanceof BigInteger)) {
 				throw new IllegalArgumentException("the right operand of '" + expression.getOperator()
 						+ "' must be a compile-time constant"
-						+ " (no hardware divider/variable-shifter is generated)");
+						+ (op == DIV || op == MOD
+								? " (use the std.math.Divide built-in for a variable divisor)"
+								: " (no variable shifter is generated)"));
 			}
 			BigInteger n = (BigInteger) value;
-			boolean powerOfTwo = n.signum() > 0 && n.bitCount() == 1;
 
-			if (op == OpBinary.DIV) {
-				if (!powerOfTwo) {
-					throw new IllegalArgumentException("division by " + n
-							+ " is not synthesizable; the divisor must be a power of two");
-				}
-				// div n <=> right shift by log2(n)
-				op = SHIFT_RIGHT;
-				e2 = ir.createExprInt(n.bitLength() - 1);
-			} else if (op == MOD) {
-				if (!powerOfTwo) {
-					throw new IllegalArgumentException("modulo by " + n
-							+ " is not synthesizable; the divisor must be a power of two");
-				}
-				// mod n <=> & (n - 1)
-				op = BITAND;
-				e2 = ir.createExprInt(n.subtract(ONE));
-			} else /* if (op == SHIFT_LEFT || op == SHIFT_RIGHT) */ {
-				// shifts must have a constant second operand
-				e2 = ir.createExprInt(n);
+			if (op == DIV || op == MOD) {
+				return lowerConstantDivMod(op, e1, n, expression);
 			}
+
+			// shifts must have a constant second operand
+			e2 = ir.createExprInt(n);
 		} else {
 			// default case: transform expression
 			e2 = transformExpr(expression.getRight());
 		}
 
 		return ir.createExprBinary(e1, op, e2);
+	}
+
+
+	/**
+	 * Lowers a constant-divisor {@code e1 / n} or {@code e1 % n} into hardware that matches
+	 * C / RISC-V / Verilog integer semantics: floor division for unsigned operands, and
+	 * truncation toward zero for signed operands (the rounding the S159 §34 fix pinned down for
+	 * powers of two, and what the {@code std.math.Divide} built-in produces).
+	 *
+	 * <p>
+	 * Powers of two keep the cheap shift/mask lowering. Every other positive constant becomes a
+	 * reciprocal multiply {@code q = (x * M) >> s} with a magic constant M and shift s. C⏚
+	 * {@code *} is full width ({@link TypeUtil#getSum}: an N-bit by K-bit product is N+K bits,
+	 * never truncated) and a &gt;64-bit intermediate is carried as a BigInteger in the JVM
+	 * simulator, so the wide product is emitted directly; yosys folds the constant multiply back
+	 * into shift-adds. The (M, s) choice and this exact lowering are proven against a
+	 * brute-force reference for both signednesses (S160 reciprocal-multiply notes).
+	 */
+	private Expression lowerConstantDivMod(OpBinary op, Expression e1, BigInteger n,
+			ExpressionBinary expression) {
+		if (n.signum() == 0) {
+			throw new IllegalArgumentException((op == DIV ? "division" : "modulo") + " by zero");
+		}
+		if (n.signum() < 0) {
+			throw new IllegalArgumentException("the right operand of '" + expression.getOperator()
+					+ "' must be a positive constant (got " + n + ")");
+		}
+
+		// Take width/signedness from the ALREADY-TRANSFORMED IR operand, not the Cg AST:
+		// computeType() on the AST does not resolve every left-hand form (a port read such as
+		// `inp.read() / 3` comes back without a TypeInt), which silently sent signed operands
+		// down the wrong path and kept the §34 bug alive.
+		Type lhsType = TypeUtil.getType(e1);
+		boolean signed = lhsType instanceof TypeInt && ((TypeInt) lhsType).isSigned();
+		int width = lhsType instanceof TypeInt ? ((TypeInt) lhsType).getSize() : 32;
+		int line = getStartLine(expression);
+
+		int k = n.bitLength() - 1;
+		if (k == 0) {
+			// n == 1: identity for /, zero for % (both signednesses); avoids a degenerate
+			// shift-by-zero, which trips type inference.
+			return op == DIV ? e1 : ir.createExprInt(0);
+		}
+
+		if (n.bitCount() == 1) {
+			// Power of two: keep the cheap shift/mask lowering (§34).
+			return lowerPowerOfTwoDivMod(op, e1, n, k, width, signed, line);
+		}
+
+		// Non-power-of-two constant. If the divisor exceeds every representable dividend, the
+		// quotient is always 0 and the remainder is the dividend itself (also keeps the magic
+		// helpers within their proven input range).
+		BigInteger maxDividend = signed
+				? BigInteger.ONE.shiftLeft(width - 1)            // |most negative| = 2^(N-1)
+				: BigInteger.ONE.shiftLeft(width).subtract(ONE); // 2^N - 1
+		if (n.compareTo(maxDividend) > 0) {
+			return op == DIV ? ir.createExprInt(0) : e1;
+		}
+
+		return signed ? lowerSignedMagicDivMod(op, e1, n, width, line)
+				: lowerUnsignedMagicDivMod(op, e1, n, width, line);
+	}
+
+	/** Power-of-two divisor (n = 2^k, k &gt;= 1): shift/mask, with the §34 signed bias. */
+	private Expression lowerPowerOfTwoDivMod(OpBinary op, Expression e1, BigInteger n, int k,
+			int width, boolean signed, int line) {
+		if (signed) {
+			// SIGNED: `>>` FLOORS (toward -inf) and `&` drops the sign, but C, RISC-V DIV/REM and
+			// Verilog `/` all TRUNCATE TOWARD ZERO. Left uncorrected, -7/4 yields -2 (not -1) and
+			// -7%4 yields 1 (not -3). Bias the dividend by (n-1) when it is negative so the floor
+			// lands on the truncated quotient:
+			//   mask = a >> (W-1)          0 if a >= 0, -1 if a < 0
+			//   bias = mask - (mask << k)  0 if a >= 0, n-1 if a < 0
+			//   q    = (a + bias) >> k
+			//   r    = a - (q << k)
+			// The bias is derived FROM THE MASK, not `mask & (n-1)`: `& (n-1)` infers a k-bit
+			// result that is then SIGN-extended, flipping the correction (see §34).
+			Var dividend = builder.createLocal(line, ir.createTypeInt(width, true), "tmp_divl");
+			builder.add(ir.createInstAssign(dividend, e1));
+
+			Var signMask = builder.createLocal(line, ir.createTypeInt(width, true), "tmp_divs");
+			builder.add(ir.createInstAssign(signMask, ir.createExprBinary(
+					ir.createExprVar(dividend), SHIFT_RIGHT, ir.createExprInt(width - 1))));
+
+			Expression bias = ir.createExprBinary(ir.createExprVar(signMask), MINUS,
+					ir.createExprBinary(ir.createExprVar(signMask), SHIFT_LEFT, ir.createExprInt(k)));
+			Expression quotient = ir.createExprBinary(
+					ir.createExprBinary(ir.createExprVar(dividend), PLUS, bias), SHIFT_RIGHT,
+					ir.createExprInt(k));
+
+			if (op == DIV) {
+				return quotient;
+			}
+			return ir.createExprBinary(ir.createExprVar(dividend), MINUS,
+					ir.createExprBinary(quotient, SHIFT_LEFT, ir.createExprInt(k)));
+		}
+
+		// UNSIGNED: shift/mask is exact and strictly cheaper than the biased form.
+		if (op == DIV) {
+			return ir.createExprBinary(e1, SHIFT_RIGHT, ir.createExprInt(k));
+		}
+		return ir.createExprBinary(e1, BITAND, ir.createExprInt(n.subtract(ONE)));
+	}
+
+	/** Unsigned reciprocal-multiply: {@code q = (x * M) >>> s}, {@code r = x - q*d}. */
+	private Expression lowerUnsignedMagicDivMod(OpBinary op, Expression e1, BigInteger d, int width,
+			int line) {
+		BigInteger[] ms = MagicDivision.unsigned(width, d);
+		BigInteger m = ms[0];
+		int s = ms[1].intValue();
+		int mBits = m.bitLength();
+
+		Var dividend = builder.createLocal(line, ir.createTypeInt(width, false), "tmp_udividend");
+		builder.add(ir.createInstAssign(dividend, e1));
+
+		// product = dividend * M, full width (getSum => width + mBits, no truncation).
+		Var product = builder.createLocal(line, ir.createTypeInt(width + mBits, false),
+				"tmp_udivprod");
+		builder.add(ir.createInstAssign(product, ir.createExprBinary(ir.createExprVar(dividend),
+				TIMES, ir.createExprInt(m))));
+
+		// q = product >> s (logical shift, unsigned).
+		Var q = builder.createLocal(line, ir.createTypeInt(width, false), "tmp_udivq");
+		builder.add(ir.createInstAssign(q, ir.createExprBinary(ir.createExprVar(product),
+				SHIFT_RIGHT, ir.createExprInt(s))));
+
+		if (op == DIV) {
+			return ir.createExprVar(q);
+		}
+		return ir.createExprBinary(ir.createExprVar(dividend), MINUS,
+				ir.createExprBinary(ir.createExprVar(q), TIMES, ir.createExprInt(d)));
+	}
+
+	/** Signed reciprocal-multiply: {@code q = sra(x * M, s) + (x < 0)}, {@code r = x - q*d}. */
+	private Expression lowerSignedMagicDivMod(OpBinary op, Expression e1, BigInteger d, int width,
+			int line) {
+		BigInteger[] ms = MagicDivision.signed(width, d);
+		BigInteger m = ms[0];
+		int s = ms[1].intValue();
+		int mBits = m.bitLength();
+
+		Var dividend = builder.createLocal(line, ir.createTypeInt(width, true), "tmp_sdividend");
+		builder.add(ir.createInstAssign(dividend, e1));
+
+		// Keep M POSITIVE in a signed local one bit wider than its magnitude, so the sign bit is
+		// 0 and the multiply is signed*positive with a full-width product — no N-bit
+		// magic-number wraparound to reason about.
+		Var mag = builder.createLocal(line, ir.createTypeInt(mBits + 1, true), "tmp_sdivm");
+		builder.add(ir.createInstAssign(mag, ir.createExprInt(m)));
+
+		Var product = builder.createLocal(line, ir.createTypeInt(width + mBits + 1, true),
+				"tmp_sdivprod");
+		builder.add(ir.createInstAssign(product, ir.createExprBinary(ir.createExprVar(dividend),
+				TIMES, ir.createExprVar(mag))));
+
+		// q0 = sra(product, s)
+		Var q0 = builder.createLocal(line, ir.createTypeInt(width, true), "tmp_sdivq0");
+		builder.add(ir.createInstAssign(q0, ir.createExprBinary(ir.createExprVar(product),
+				SHIFT_RIGHT, ir.createExprInt(s))));
+
+		// q = q0 + (dividend < 0 ? 1 : 0) = q0 - (dividend >> (width - 1))
+		Var q = builder.createLocal(line, ir.createTypeInt(width, true), "tmp_sdivq");
+		builder.add(ir.createInstAssign(q, ir.createExprBinary(ir.createExprVar(q0), MINUS,
+				ir.createExprBinary(ir.createExprVar(dividend), SHIFT_RIGHT,
+						ir.createExprInt(width - 1)))));
+
+		if (op == DIV) {
+			return ir.createExprVar(q);
+		}
+		return ir.createExprBinary(ir.createExprVar(dividend), MINUS,
+				ir.createExprBinary(ir.createExprVar(q), TIMES, ir.createExprInt(d)));
 	}
 
 	@Override

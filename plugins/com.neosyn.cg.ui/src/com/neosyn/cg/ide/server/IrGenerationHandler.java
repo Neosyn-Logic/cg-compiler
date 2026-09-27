@@ -271,6 +271,15 @@ public class IrGenerationHandler {
                         ValidationHelper.ValidationResult validationResult = validationHelper.validateSyntaxOnly(resource);
                         allErrors.addAll(validationResult.getErrors());
                         allWarnings.addAll(validationResult.getWarnings());
+                        // A file that does not parse or link has no IR to generate. Generating
+                        // anyway walked its unresolved references and died on a null, printed
+                        // after the correct "cannot be resolved" diagnostics. The errors are
+                        // already collected; callers report them.
+                        if (!validationResult.getErrors().isEmpty()) {
+                            ServerUtils.debugLog("[IR] Skipping IR for " + uri + ": "
+                                    + validationResult.getErrors().size() + " syntax/link error(s)");
+                            continue;
+                        }
                     }
 
                     // Generate IR

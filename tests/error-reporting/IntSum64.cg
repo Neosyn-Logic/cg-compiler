@@ -1,0 +1,43 @@
+// Error-reporting case. The inline `src` and `sink` tasks use `pixel` and `sum`, which
+// the network never declares (the test vector's port names do not bring ports into
+// scope). `generate` must report the three "cannot be resolved" errors, and nothing
+// else: no internal compiler exception, no silent "No IR files generated".
+package t;
+task IntSum64 {
+    in  stream uint<16> pixel;
+    out stream int<64>  sum;
+    uint<16> cnt = 0;
+    int<64>  acc = 0;
+    void loop() {
+        acc = (int<64>) (acc + (int<64>) pixel.read());
+        if (cnt == 7) {
+            sum.write(acc);
+            acc = 0;
+            cnt = 0;
+        } else {
+            cnt = cnt + 1;
+        }
+    }
+}
+network SumTest {
+    properties {
+        test: {
+            pixel: [
+                1, 2, 3, 4, 5, 6, 7, 8,
+                65535, 4000000000, 1, 2, 3, 4, 5
+            ],
+            sum: [ 36, 4000065554 ]
+        }
+    }
+    src = new task {
+        out stream uint<16> p;
+        void loop() { p.write(pixel.read()); }
+    };
+    dut = new IntSum64();
+    dut.reads(src.p);
+    sink = new task {
+        in stream int<64> s;
+        void loop() { sum.write(s.read()); }
+    };
+    sink.reads(dut.sum);
+}

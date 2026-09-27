@@ -184,6 +184,13 @@ public class ImplicitConnector extends VoidCxSwitch {
 
 	private void visitPort(VarRef ref) {
 		Variable cxPort = ref.getVariable();
+		if (cxPort == null || cxPort.eIsProxy()) {
+			// An unresolved name: `sum.write(...)` in an inline task, for a port the network
+			// never declares. The front end has already reported "sum cannot be resolved"; there
+			// is nothing to connect, and going on dereferenced null. The read path is guarded
+			// by isPort() in caseExpressionVariable; writes were not.
+			return;
+		}
 
 		// Tier 2.2: a struct-typed port is flattened to N scalar field ports.
 		// Wire each field port (cross-task), or no-op if owned by this entity.

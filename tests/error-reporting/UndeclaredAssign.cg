@@ -1,0 +1,7 @@
+package t;
+
+// Error-reporting case: an assignment to an undeclared name.
+task UndeclaredAssign {
+  out push u8 y;
+  void loop() { sum = 1; y.write(1); }
+}

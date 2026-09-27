@@ -1,0 +1,7 @@
+package t;
+
+// Error-reporting case: a read of an undeclared port.
+task UndeclaredRead {
+  out push u8 y;
+  void loop() { u8 v = pixel.read(); y.write(v); }
+}

@@ -56,6 +56,9 @@ jobs:
           done
           exit $fail
 
+      - name: Errors are reported by the front end, never as an internal crash
+        run: bash tests/error-reporting/check.sh "$PWD/releng/lsp-server/target/cg-language-server.jar"
+
       - name: Upload the jar
         uses: actions/upload-artifact@v4
         with:

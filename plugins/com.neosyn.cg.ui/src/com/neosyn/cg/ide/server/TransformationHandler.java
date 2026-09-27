@@ -89,6 +89,20 @@ public class TransformationHandler {
     public void transformModule(Module module) {
         ServerUtils.debugLog("[Transform] transformModule() called");
 
+        // Do not transform a source the front end has ALREADY rejected. The parser or linker has
+        // already reported it precisely, with a file and a line; running the IR pipeline on the
+        // wreckage only printed a crash naming the compiler's internals ABOVE the real diagnostic
+        // (a NullPointerException on an undeclared name, an "Unresolved reference '?.?'"). The
+        // generate path refuses a file with compile errors anyway, so nothing downstream wanted
+        // this IR. Validation is unaffected (it runs through ValidationHelper on its own path).
+        org.eclipse.emf.ecore.resource.Resource res = module.eResource();
+        if (res != null && !res.getErrors().isEmpty()) {
+            ServerUtils.debugLog("[Transform] SKIPPED: " + res.getErrors().size()
+                    + " unresolved error(s) in " + res.getURI()
+                    + " — the front end already reported them.");
+            return;
+        }
+
         // Translate comments
         new CommentTranslator(instantiator).doSwitch(module);
 

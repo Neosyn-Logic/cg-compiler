@@ -23,29 +23,10 @@
  * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE
  */
-
-/**
- * Title   : FIFO read controller
- * Authors : Neosyn team <nicolas.siret@neosyn.io>
- */
-module FIFO_Read_Controller
-  #(parameter depth = 8)
-  (
-    input reset_n,
-    input rd_clock,
-    input enable,
-    output [depth - 1 : 0] gray_value
-  );
-  
-  reg [depth - 1 : 0] rd_address;  
-  reg [1 : 0] ff_valid;
-
-  always @(negedge reset_n or posedge rd_clock)
-    if (~reset_n)
-      rd_address <= {depth{1'b0}};
-    else
-      rd_address <= rd_address + enable;
-      
-  assign gray_value[depth - 1 : 0] = rd_address[depth - 1 : 0] ^ {1'b0, rd_address[depth - 1 : 1]}; 
-          
+module FIFO_Read_Controller # ( parameter depth = 8 ) ( input reset_n , input rd_clock , input enable , output [ depth - 1 : 0 ] gray_value ) ;
+reg [ depth - 1 : 0 ] w1 ;
+reg [ 1 : 0 ] w2 ;
+always @ ( negedge reset_n or posedge rd_clock ) if ( ~ reset_n ) w1 <= { depth { 1'b0 } } ;
+else w1 <= w1 + enable ;
+assign gray_value [ depth - 1 : 0 ] = w1 [ depth - 1 : 0 ] ^ { 1'b0 , w1 [ depth - 1 : 1 ] } ;
 endmodule

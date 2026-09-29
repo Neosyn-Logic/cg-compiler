@@ -23,90 +23,31 @@
  * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE
  */
-
-/**
- * Title   : Asynchronous FIFO
- * Authors : Neosyn team <nicolas.siret@neosyn.io>
- */
-module AsynchronousFIFO
-  #(parameter size = 0, width = 0, depth = 0)
-  (
-    input din_clock, input dout_clock,
-    input reset_n,
-    input [width - 1 : 0] din, input din_valid, output din_ready,
-    output reg [width - 1 : 0]  dout, output reg dout_valid, input dout_ready
-  );
-  
-  /*
-   * RAM Management
-   */
-  wire [depth - 1 : 0] rd_address;
-  wire [depth - 1 : 0] wr_address; 
-  
-  wire read_ready, readFifo;
-   
-  reg dout_valid_1C;  
-  wire [width - 1 : 0] dataOutRam;
-  
-  DualPortRAM #(.size(size), .width(width), .depth(depth)) ram
-  (
-    .clock_a(din_clock),
-    .clock_b(dout_clock),
-    .address_a(wr_address),
-    .data_a(din),
-    .data_a_valid(din_valid),
-    .q_a(),
-    .address_b(rd_address),
-    .data_b(),
-    .data_b_valid(),
-    .q_b(dataOutRam) 
-  );
-
-  FIFO_Write_Controller #(.depth(depth)) wr_ctrl
-  (
-    .reset_n(reset_n),
-    .wr_clock(din_clock),
-    .enable(din_valid),
-    .gray_value(wr_address)
-  ); 
-  
-  FIFO_Read_Controller #(.depth(depth)) rd_ctrl
-  (
-    .reset_n(reset_n),
-    .rd_clock(dout_clock),
-    .enable(readFifo),
-    .gray_value(rd_address)
-  );  
-  assign readFifo = read_ready & dout_ready;
-  
-  FIFO_Flag_Controller #(.depth(depth)) Flag_Controller
-  (
-    .reset_n(reset_n),
-    .din_clock(din_clock),
-    .dout_clock(dout_clock),
-    .wr_address(wr_address),
-    .rd_address(rd_address),
-    .din_rdy(din_ready),
-    .dout_rdy(read_ready)
-  );
-  
-  // Register the output (better performance / place & route)
-  always @(negedge reset_n or posedge dout_clock)
-    if (~reset_n) begin
-      dout         <= {width{1'b0}};
-      dout_valid    <= 1'b0;
-   end else begin
-      dout_valid    <= dout_valid_1C;  
-      if (dout_valid_1C) begin 
-        dout       <= dataOutRam;
-      end 
-    end   
-
-  always @(negedge reset_n or posedge dout_clock)
-    if (~reset_n) begin
-      dout_valid_1C <= 1'b0;
-    end else begin
-      dout_valid_1C <= readFifo;  
-    end
-  
+module AsynchronousFIFO # ( parameter size = 0 , width = 0 , depth = 0 ) ( input din_clock , input dout_clock , input reset_n , input [ width - 1 : 0 ] din , input din_valid , output din_ready , output reg [ width - 1 : 0 ] dout , output reg dout_valid , input dout_ready ) ;
+wire [ depth - 1 : 0 ] w1 ;
+wire [ depth - 1 : 0 ] w2 ;
+wire w3 , w4 ;
+reg w5 ;
+wire [ width - 1 : 0 ] w6 ;
+DualPortRAM # ( . size ( size ) , . width ( width ) , . depth ( depth ) ) w7 ( . clock_a ( din_clock ) , . clock_b ( dout_clock ) , . address_a ( w2 ) , . data_a ( din ) , . data_a_valid ( din_valid ) , . q_a ( ) , . address_b ( w1 ) , . data_b ( ) , . data_b_valid ( ) , . q_b ( w6 ) ) ;
+FIFO_Write_Controller # ( . depth ( depth ) ) w8 ( . reset_n ( reset_n ) , . wr_clock ( din_clock ) , . enable ( din_valid ) , . gray_value ( w2 ) ) ;
+FIFO_Read_Controller # ( . depth ( depth ) ) w9 ( . reset_n ( reset_n ) , . rd_clock ( dout_clock ) , . enable ( w4 ) , . gray_value ( w1 ) ) ;
+assign w4 = w3 & dout_ready ;
+FIFO_Flag_Controller # ( . depth ( depth ) ) w10 ( . reset_n ( reset_n ) , . din_clock ( din_clock ) , . dout_clock ( dout_clock ) , . wr_address ( w2 ) , . rd_address ( w1 ) , . din_rdy ( din_ready ) , . dout_rdy ( w3 ) ) ;
+always @ ( negedge reset_n or posedge dout_clock ) if ( ~ reset_n ) begin
+dout <= { width { 1'b0 } } ;
+dout_valid <= 1'b0 ;
+end
+else begin
+dout_valid <= w5 ;
+if ( w5 ) begin
+dout <= w6 ;
+end
+end
+always @ ( negedge reset_n or posedge dout_clock ) if ( ~ reset_n ) begin
+w5 <= 1'b0 ;
+end
+else begin
+w5 <= w4 ;
+end
 endmodule

@@ -23,25 +23,7 @@
  * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE
  */
-
-/**
- * Title       : MuxDDR
- * Description : Multiplexes two single data rate signals to generate a Double Data Rate signal
- * Authors     : Neosyn team
- */
-module MuxDDR
-  #(parameter width = 0)
-  (
-    input clock,
-    input rising_valid,
-    input [width - 1 : 0] rising,
-    input falling_valid,
-    input [width - 1 : 0] falling,
-    output dout_valid,
-    output [width - 1 : 0] dout
-  );
-
-  assign dout = clock ? rising : falling;
-  assign dout_valid = clock ? rising_valid : falling_valid;
-
+module MuxDDR # ( parameter width = 0 ) ( input clock , input rising_valid , input [ width - 1 : 0 ] rising , input falling_valid , input [ width - 1 : 0 ] falling , output dout_valid , output [ width - 1 : 0 ] dout ) ;
+assign dout = clock ? rising : falling ;
+assign dout_valid = clock ? rising_valid : falling_valid ;
 endmodule

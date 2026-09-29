@@ -23,44 +23,13 @@
  * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE
  */
-
-/**
- * Title   : Mux synchronizer
- * Authors : Neosyn team
- */
-module SynchronizerMux
-  #(parameter width = 32, parameter stages = 2)
-  (
-    input reset_n,
-    input din_clock,
-    input dout_clock,
-    input din_valid,
-    input [width - 1 : 0] din,
-    output reg [width - 1 : 0] dout
-  );
-
-  /**
-   * internal signals
-   */
-  wire control_sync;
-  
-  SynchronizerFF #(
-    .stages(stages)
-  )
-  sync(
-    .reset_n(reset_n),
-    .din_clock(din_clock),
-    .dout_clock(dout_clock),
-    .din(din_valid),
-    .dout(control_sync)
-  );
-
-  always @(negedge reset_n or posedge dout_clock)
-    if (~reset_n) begin
-      dout <= 0;
-    end else begin
-      if (control_sync)
-        dout <= din;
-    end
-
+module SynchronizerMux # ( parameter width = 32 , parameter stages = 2 ) ( input reset_n , input din_clock , input dout_clock , input din_valid , input [ width - 1 : 0 ] din , output reg [ width - 1 : 0 ] dout ) ;
+wire w1 ;
+SynchronizerFF # ( . stages ( stages ) ) w2 ( . reset_n ( reset_n ) , . din_clock ( din_clock ) , . dout_clock ( dout_clock ) , . din ( din_valid ) , . dout ( w1 ) ) ;
+always @ ( negedge reset_n or posedge dout_clock ) if ( ~ reset_n ) begin
+dout <= 0 ;
+end
+else begin
+if ( w1 ) dout <= din ;
+end
 endmodule

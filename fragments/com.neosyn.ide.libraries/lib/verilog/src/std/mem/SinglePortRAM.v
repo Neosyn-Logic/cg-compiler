@@ -23,52 +23,29 @@
  * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE
  */
-
-/**
- * Title   : Single-port inferred RAM
- * Authors : Neosyn team <nicolas.siret@neosyn.io>
- */
-module SinglePortRAM
-  #(parameter size = 0, width = 0, depth = 0, writeShiftMode = 0, addOutputRegister = 0)
-  (
-    input clock,
-    input [depth - 1 : 0] address,
-    input [width - 1 : 0] data, input data_valid,
-    output [width - 1 : 0] q
-  );
-
-  /*
-   * RAM contents
-   */
-  reg [width - 1 : 0] ram [0 : size - 1];
-  reg [width - 1 : 0] dout;
-
-  generate
-    if (addOutputRegister) begin
-      reg [width - 1 : 0] outputRegister;
-
-      always @(posedge clock) begin
-        outputRegister <= dout;
-      end
-
-      assign q = outputRegister;
-    end else begin
-      assign q = dout;
-    end
-  endgenerate
-
-  // read and write data process
-  always @(posedge clock) begin
-    if (!data_valid || writeShiftMode) begin
-      dout <= ram[address];
-    end
-
-    if (data_valid) begin
-      if (!writeShiftMode) begin
-        dout <= data;
-      end
-      ram[address] <= data;
-    end
-  end
-
+module SinglePortRAM # ( parameter size = 0 , width = 0 , depth = 0 , writeShiftMode = 0 , addOutputRegister = 0 ) ( input clock , input [ depth - 1 : 0 ] address , input [ width - 1 : 0 ] data , input data_valid , output [ width - 1 : 0 ] q ) ;
+reg [ width - 1 : 0 ] w1 [ 0 : size - 1 ] ;
+reg [ width - 1 : 0 ] w2 ;
+generate if ( addOutputRegister ) begin
+reg [ width - 1 : 0 ] w3 ;
+always @ ( posedge clock ) begin
+w3 <= w2 ;
+end
+assign q = w3 ;
+end
+else begin
+assign q = w2 ;
+end
+endgenerate
+always @ ( posedge clock ) begin
+if ( ! data_valid || writeShiftMode ) begin
+w2 <= w1 [ address ] ;
+end
+if ( data_valid ) begin
+if ( ! writeShiftMode ) begin
+w2 <= data ;
+end
+w1 [ address ] <= data ;
+end
+end
 endmodule

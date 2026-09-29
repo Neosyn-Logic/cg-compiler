@@ -23,82 +23,55 @@
  * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE
  */
-
-/**
- * Title   : Synchronous FIFO
- * Authors : Neosyn team <nicolas.siret@neosyn.io>
- */
-module SynchronousFIFO
-  #(parameter size = 0, width = 0, depth = 0)
-  (
-    input clock,
-    input reset_n,
-    input  [width - 1 : 0] din,  input din_valid, output din_ready,
-    output [width - 1 : 0] dout, output reg dout_valid, input dout_ready
-  );
-
-  reg [depth - 1 : 0] rd_address, wr_address;
-
-  PseudoDualPortRAM #(.size(size), .width(width), .depth(depth)) ram
-  (
-    .rd_clock(clock),
-    .wr_clock(clock),
-    .rd_address(rd_address),
-    .wr_address(wr_address),
-    .data(din),
-    .data_valid(din_valid),
-    .q(dout)
-  );
-
-  wire empty;
-  assign empty = wr_address == rd_address;
-
-  wire almost_full, full;
-  generate
-    if (depth >= 2) begin : gen_normal
-      // Original optimized code for FIFOs with 4+ entries (depth >= 2 bits)
-      assign almost_full = (wr_address + {{(depth - 2){1'b0}}, 2'd2}) == rd_address;
-      assign full = (wr_address + {{(depth - 1){1'b0}}, 1'd1}) == rd_address;
-    end else begin : gen_tiny
-      // Simplified for 1-bit address (2 entries): almost_full == full
-      assign full = (wr_address + 1'b1) == rd_address;
-      assign almost_full = full;
-    end
-  endgenerate
-  assign din_ready = !almost_full && !full;
-
-  generate
-    if (depth >= 2) begin : gen_seq_normal
-      always @(negedge reset_n or posedge clock) begin
-        if (~reset_n) begin
-          rd_address <= {depth{1'b0}};
-          wr_address <= {depth{1'b0}};
-          dout_valid <= 1'b0;
-        end else begin
-          dout_valid <= 1'b0;
-          wr_address <= wr_address + {{(depth - 1){1'b0}}, din_valid};
-          if (dout_ready && !empty) begin
-            rd_address <= rd_address + 1'b1;
-            dout_valid <= 1'b1;
-          end
-        end
-      end
-    end else begin : gen_seq_tiny
-      always @(negedge reset_n or posedge clock) begin
-        if (~reset_n) begin
-          rd_address <= 1'b0;
-          wr_address <= 1'b0;
-          dout_valid <= 1'b0;
-        end else begin
-          dout_valid <= 1'b0;
-          wr_address <= wr_address + din_valid;
-          if (dout_ready && !empty) begin
-            rd_address <= rd_address + 1'b1;
-            dout_valid <= 1'b1;
-          end
-        end
-      end
-    end
-  endgenerate
-  
+module SynchronousFIFO # ( parameter size = 0 , width = 0 , depth = 0 ) ( input clock , input reset_n , input [ width - 1 : 0 ] din , input din_valid , output din_ready , output [ width - 1 : 0 ] dout , output reg dout_valid , input dout_ready ) ;
+reg [ depth - 1 : 0 ] w1 , w2 ;
+PseudoDualPortRAM # ( . size ( size ) , . width ( width ) , . depth ( depth ) ) w3 ( . rd_clock ( clock ) , . wr_clock ( clock ) , . rd_address ( w1 ) , . wr_address ( w2 ) , . data ( din ) , . data_valid ( din_valid ) , . q ( dout ) ) ;
+wire w4 ;
+assign w4 = w2 == w1 ;
+wire w5 , w6 ;
+generate if ( depth >= 2 ) begin
+: w7 assign w5 = ( w2 + { { ( depth - 2 ) { 1'b0 } } , 2'd2 } ) == w1 ;
+assign w6 = ( w2 + { { ( depth - 1 ) { 1'b0 } } , 1'd1 } ) == w1 ;
+end
+else begin
+: w8 assign w6 = ( w2 + 1'b1 ) == w1 ;
+assign w5 = w6 ;
+end
+endgenerate
+assign din_ready = ! w5 && ! w6 ;
+generate if ( depth >= 2 ) begin
+: w9 always @ ( negedge reset_n or posedge clock ) begin
+if ( ~ reset_n ) begin
+w1 <= { depth { 1'b0 } } ;
+w2 <= { depth { 1'b0 } } ;
+dout_valid <= 1'b0 ;
+end
+else begin
+dout_valid <= 1'b0 ;
+w2 <= w2 + { { ( depth - 1 ) { 1'b0 } } , din_valid } ;
+if ( dout_ready && ! w4 ) begin
+w1 <= w1 + 1'b1 ;
+dout_valid <= 1'b1 ;
+end
+end
+end
+end
+else begin
+: w10 always @ ( negedge reset_n or posedge clock ) begin
+if ( ~ reset_n ) begin
+w1 <= 1'b0 ;
+w2 <= 1'b0 ;
+dout_valid <= 1'b0 ;
+end
+else begin
+dout_valid <= 1'b0 ;
+w2 <= w2 + din_valid ;
+if ( dout_ready && ! w4 ) begin
+w1 <= w1 + 1'b1 ;
+dout_valid <= 1'b1 ;
+end
+end
+end
+end
+endgenerate
 endmodule

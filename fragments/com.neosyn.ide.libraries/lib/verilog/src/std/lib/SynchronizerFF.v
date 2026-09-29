@@ -23,39 +23,19 @@
  * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE
  */
-
-/**
- * Title   : Flip-flop synchronizer
- * Authors : Neosyn team
- */
-module SynchronizerFF
-  #(parameter stages = 2)
-  (
-    input reset_n,
-    input din_clock,
-    input dout_clock,
-    input din,
-    output dout
-  );
-
-  /**
-   * flip-flop registers
-   */
-  reg [stages - 1 : 0] ff;
-
-  assign dout = ff[stages - 1];
-  
-  integer i;
-
-  always @(negedge reset_n or posedge dout_clock)
-    if (~reset_n) begin
-      ff <= 0;
-    end else begin
-      // N-stage shift register
-      for (i = stages - 1; i > 0; i = i - 1) begin
-        ff[i] <= ff[i - 1];
-      end
-      ff[0] <= din;
-    end
-
+module SynchronizerFF # ( parameter stages = 2 ) ( input reset_n , input din_clock , input dout_clock , input din , output dout ) ;
+reg [ stages - 1 : 0 ] w1 ;
+assign dout = w1 [ stages - 1 ] ;
+integer w2 ;
+always @ ( negedge reset_n or posedge dout_clock ) if ( ~ reset_n ) begin
+w1 <= 0 ;
+end
+else begin
+for ( w2 = stages - 1 ;
+w2 > 0 ;
+w2 = w2 - 1 ) begin
+w1 [ w2 ] <= w1 [ w2 - 1 ] ;
+end
+w1 [ 0 ] <= din ;
+end
 endmodule

@@ -23,69 +23,31 @@
  * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE
  */
-
-/**
- * Title   : FIFO read controller
- * Authors : Neosyn team <nicolas.siret@neosyn.io>
- */
-module FIFO_Flag_Controller
-  #(parameter depth = 8)
-  (
-    input reset_n,
-    input din_clock,
-    input dout_clock,
-    input [depth - 1 : 0] wr_address,
-    input [depth - 1 : 0] rd_address,
-    output din_rdy,
-    output dout_rdy
-  );
-
-  wire aFull_i;
-  wire aEmpty_i;
-  
-  reg [depth - 1 : 0] wr_address_1C;
-  reg [depth - 1 : 0] wr_address_2C;
-  reg [depth - 1 : 0] rd_address_1C;
-  reg [depth - 1 : 0] rd_address_2C;
-
-  FIFO_Flag_Async #(.depth(depth)) Flag_Async_Full
-  (
-    .reset_n(reset_n),
-    .rd_address(rd_address_2C),
-    .wr_address(wr_address),
-    .aFull(aFull_i),
-    .aEmpty()
-  );  
-   
-  FIFO_Flag_Async #(.depth(depth)) Flag_Async_Empty
-  (
-    .reset_n(reset_n),
-    .rd_address(rd_address),
-    .wr_address(wr_address_2C),
-    .aFull(),
-    .aEmpty(aEmpty_i)
-  );  
-  
-  assign din_rdy  = ~aFull_i;
-  assign dout_rdy = ~aEmpty_i;
-  
-  // Sync the flags
-  always @(negedge reset_n or posedge din_clock)
-    if (~reset_n) begin
-      rd_address_1C <= {depth{1'b0}};
-      rd_address_2C <= {depth{1'b0}};
-    end else begin
-      rd_address_2C <= rd_address_1C;
-      rd_address_1C <= rd_address;     
-    end
-
-  always @(negedge reset_n or posedge dout_clock)
-    if (~reset_n) begin
-      wr_address_1C <= {depth{1'b0}};
-      wr_address_2C <= {depth{1'b0}};
-    end else begin
-      wr_address_2C <= wr_address_1C;
-      wr_address_1C <= wr_address;  
-    end
-  
+module FIFO_Flag_Controller # ( parameter depth = 8 ) ( input reset_n , input din_clock , input dout_clock , input [ depth - 1 : 0 ] wr_address , input [ depth - 1 : 0 ] rd_address , output din_rdy , output dout_rdy ) ;
+wire w1 ;
+wire w2 ;
+reg [ depth - 1 : 0 ] w3 ;
+reg [ depth - 1 : 0 ] w4 ;
+reg [ depth - 1 : 0 ] w5 ;
+reg [ depth - 1 : 0 ] w6 ;
+FIFO_Flag_Async # ( . depth ( depth ) ) w7 ( . reset_n ( reset_n ) , . rd_address ( w6 ) , . wr_address ( wr_address ) , . aFull ( w1 ) , . aEmpty ( ) ) ;
+FIFO_Flag_Async # ( . depth ( depth ) ) w8 ( . reset_n ( reset_n ) , . rd_address ( rd_address ) , . wr_address ( w4 ) , . aFull ( ) , . aEmpty ( w2 ) ) ;
+assign din_rdy = ~ w1 ;
+assign dout_rdy = ~ w2 ;
+always @ ( negedge reset_n or posedge din_clock ) if ( ~ reset_n ) begin
+w5 <= { depth { 1'b0 } } ;
+w6 <= { depth { 1'b0 } } ;
+end
+else begin
+w6 <= w5 ;
+w5 <= rd_address ;
+end
+always @ ( negedge reset_n or posedge dout_clock ) if ( ~ reset_n ) begin
+w3 <= { depth { 1'b0 } } ;
+w4 <= { depth { 1'b0 } } ;
+end
+else begin
+w4 <= w3 ;
+w3 <= wr_address ;
+end
 endmodule

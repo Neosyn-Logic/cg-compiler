@@ -23,34 +23,14 @@
  * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE
  */
-
-/**
- * Title   : FIFO read controller
- * Authors : Neosyn team <nicolas.siret@neosyn.io>
- */
-module FIFO_Flag_Async
-  #(parameter depth = 8)
-  (
-    input reset_n,
-    input [depth - 1 : 0] rd_address,
-    input [depth - 1 : 0] wr_address,
-    output aFull,
-    output aEmpty
-  );
-
-  wire dirSet_n;
-  wire dirReset;
-  reg  direction;
-  
-  assign dirSet_n = ~((wr_address[depth - 1] ^ rd_address[depth - 2]) & (~(wr_address[depth - 2] ^ rd_address[depth - 1])));
-  assign dirReset = ~((wr_address[depth - 2] ^ rd_address[depth - 1]) & (~(wr_address[depth - 1] ^ rd_address[depth - 2])) | (~reset_n));
-  assign aFull  =  direction & (wr_address == rd_address);
-  assign aEmpty = ~direction & (wr_address == rd_address);
-  
-  always @(dirSet_n, dirReset)
-    if (~dirReset)
-      direction <= 1'b0;
-    else if (~dirSet_n)
-      direction <= 1'b1;
-    
+module FIFO_Flag_Async # ( parameter depth = 8 ) ( input reset_n , input [ depth - 1 : 0 ] rd_address , input [ depth - 1 : 0 ] wr_address , output aFull , output aEmpty ) ;
+wire w1 ;
+wire w2 ;
+reg w3 ;
+assign w1 = ~ ( ( wr_address [ depth - 1 ] ^ rd_address [ depth - 2 ] ) & ( ~ ( wr_address [ depth - 2 ] ^ rd_address [ depth - 1 ] ) ) ) ;
+assign w2 = ~ ( ( wr_address [ depth - 2 ] ^ rd_address [ depth - 1 ] ) & ( ~ ( wr_address [ depth - 1 ] ^ rd_address [ depth - 2 ] ) ) | ( ~ reset_n ) ) ;
+assign aFull = w3 & ( wr_address == rd_address ) ;
+assign aEmpty = ~ w3 & ( wr_address == rd_address ) ;
+always @ ( w1 , w2 ) if ( ~ w2 ) w3 <= 1'b0 ;
+else if ( ~ w1 ) w3 <= 1'b1 ;
 endmodule

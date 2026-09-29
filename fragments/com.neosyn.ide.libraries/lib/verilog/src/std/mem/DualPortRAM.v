@@ -23,46 +23,20 @@
  * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE
  */
-
-/**
- * Title   : Dual-port inferred RAM
- * Authors : Neosyn team <nicolas.siret@neosyn.io>
- */
-module DualPortRAM
-  #(parameter size = 0, width = 0, depth = 0)
-  (
-    input clock_a, input clock_b,
-
-    input [depth - 1 : 0] address_a,
-    input [width - 1 : 0] data_a, input data_a_valid,
-    output reg [width - 1 : 0] q_a,
-
-    input [depth - 1 : 0] address_b,
-    input [width - 1 : 0] data_b, input data_b_valid,
-    output reg [width - 1 : 0] q_b
-  );
-
-  /*
-   * RAM contents
-   */
-  reg [width - 1 : 0] ram [0 : size - 1];
-
-  // process a
-  always @(posedge clock_a) begin
-    if (data_a_valid) begin
-      ram[address_a] <= data_a;
-      q_a <= data_a;
-    end else
-      q_a <= ram[address_a];
-  end
-
-  // process b
-  always @(posedge clock_b) begin
-    if (data_b_valid) begin
-      ram[address_b] <= data_b;
-      q_b <= data_b;
-    end else
-      q_b <= ram[address_b];
-  end
-
+module DualPortRAM # ( parameter size = 0 , width = 0 , depth = 0 ) ( input clock_a , input clock_b , input [ depth - 1 : 0 ] address_a , input [ width - 1 : 0 ] data_a , input data_a_valid , output reg [ width - 1 : 0 ] q_a , input [ depth - 1 : 0 ] address_b , input [ width - 1 : 0 ] data_b , input data_b_valid , output reg [ width - 1 : 0 ] q_b ) ;
+reg [ width - 1 : 0 ] w1 [ 0 : size - 1 ] ;
+always @ ( posedge clock_a ) begin
+if ( data_a_valid ) begin
+w1 [ address_a ] <= data_a ;
+q_a <= data_a ;
+end
+else q_a <= w1 [ address_a ] ;
+end
+always @ ( posedge clock_b ) begin
+if ( data_b_valid ) begin
+w1 [ address_b ] <= data_b ;
+q_b <= data_b ;
+end
+else q_b <= w1 [ address_b ] ;
+end
 endmodule

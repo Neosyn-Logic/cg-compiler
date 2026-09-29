@@ -56,7 +56,7 @@ module DualPortRAM
       q_a <= ram[address_a];
   end
 
-  // process a
+  // process b
   always @(posedge clock_b) begin
     if (data_b_valid) begin
       ram[address_b] <= data_b;

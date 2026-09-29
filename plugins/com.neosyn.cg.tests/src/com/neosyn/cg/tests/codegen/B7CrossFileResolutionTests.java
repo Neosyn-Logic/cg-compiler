@@ -188,8 +188,17 @@ public class B7CrossFileResolutionTests {
 
 			assertFalse("Should not see NullPointerException: " + stderr,
 					stderr.contains("NullPointerException"));
-			assertTrue("Should see a clear Unresolved-reference message: " + stderr,
-					stderr.contains("Unresolved reference"));
+			// The clear message now comes from the LINKER, not from an exception thrown deep in
+			// the IR pipeline, and it is strictly better: it names the entity AND carries a file
+			// and line, which the transform-layer "Unresolved reference" never did. The IR
+			// transform no longer runs at all on a source the front end has rejected, so that
+			// text is gone by design. The intent is unchanged: a clear error, not a crash.
+			assertTrue("Should name the unresolved entity, with a location: " + stderr,
+					stderr.contains("Couldn't resolve reference to Instantiable"));
+			assertTrue("...and must still name the entity that failed: " + stderr,
+					stderr.contains("NoSuchEntity"));
+			assertFalse("...and no transform-layer error may compete with it: " + stderr,
+					stderr.contains("Transform error"));
 		} finally {
 			deleteRecursive(projectDir);
 		}

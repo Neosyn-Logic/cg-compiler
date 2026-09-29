@@ -1,0 +1,14 @@
+package p;
+task Plus1 { in push u8 a; out push u8 y; void loop() { y.write((u8) (a.read() + 1)); } }
+network Test_Plus1Bad {
+    properties { test: { terminate: "monitor.finished" } }
+    driver = new task { out push u8 a; void setup() { a.write(3); a.write(9); } };
+    dut = new Plus1();
+    dut.reads(driver.a);
+    monitor = new task {
+        in push u8 y;
+        bool finished;
+        void setup() { assert(y.read() == 4); assert(y.read() == 11); finished = true; }
+    };
+    monitor.reads(dut.y);
+}

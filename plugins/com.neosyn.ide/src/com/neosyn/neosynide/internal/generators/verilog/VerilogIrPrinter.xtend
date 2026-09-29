@@ -38,6 +38,7 @@ import com.neosyn.models.util.EcoreHelper
 import com.neosyn.neosynide.internal.generators.Namer
 import java.util.ArrayList
 import java.util.List
+import java.util.WeakHashMap
 import org.eclipse.emf.ecore.EObject
 import org.eclipse.xtend2.lib.StringConcatenation
 
@@ -56,6 +57,20 @@ class VerilogIrPrinter extends VerilogExpressionPrinter {
 	var Var pendingStoreArray = null
 	var CharSequence pendingStoreIndexExpr = null
 	var CharSequence pendingStoreValueExpr = null
+
+	/**
+	 * Per IR entity, the number of assert blocks named so far. Keyed on the entity, not on this
+	 * printer: several printers write into one module, and every generation builds new IR, so a
+	 * regenerate numbers the same asserts the same way.
+	 */
+	static val checks = new WeakHashMap<Entity, Integer>
+
+	def private static synchronized int nextCheck(EObject call) {
+		val entity = EcoreHelper.getContainerOfType(call, Entity)
+		val n = (checks.get(entity) ?: 0) + 1
+		checks.put(entity, n)
+		n
+	}
 
 	new(Namer namer, IPathResolver pathResolver) {
 		super(namer);
@@ -104,11 +119,27 @@ class VerilogIrPrinter extends VerilogExpressionPrinter {
 	override caseInstCall(InstCall call) {
 		if (call.assert) {
 			val expr = doSwitch(call.arguments.get(0))
+			val msg = expr.toString.replace("\\", "\\\\").replace("\"", "\\\"")
+			// `!== 1'b1`, not `~(...)`: an `if` on X takes the else branch, so `if (~(c))` let an
+			// assertion whose condition is X pass silently. This fails on 0, X and Z.
+			//
+			// The first time it PASSES it says so, once: without that line a run whose asserts never
+			// executed reads exactly like one where they all held. `seen` is local to a named block
+			// and starts as X, which `!== 1'b1` reads as "not yet". The block is named `check$N`:
+			// Verilog allows `$` inside an identifier and C⏚ does not, so it cannot collide with
+			// any name taken from the design.
+			val block = "check$" + nextCheck(call)
 			'''
 			// synthesis translate_off
-			if (~(«expr»)) begin
-			  $display("Assertion failed: «expr»");
+			if ((«expr») !== 1'b1) begin
+			  $display("Assertion failed: «msg»");
 			  $stop;
+			end else begin : «block»
+			  reg seen;
+			  if (seen !== 1'b1) begin
+			    seen = 1'b1;
+			    $display("[check] «msg» first passed at %0t", $time);
+			  end
 			end
 			// synthesis translate_on
 			'''

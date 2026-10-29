@@ -1,9 +1,14 @@
 /*
- * Copyright (c) 2024-2026 Neosyn (neosyn.io). All rights reserved.
+ * Copyright (c) 2012-2026 Neosyn (neosyn.io). All rights reserved.
+ * Not licensed under the MPL-2.0.
  *
- * Proprietary software of Neosyn. It is licensed, not sold. Use is permitted
- * only under a valid commercial license of the Neosyn toolchain. THIS SOFTWARE
- * IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND.
+ * Free to use, including commercially, as part of hardware designs generated
+ * by the C⏚ compiler, whether the open-source compiler or the commercial
+ * distribution. You may not extract this file for use on its own,
+ * reverse-engineer it, or redistribute it except as part of such a design or
+ * of the C⏚ compiler.
+ *
+ * Provided "AS IS", without warranty of any kind.
  */
 module Multiply # ( parameter width = 32 , parameter pwidth = 64 ) ( input clock , input reset_n , input [ width - 1 : 0 ] a , input a_valid , output a_ready , input [ width - 1 : 0 ] b , input b_valid , output b_ready , output reg [ pwidth - 1 : 0 ] p , output reg p_valid , input p_ready ) ;
 localparam w1 = 1'b0 , w2 = 1'b1 ;

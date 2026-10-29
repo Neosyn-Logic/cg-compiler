@@ -58,9 +58,11 @@ permission to compile.
 | | Priority support / SLA |
 
 **The standard library** (FIFOs, RAMs, synchronizers, DDR mux/demux, `Divide`,
-`Multiply`) is © Neosyn, not MPL-2.0. This repository ships it in a non-readable
-form that keeps every module's name, parameters and ports, so designs that use it
-generate, elaborate and simulate exactly as with the commercial distribution.
+`Multiply`) is © Neosyn and not MPL-2.0, and it is **free to use, including
+commercially, in designs built with C⏚** — with this compiler or the commercial
+one. This repository ships it in a non-readable form that keeps every module's
+name, parameters and ports, so designs that use it generate, elaborate and
+simulate exactly as with the commercial distribution. See [NOTICE](NOTICE).
 
 Read more about the open-core model at **https://neosyn.io/open**.
 

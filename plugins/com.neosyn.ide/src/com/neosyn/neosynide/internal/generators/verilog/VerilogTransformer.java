@@ -25,27 +25,49 @@ import com.neosyn.neosynide.internal.generators.verilog.transformations.LoopInde
 import com.neosyn.neosynide.internal.generators.verilog.transformations.ResizeExtractor;
 import com.neosyn.neosynide.internal.generators.verilog.transformations.TruncationNarrower;
 import com.neosyn.neosynide.internal.generators.verilog.transformations.VerilogTypeSystemAdapter;
+import com.neosyn.neosynide.transformations.ArrayWritePort;
 import com.neosyn.neosynide.transformations.CodeCleaner;
 import com.neosyn.neosynide.transformations.AddReadyAssignments;
 import com.neosyn.neosynide.transformations.AddBufferedInputs;
+import com.neosyn.neosynide.transformations.PortNameDisambiguator;
 
 /**
- * This class defines a transformer for Verilog.
- * 
-
- * 
+ * Lowers each entity's IR into a Verilog-ready form by running an ORDERED transformation
+ * pipeline (see {@link #getTransformations()}); the order is load-bearing:
+ * <ol>
+ * <li>{@code ArrayWritePort} — an array written once per action gets one registered write
+ * port (RAM-mappable), BEFORE StoreOnce: its accesses then no longer trigger the whole-array
+ * local copy.</li>
+ * <li>{@code StoreOnce} — at most one store per variable per cycle.</li>
+ * <li>SSA → {@code CodeCleaner} → {@code PhiRemoval} → {@code SSAVariableRenamer} — put the
+ * IR in SSA to clean it, then leave SSA with unique names.</li>
+ * <li>{@code VerilogTypeSystemAdapter} → {@code TruncationNarrower} → {@code ResizeExtractor}
+ * — make the bit-accurate IR type system explicit for Verilog (casts/resizes), narrowing
+ * truncated arithmetic before extracting resizes so wide sign-extensions collapse.</li>
+ * <li>{@code LoopIndexMaker} — synthesise the index variables for array-copy for-loops.</li>
+ * <li>{@code AddReadyAssignments} → {@code AddBufferedInputs} — the stream handshake: ready
+ * assignments MUST run first because the buffered-input pass reads them to decide which
+ * ports each action consumes.</li>
+ * </ol>
  */
 public class VerilogTransformer extends AbstractTransformer {
 
 	@Override
 	public Void caseEntity(Entity entity) {
 		computeImportList(entity);
+		// A state variable named like a port or one of its companions (`a_valid` beside port
+		// `a`) would be declared twice in the module (TRAPS T141). Verilog keeps case, so only
+		// exact clashes move.
+		PortNameDisambiguator.disambiguate(entity, false);
 		return super.caseEntity(entity);
 	}
 
 	@Override
 	protected Iterable<Transformation> getTransformations() {
 		return ImmutableList.<Transformation> of( //
+				// an array written once per action gets one registered write port, so synthesis
+				// can map it to RAM (TRAPS T45); must run before StoreOnce
+				new ArrayWritePort(),
 				// makes sure there is at most one store per variable per cycle
 				new BodyTransformation(new StoreOnceTransformation()),
 				//
@@ -65,8 +87,11 @@ public class VerilogTransformer extends AbstractTransformer {
 				// adds index for "for" loops to copy arrays
 				new ProcedureTransformation(new LoopIndexMaker()),
 				//
-				// transforms references/assignments to ready ports
-				new AddReadyAssignments(),
+				// transforms references/assignments to ready ports. The Verilog backend
+				// enables the direct held-producer handshake (see StreamLinkMarker): a
+				// task-to-task sync-ready link uses the standard ready=1 form, not the
+				// registered-producer ready=!valid pulse the bytecode/VHDL backends keep.
+				new AddReadyAssignments(true),
 				new AddBufferedInputs());
 	}
 

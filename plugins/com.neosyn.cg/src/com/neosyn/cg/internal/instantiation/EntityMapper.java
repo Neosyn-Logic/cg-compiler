@@ -53,8 +53,6 @@ import com.neosyn.models.dpn.Unit;
 /**
  * This class maps Cx entities to IR URIs.
  * 
-
- *
  */
 public class EntityMapper extends CgSwitch<Entity> {
 

@@ -19,8 +19,6 @@ import com.google.common.collect.UnmodifiableIterator;
 /**
  * This class defines an iterable over DOM Nodes.
  * 
-
- * 
  */
 public class NodeIterable implements Iterable<Node> {
 

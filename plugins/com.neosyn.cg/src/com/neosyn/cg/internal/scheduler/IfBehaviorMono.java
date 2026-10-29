@@ -19,8 +19,6 @@ import com.neosyn.models.node.Node;
 /**
  * This class defines a if behavior to handle mono-cycle if statements.
  * 
-
- *
  */
 public class IfBehaviorMono implements IfBehavior {
 

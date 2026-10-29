@@ -54,8 +54,6 @@ import com.neosyn.models.util.Void;
 /**
  * This class defines a cycle scheduler.
  * 
-
- * 
  */
 public abstract class AbstractCycleScheduler extends VoidCxSwitch {
 

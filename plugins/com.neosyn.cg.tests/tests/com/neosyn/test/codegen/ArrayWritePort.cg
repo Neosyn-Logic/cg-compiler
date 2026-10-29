@@ -1,0 +1,66 @@
+package com.neosyn.test.codegen;
+
+// Regression fixture, TRAPS T45 (see ArrayWritePortTest; tools/qa/repro/T45_ArrayWritePort.cg runs
+// the same network on all three back ends).
+//
+// A task array read and written in the same action -- the RISC-V register file shape: read two
+// elements, write one. Step k reads regs[k] and regs[k >> 1] and, except every fourth step, writes
+// regs[k >> 1]. Steps 2m and 2m+1 share k >> 1, so every write is read back on the VERY NEXT
+// cycle (the case a write port must forward), and every fourth step writes nothing.
+//
+// The checker keeps its own model and reads it back AFTER writing it, so the model is never the
+// array shape the compiler turns into a RAM: a fault in that transformation cannot hide by
+// breaking the model and the design the same way.
+network ArrayWritePort {
+
+	src = new task {
+		out push u8 op;
+		u8 n;
+		void loop() {
+			op.write(n);
+			n++;
+		}
+	};
+
+	dut = new task {
+		out push u32 a, push u32 b;
+		u32 regs[16];
+		void loop() {
+			u8 k = src.op.read();
+			u4 i = (u4) k;
+			u4 j = (u4) (k >> 1);
+			u32 x = regs[i];
+			u32 y = regs[j];
+			if ((k & 3) != 3) {
+				regs[j] = (u32) (y + x + k);
+			}
+			a.write(x);
+			b.write(y);
+		}
+	};
+
+	chk = new task {
+		u32 model[16];
+		u8 k;
+		bool finished;
+		void loop() {
+			if (dut.a.available()) {
+				u4 i = (u4) k;
+				u4 j = (u4) (k >> 1);
+				u32 x = model[i];
+				u32 y = model[j];
+				assert(dut.a.read() == x);
+				assert(dut.b.read() == y);
+				if ((k & 3) != 3) {
+					model[j] = (u32) (y + x + k);
+					assert(model[j] == (u32) (y + x + k));
+				}
+				if (k == 99) {
+					print("[chk] last pair ", x, " ", y);
+					finished = true;
+				}
+				k++;
+			}
+		}
+	};
+}

@@ -61,10 +61,12 @@ import com.neosyn.core.util.DebugLogger;
 import static com.neosyn.core.util.DebugLogger.Category.IR;
 
 /**
- * This class defines the default implementation of the instantiator.
- *
-
- *
+ * Default {@link IInstantiator}: the engine that turns a parsed C⏚ design into a fully
+ * resolved instance hierarchy. It walks each network's instances, specialises parameterised
+ * entities per instance ({@code new Foo({param})} monomorphisation), resolves cross-instance
+ * port references, and builds the per-entity data ({@link InstantiatorData}) the rest of the
+ * compiler consumes. Diagnostics go through the gated {@link #debugLog} (category {@code IR}),
+ * never raw stderr — Fast Sim shares the LSP stdout channel.
  */
 @Singleton
 public class InstantiatorImpl implements IInstantiator {
@@ -155,6 +157,18 @@ public class InstantiatorImpl implements IInstantiator {
 	}
 
 	@Override
+	public void forEachSpecializedEntity(Executable<Entity> executable) {
+		for (Entity entity : data.getAllSpecializedEntities()) {
+			executable.exec(entity);
+		}
+	}
+
+	@Override
+	public void forEachSpecialization(java.util.function.BiConsumer<CgEntity, Entity> consumer) {
+		data.forEachSpecialization(consumer);
+	}
+
+	@Override
 	public CgEntity getEntity(URI uri) {
 		if (data == null) {
 			return null;
@@ -223,6 +237,17 @@ public class InstantiatorImpl implements IInstantiator {
 		// registered on the *referencing* entity under the port variable
 		// (mirroring how scalar cross-task ports get a local port via getPort).
 		return data.getStructPortFields(entity, ref.getVariable());
+	}
+
+	@Override
+	public void putArrayPort(Entity entity, Variable portVar, int index, Port port) {
+		data.putArrayPort(entity, portVar, index, port);
+	}
+
+	@Override
+	public java.util.List<Port> getArrayPortElements(Entity entity, VarRef refOrCopyOfRef) {
+		final VarRef ref = CopyOf.getOriginal(refOrCopyOfRef);
+		return data.getArrayPortElements(entity, ref.getVariable());
 	}
 
 	@Override
@@ -579,16 +604,21 @@ public class InstantiatorImpl implements IInstantiator {
 					// Set the entity on the instance so port references can be resolved
 					instance.setEntity(builtinEntity);
 
+					// Translate properties FIRST: a built-in carries its args (size/width)
+					// as JSON properties, and BuiltinPortTypeResolver reads them from there
+					// to resolve parameterized port widths. Mapping the ports before this
+					// ran left size/width unset, so every port silently kept the built-in
+					// IR's baked default -- a 128-bit RAM's data/q resolved to 32 bits
+					// (Verilog truncated the high bits; the bytecode sim read 0).
+					// Use the parent DPN for constant resolution (e.g., LINE_WIDTH from BufferConstants)
+					new PropertiesService(this).translateProperties(inst, instance, dpn);
+					debugLog("[Instantiator]   Translated properties for built-in entity: " + instance.getProperties());
+
 					// Create port mappings from Cx AST to IR ports
 					// This enables inline tasks to resolve references like line1.q.read()
 					createBuiltinPortMappings(dpn, inst, instance, builtinEntity);
 
 					debugLog("[Instantiator]   Created port mappings for built-in entity");
-
-					// Translate properties for the built-in entity instance
-					// Use the parent DPN for constant resolution (e.g., LINE_WIDTH from BufferConstants)
-					new PropertiesService(this).translateProperties(inst, instance, dpn);
-					debugLog("[Instantiator]   Translated properties for built-in entity: " + instance.getProperties());
 				} else {
 					debugLog("[Instantiator]   WARNING: Could not load built-in IR for " + actualEntityTypeName);
 				}
@@ -633,7 +663,10 @@ public class InstantiatorImpl implements IInstantiator {
 					}
 					props.addProperty("entityType", actualEntityTypeName);
 					instance.setProperties(props);
-					new PropertiesService(this).translateProperties(inst, instance);
+					// Unresolved external ref: args are still written in the parent's
+					// scope, and instance.getEntity() is not set on this branch, so
+					// resolve against `dpn` (parent) rather than a null child entity.
+					new PropertiesService(this).translateProperties(inst, instance, dpn);
 				}
 				continue;
 			}
@@ -641,8 +674,20 @@ public class InstantiatorImpl implements IInstantiator {
 			instance.setEntity(subEntity);
 			debugLog("[Instantiator]   Set entity on instance: " + (subEntity != null ? subEntity.getName() : "null"));
 
-			// set properties. For anonymous tasks, use the task's properties for the instance
-			new PropertiesService(this).translateProperties(inst, instance);
+			// Set properties. An EXTERNAL instance's arguments -- new Foo({K: v}) --
+			// are written in THIS network's lexical scope, so their value expressions
+			// must resolve against `dpn` (the parent), not against the child entity.
+			// A child const of the same name is unrelated, and a forwarded parent
+			// const -- new LoadKey({Nk: Nk}) inside a network holding `const Nk` --
+			// is simply absent from the child, which NPEs in the evaluator. This
+			// mirrors the built-in path above (which already passes `dpn`).
+			// An INLINE task keeps the 2-arg form: its `properties` block belongs to
+			// the task's own scope, not the parent's.
+			if (inst.getTask() == null) {
+				new PropertiesService(this).translateProperties(inst, instance, dpn);
+			} else {
+				new PropertiesService(this).translateProperties(inst, instance);
+			}
 			debugLog("[Instantiator]   Completed processing Inst: " + inst.getName());
 
 			} catch (Exception e) {

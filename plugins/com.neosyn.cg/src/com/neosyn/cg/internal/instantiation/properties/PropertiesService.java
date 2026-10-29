@@ -31,8 +31,6 @@ import com.neosyn.models.dpn.Instance;
  * This class defines a properties support class that checks and updates properties to a normal
  * form.
  * 
-
- * 
  */
 public class PropertiesService implements IJsonErrorHandler {
 
@@ -53,14 +51,17 @@ public class PropertiesService implements IJsonErrorHandler {
 
 	@Override
 	public void addError(JsonElement element, String message) {
-		ErrorMarker marker = maker.getMapping(element);
-		if (marker == null) {
-			marker = new ErrorMarker(message, defaultMarker);
-		} else {
-			marker = new ErrorMarker(message, marker);
-		}
+		addError(element, message, null);
+	}
 
-		errors.add(marker);
+	@Override
+	public void addError(JsonElement element, String message, String code) {
+		ErrorMarker at = maker.getMapping(element);
+		if (at == null) {
+			at = defaultMarker;
+		}
+		errors.add(new ErrorMarker(message, at.getSource(), at.getFeature(), at.getIndex(),
+				code != null ? code : at.getCode()));
 	}
 
 	private JsonObject translateJson(Entity entity, EObject source, EStructuralFeature feature) {

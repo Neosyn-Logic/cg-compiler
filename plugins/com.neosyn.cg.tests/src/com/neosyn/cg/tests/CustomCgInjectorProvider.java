@@ -25,7 +25,7 @@ import com.neosyn.neosynide.NeosynIdeModule;
 /**
  * This class configures additional modules in addition to the CgRuntimeModule.
  * Uses NeosynIdeModule for full code generator support in tests, but overrides
- * the file writer to use TestFileWriter instead of EclipseFileWriter.
+ * the file writer to use TestFileWriter instead of NativeFileWriter.
  *
  * <p>IMPORTANT: When using {@link Modules#override}, the normal Guice binding chain
  * that triggers CgPackage EMF registration is broken. We must explicitly register

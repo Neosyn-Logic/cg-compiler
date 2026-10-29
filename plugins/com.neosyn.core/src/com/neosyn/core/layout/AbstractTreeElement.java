@@ -15,8 +15,6 @@ import org.eclipse.core.runtime.PlatformObject;
 /**
  * This class defines an abstract tree element, adaptable to IResource.
  * 
-
- *
  */
 public abstract class AbstractTreeElement extends PlatformObject implements ITreeElement {
 

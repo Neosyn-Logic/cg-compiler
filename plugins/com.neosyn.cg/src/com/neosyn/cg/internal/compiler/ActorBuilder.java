@@ -25,8 +25,6 @@ import com.neosyn.models.ir.Var;
 /**
  * This class defines a dataflow builder that inherits from the IR builder.
  * 
-
- * 
  */
 public class ActorBuilder extends IrBuilder {
 

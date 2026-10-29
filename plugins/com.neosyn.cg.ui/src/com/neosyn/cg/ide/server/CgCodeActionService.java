@@ -94,9 +94,9 @@ public class CgCodeActionService implements ICodeActionService2 {
 			newKeyword = "stream";
 			endNode = firstNode(port, CgPackage.Literals.PORT_DEF__READY_OLD);
 		} else if (port.isAckOld()) {
-			oldText = "sync ack";
-			newKeyword = "confirm";
-			endNode = firstNode(port, CgPackage.Literals.PORT_DEF__ACK_OLD);
+			// Its modern spelling, `confirm`, is refused (TRAPS T11): there is nothing to migrate to.
+			// The error on the port says to choose `stream` or `push`, which changes behaviour.
+			return null;
 		} else {
 			oldText = "sync";
 			newKeyword = "push";

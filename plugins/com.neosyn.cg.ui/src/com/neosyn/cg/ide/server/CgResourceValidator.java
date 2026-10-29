@@ -33,7 +33,7 @@ import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import com.neosyn.cg.validation.CgValidator;
-import com.neosyn.cg.validation.IssueCodes;
+import com.neosyn.cg.validation.BlockingIssueCodes;
 
 import org.eclipse.xtext.diagnostics.Severity;
 import java.util.Set;
@@ -79,17 +79,14 @@ public class CgResourceValidator extends ResourceValidatorImpl {
     private String languageName;
 
     /**
-     * @Check issue codes that stay hard ERRORs in the editor. Mirrors
-     * {@code ValidationHelper.BLOCKING_ISSUE_CODES}: a genuine silent miscompile
-     * the backend does NOT handle. Every other validator ERROR (chiefly the
-     * idiomatic narrowing the sim/Verilog backends truncate correctly — e.g. a
-     * u9→u8 increment or a u64→u32 multiply low-word) is demoted to a WARNING so
-     * valid designs are not flooded with red, exactly as on the CLI.
+     * @Check issue codes that stay hard ERRORs in the editor: the SAME list that blocks a CLI build.
+     * Every other validator ERROR (chiefly the idiomatic narrowing the sim/Verilog backends truncate
+     * correctly -- e.g. a u9->u8 increment or a u64->u32 multiply low-word) is demoted to a WARNING,
+     * exactly as on the CLI. This was a copy of the CLI's list until TRAPS T4 (2026-10-19): it had
+     * stopped at 4 codes, so the editor showed an impossible cast or an untyped port as a yellow
+     * warning that the CLI refused to build.
      */
-    private static final Set<String> BLOCKING_ISSUE_CODES = Set.of(
-            IssueCodes.ERR_PORT_WIDTH_MISMATCH,
-            IssueCodes.ERR_GENERIC_ARG_UNKNOWN,
-            IssueCodes.ERR_GENERIC_ARG_NOT_CONST);
+    private static final Set<String> BLOCKING_ISSUE_CODES = BlockingIssueCodes.CODES;
 
     private volatile Diagnostician cgDiagnostician;
     private volatile boolean built = false;

@@ -20,8 +20,6 @@ import com.neosyn.models.ir.Var;
 /**
  * This class defines a name computer that generates unique names.
  * 
-
- *
  */
 public class UniqueNameComputer {
 

@@ -32,14 +32,14 @@ import org.eclipse.xtext.resource.impl.ResourceDescriptionsProvider;
 import com.google.common.collect.Sets;
 import com.google.inject.Inject;
 import com.neosyn.cg.cg.Bundle;
+import com.neosyn.cg.cg.Module;
 import com.neosyn.cg.cg.CgEntity;
 import com.neosyn.cg.cg.CgPackage.Literals;
 
 /**
- * This class defines a loader of top-level entities.
- * 
-
- * 
+ * Loads the "top" entities of a resource set — those never instantiated by any other entity
+ * (computed as all instantiable/bundle URIs minus the URIs referenced by an {@code Inst.entity}).
+ * These are the roots the instantiator elaborates from.
  */
 public class TopEntitiesLoader {
 
@@ -83,43 +83,29 @@ public class TopEntitiesLoader {
 	private Collection<URI> collectAllURIs(ResourceSet resourceSet) {
 		Set<URI> allUris = Sets.newLinkedHashSet();
 
-		System.err.println("[TopEntitiesLoader] collectAllURIs: Getting resource descriptions...");
 		IResourceDescriptions resourceDescriptions = provider.getResourceDescriptions(resourceSet);
-		System.err.println("[TopEntitiesLoader] IResourceDescriptions class: " + resourceDescriptions.getClass().getName());
 
 		// collect bundles first, because we need to map their typedef declarations
 		EClass type = Literals.BUNDLE;
-		System.err.println("[TopEntitiesLoader] Collecting BUNDLE entities...");
-		int bundleCount = 0;
 		for (IEObjectDescription objDesc : resourceDescriptions.getExportedObjectsByType(type)) {
-			bundleCount++;
 			// we normalize the URI because URIs of reference descriptions are normalized too
 			// note that 'normalized' by EMF means from resource to plugin
 			URI uri = resourceSet.getURIConverter().normalize(objDesc.getEObjectURI());
-			System.err.println("[TopEntitiesLoader]   Bundle: " + objDesc.getName() + " -> " + uri);
 			allUris.add(uri);
 		}
-		System.err.println("[TopEntitiesLoader] Found " + bundleCount + " bundles");
 
 		// collect instantiable entities
 		type = Literals.INSTANTIABLE;
-		System.err.println("[TopEntitiesLoader] Collecting INSTANTIABLE entities...");
-		int instantiableCount = 0;
 		for (IEObjectDescription objDesc : resourceDescriptions.getExportedObjectsByType(type)) {
-			instantiableCount++;
 			// we normalize the URI because URIs of reference descriptions are normalized too
 			// note that 'normalized' by EMF means from resource to plugin
 			URI uri = resourceSet.getURIConverter().normalize(objDesc.getEObjectURI());
-			System.err.println("[TopEntitiesLoader]   Instantiable: " + objDesc.getName() + " -> " + uri);
 
 			// filters out objects whose URI is platform:/plugin (they can never be 'top' URIs)
 			if (!uri.isPlatformPlugin()) {
 				allUris.add(uri);
-			} else {
-				System.err.println("[TopEntitiesLoader]     (skipped - platform plugin)");
 			}
 		}
-		System.err.println("[TopEntitiesLoader] Found " + instantiableCount + " instantiables");
 
 		return allUris;
 	}
@@ -128,6 +114,25 @@ public class TopEntitiesLoader {
 		Set<Bundle> bundles = Sets.newLinkedHashSet();
 		Resource resource = entity.eResource();
 		if (resource != null) {
+			// The file's own IMPLICIT declaration bundle first. Top-level const/typedef/
+			// struct/enum parse into an unnamed Bundle (grammar rule ImplicitBundle) that
+			// is reached by SCOPE rather than by import, so it never shows up in
+			// getImportedNames() and the global index holds no qualified name for it --
+			// the loop below cannot find it. Without this its members have no IR Var and
+			// the first use dies on a null Var deep in IR generation.
+			for (EObject root : resource.getContents()) {
+				if (!(root instanceof Module)) {
+					continue;
+				}
+				for (CgEntity candidate : ((Module) root).getEntities()) {
+					if (candidate instanceof Bundle && ((Bundle) candidate).getName() == null
+							&& candidate != entity) {
+						nameImplicitBundle((Bundle) candidate, resource);
+						bundles.add((Bundle) candidate);
+					}
+				}
+			}
+
 			IResourceDescription resDesc = manager.getResourceDescription(resource);
 			IResourceDescriptions descs = provider.getResourceDescriptions(resourceSet);
 
@@ -181,14 +186,9 @@ public class TopEntitiesLoader {
 	 * @return an iterable over CgEntity
 	 */
 	public Iterable<CgEntity> loadTopEntities(ResourceSet resourceSet) {
-		System.err.println("[TopEntitiesLoader] loadTopEntities called");
 		Collection<URI> allUris = collectAllURIs(resourceSet);
-		System.err.println("[TopEntitiesLoader] collectAllURIs returned " + allUris.size() + " URIs");
-		for (URI uri : allUris) {
-			System.err.println("[TopEntitiesLoader]   URI: " + uri);
-		}
+		// a top entity is one that is never instantiated by another
 		Collection<URI> topUris = removeInstantiated(resourceSet, allUris);
-		System.err.println("[TopEntitiesLoader] After removeInstantiated: " + topUris.size() + " top URIs");
 		return loadEntities(resourceSet, topUris);
 	}
 
@@ -219,6 +219,30 @@ public class TopEntitiesLoader {
 			}
 		}
 		return topUris;
+	}
+
+
+	/**
+	 * Names the implicit declaration bundle after its file, e.g. {@code Foo.cg} ->
+	 * {@code Foo_pkg}.
+	 * <p>
+	 * The name is an implementation detail -- these members are referenced unqualified,
+	 * by scope -- but everything downstream keys off it: the entity mapper builds the IR
+	 * entity name from it, and a bundle emits a file of localparams named after itself.
+	 * A null name dies later on a null Var, far from the cause.
+	 * <p>
+	 * The {@code _pkg} suffix avoids the common collision: a file named {@code Foo.cg}
+	 * usually declares {@code task Foo}, so naming the bundle plain {@code Foo} would
+	 * clash with the entity beside it.
+	 */
+	private void nameImplicitBundle(Bundle bundle, Resource resource) {
+		if (bundle.getName() != null) {
+			return;
+		}
+		String file = resource.getURI().lastSegment();
+		int dot = file.lastIndexOf('.');
+		String base = dot > 0 ? file.substring(0, dot) : file;
+		bundle.setName(base + "_pkg");
 	}
 
 }

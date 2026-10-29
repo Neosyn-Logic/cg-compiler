@@ -31,10 +31,16 @@ import java.util.List;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.xtext.EcoreUtil2;
+
+import org.eclipse.xtext.nodemodel.INode;
+import org.eclipse.xtext.nodemodel.util.NodeModelUtils;
 
 import com.neosyn.cg.CgUtil;
+import com.neosyn.cg.cg.Bundle;
 import com.neosyn.cg.cg.Block;
 import com.neosyn.cg.cg.Branch;
+import com.neosyn.cg.cg.CgEntity;
 import com.neosyn.cg.cg.CgExpression;
 import com.neosyn.cg.cg.CgFactory;
 import com.neosyn.cg.cg.ExpressionBinary;
@@ -87,7 +93,6 @@ import com.neosyn.models.ir.util.ValueUtil;
 /**
  * This class transforms Cx statement into IR blocks and instructions.
  * 
-
  * @see IrBuilder
  */
 public class FunctionTransformer extends CgSwitch<EObject>implements Transformer {
@@ -161,7 +166,6 @@ public class FunctionTransformer extends CgSwitch<EObject>implements Transformer
 
 		return ir.createExprBinary(e1, op, e2);
 	}
-
 
 	/**
 	 * Lowers a constant-divisor {@code e1 / n} or {@code e1 % n} into hardware that matches
@@ -483,15 +487,43 @@ public class FunctionTransformer extends CgSwitch<EObject>implements Transformer
 			source = builder.getStructMemberVar(expression);
 		}
 		if (source == null) {
-			// variable was null (unresolved cross-ref) or had no IR mapping —
-			// typically when an Inst entity didn't resolve (`new arith.gcd.Gcd();`
-			// with no import) so the network's instance has null entity and the
-			// dependent port lookup yields no Var. Surface a useful error
-			// instead of NPE-ing on source.getType().
-			String refText = describeRef(expression);
-			throw new IllegalStateException("Unresolved reference '" + refText
-					+ "' — check that the Inst entity is imported or fully qualified");
+			// The variable was null (an unresolved cross-reference) or had no IR
+			// mapping. This used to assert ONE cause -- an Inst entity that did not
+			// resolve -- and measured S171, it had that exactly backwards: an
+			// undefined VARIABLE or FUNCTION in a task body lands here and got told
+			// to check an import that has nothing to do with it, while a genuinely
+			// unresolved entity (`new NoSuchEntity()`) never reaches this code at
+			// all -- it is reported properly as "Couldn't resolve reference to
+			// Instantiable". So the entity case is now offered as a possibility
+			// rather than stated as the diagnosis.
+			//
+			// The common case by far is a name the front end ALREADY reported
+			// ("zzz cannot be resolved", with file and line). This message is the
+			// secondary one, so it says so instead of competing with it.
+			throw new IllegalStateException("Unresolved reference '" + describeRef(expression)
+					+ "' — the name did not resolve, and the error naming it says where. "
+					+ "If it is an instance port, check the instantiated entity is imported "
+					+ "or fully qualified.");
 		}
+		// A `const` declared in ANOTHER entity resolves here to THAT entity's IR Var, because
+		// InstantiatorData.getMapping deliberately falls back to the declaring entity when the
+		// current one holds no mapping. For a Bundle that is right -- file-scope declarations are
+		// emitted into a shared package every module includes. For a Task or Network it is wrong,
+		// because those ARE modules: the child's generated module never declares the parent's Var.
+		//
+		// Emitting the reference anyway is TRAPS T38. `print("LIMIT = ", LIMIT)` inside an inline
+		// `new task {}` printed 0 in the bytecode simulator -- no error, no warning, it resolved
+		// and was worth zero -- and produced `Unable to bind wire/reg/memory 'LIMIT'` under
+		// iverilog. The first symptom in the field was an ArrayIndexOutOfBounds from generated
+		// bytecode, pointing at the array rather than at the constant that never wrapped it.
+		//
+		// The VALUE is available: the Evaluator resolves the same const correctly through the
+		// same fallback, which is why `u8 arr[N]` inside such a task already gets the right size.
+		// So fold it here instead of referring to a Var that will not exist.
+		if (isForeignEntityConstant(variable, source)) {
+			return foldForeignConstant(expression, variable);
+		}
+
 		Type type = source.getType();
 		int dimensions = Typer.getNumDimensions(type);
 
@@ -501,6 +533,47 @@ public class FunctionTransformer extends CgSwitch<EObject>implements Transformer
 
 		// bit selection
 		ExprVar exprVar = ir.createExprVar(target);
+
+		// RANGE SLICE v[hi:lo] -> (v >> lo) & ((1 << (hi-lo+1)) - 1).
+		// Lowered here rather than in the back ends on purpose: every backend already
+		// handles shift and mask, so no emitter changes are needed, and it sidesteps the
+		// signedness trap in Verilog bit-select (feedback_compiler §45), where a select is
+		// unsigned regardless of the operand's declared sign. Bounds are compile-time
+		// constants — the grammar's SliceBound admits only literals, names and one +/-.
+		if (expression.getSliceHigh() != null && expression.getSliceLow() != null) {
+			int high = builder.instantiator.evaluateInt(builder.entity, expression.getSliceHigh());
+			int low = builder.instantiator.evaluateInt(builder.entity, expression.getSliceLow());
+
+			// Guard here, in the lowering, rather than in a @Check: the validator hooks were
+			// tried and do not fire for this node (see TRAPS), and this path provably runs —
+			// a bad slice surfaces as "[neosyn] Transform error in <entity>". Reversed bounds
+			// are the reason: v[0:7] would build a mask of (1 << (0-7+1)) - 1, a NEGATIVE
+			// shift, producing a garbage mask instead of an error. Silent wrong hardware is
+			// the one outcome this must not have.
+			if (low < 0) {
+				throw new IllegalStateException("bit-slice low bound cannot be negative (got "
+						+ low + ") in [" + high + ":" + low + "]");
+			}
+			if (high < low) {
+				throw new IllegalStateException("bit-slice is written [high:low]; got [" + high
+						+ ":" + low + "], which is reversed \u2014 write [" + low + ":" + high
+						+ "] instead");
+			}
+			Type sliceType = target.getType();
+			if (sliceType instanceof TypeInt) {
+				int width = ((TypeInt) sliceType).getSize();
+				if (high >= width) {
+					throw new IllegalStateException("bit-slice [" + high + ":" + low
+							+ "] is outside the width of this value, which is " + width
+							+ " bits (valid bits are " + (width - 1) + ":0)");
+				}
+			}
+			Expression shifted = (low == 0) ? exprVar
+					: ir.createExprBinary(exprVar, OpBinary.SHIFT_RIGHT, ir.createExprInt(low));
+			ExprInt sliceMask = ir.createExprInt(ONE.shiftLeft(high - low + 1).subtract(ONE));
+			return ir.createExprBinary(shifted, OpBinary.BITAND, sliceMask);
+		}
+
 		if (dimensions < expression.getIndexes().size()) {
 			CgExpression exprIndex = expression.getIndexes().get(dimensions);
 			int index = builder.instantiator.evaluateInt(builder.entity, exprIndex);
@@ -512,6 +585,57 @@ public class FunctionTransformer extends CgSwitch<EObject>implements Transformer
 		} else {
 			return exprVar;
 		}
+	}
+
+	/**
+	 * True when {@code variable} is a compile-time constant declared in a DIFFERENT Task or
+	 * Network from the one being built, i.e. one whose IR Var the generated module will not
+	 * declare.
+	 *
+	 * <p>A {@code Bundle} is deliberately excluded: file-scope declarations are emitted into a
+	 * shared package that every module includes, so referring to them across entities is correct
+	 * and must keep emitting a reference rather than being folded.
+	 *
+	 * <p>The ownership test is on the IR side ({@code source.eContainer()}) rather than on names,
+	 * because that is exactly the question being asked -- does the module being built own this
+	 * Var, or did {@code InstantiatorData.getMapping} reach into another entity to find it.
+	 */
+	private boolean isForeignEntityConstant(Variable variable, Var source) {
+		if (variable == null || !CgUtil.isConstant(variable) || CgUtil.isFunction(variable)) {
+			return false;
+		}
+		EObject owner = source.eContainer();
+		if (!(owner instanceof Entity) || owner == builder.entity) {
+			return false;
+		}
+		return !(EcoreUtil2.getContainerOfType(variable, CgEntity.class) instanceof Bundle);
+	}
+
+	/**
+	 * Replaces a reference to another entity's constant with its value.
+	 *
+	 * <p>Anything that does not fold to a scalar is an ERROR rather than a silent reference. The
+	 * whole point of T38 is that emitting the reference produced a module that reads zero on one
+	 * backend and does not elaborate on the other, so falling back to it would keep the defect for
+	 * the cases this cannot handle -- a dynamically indexed constant array, say. Naming the
+	 * constant and where it was declared is more useful than either.
+	 */
+	private Expression foldForeignConstant(ExpressionVariable expression, Variable variable) {
+		Object value = builder.instantiator.evaluate(builder.entity, expression);
+		if (ValueUtil.isInt(value)) {
+			return ir.createExprInt((BigInteger) value);
+		}
+		if (ValueUtil.isBool(value)) {
+			return ir.createExprBool((Boolean) value);
+		}
+
+		CgEntity declaring = EcoreUtil2.getContainerOfType(variable, CgEntity.class);
+		throw new IllegalStateException("`" + variable.getName() + "` is declared in "
+				+ (declaring == null ? "another entity" : "`" + declaring.getName() + "`")
+				+ " and cannot be used here: a constant from an enclosing task or network is"
+				+ " inlined by value, and this reference does not reduce to a single value."
+				+ " Declare it at file scope, or pass it in as a parameter"
+				+ " (`new Child({ " + variable.getName() + ": " + variable.getName() + " })`).");
 	}
 
 	@Override
@@ -1066,7 +1190,22 @@ public class FunctionTransformer extends CgSwitch<EObject>implements Transformer
 			String name = n != null ? n.getName() : null;
 			sb.append(name != null ? name : "?");
 		}
-		return sb.toString();
+		String described = sb.toString();
+
+		// An UNRESOLVED reference has a null name, so this produced a bare "?" --
+		// a message about a reference it could not name, which is close to useless
+		// for the one case that reaches it most often. Recover what the user
+		// actually wrote from the node model, which still has the token text.
+		if (described.isEmpty() || described.contains("?")) {
+			INode node = NodeModelUtils.findActualNodeFor(expression);
+			if (node != null) {
+				String text = NodeModelUtils.getTokenText(node).trim();
+				if (!text.isEmpty()) {
+					return text;
+				}
+			}
+		}
+		return described;
 	}
 
 }

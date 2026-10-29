@@ -20,10 +20,11 @@ import com.neosyn.models.ir.OpUnary;
 import com.neosyn.models.ir.util.IrSwitch;
 
 /**
- * This class defines a constant folder.
- * 
-
- * 
+ * A deliberately minimal constant folder: it only simplifies boolean short-circuits
+ * ({@code x && false} -> {@code false}, {@code true && x} -> {@code x}, {@code !true} ->
+ * {@code false}, …) and recurses through resizes. It is applied by {@link CodeCleaner}
+ * after an assignment is inlined, to collapse the guard expressions that inlining
+ * produces; general arithmetic folding is intentionally left to the HDL/synthesis backend.
  */
 public class ConstantFolder extends IrSwitch<Expression> {
 

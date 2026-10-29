@@ -23,7 +23,7 @@
  * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE
  */
-module AsynchronousFIFO # ( parameter size = 0 , width = 0 , depth = 0 ) ( input din_clock , input dout_clock , input reset_n , input [ width - 1 : 0 ] din , input din_valid , output din_ready , output reg [ width - 1 : 0 ] dout , output reg dout_valid , input dout_ready ) ;
+module AsynchronousFIFO # ( parameter size = 1 , width = 1 , depth = 1 ) ( input din_clock , input dout_clock , input reset_n , input [ width - 1 : 0 ] din , input din_valid , output din_ready , output reg [ width - 1 : 0 ] dout , output reg dout_valid , input dout_ready ) ;
 wire [ depth - 1 : 0 ] w1 ;
 wire [ depth - 1 : 0 ] w2 ;
 wire w3 , w4 ;

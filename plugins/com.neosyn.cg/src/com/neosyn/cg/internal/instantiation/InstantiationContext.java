@@ -34,8 +34,6 @@ import com.neosyn.models.node.Node;
  * This class defines an instantiation context as the path and properties obtained throughout the
  * hierarchy.
  * 
-
- *
  */
 public class InstantiationContext extends Node {
 

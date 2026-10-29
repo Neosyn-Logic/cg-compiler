@@ -1,22 +1,8 @@
-/*******************************************************************************
- * Copyright (c) 2024-2025 Neosyn. All rights reserved.
- * https://neosyn.io
- *
- * C⏚ Standard Library - Integer Arithmetic Primitives (std.math)
- *
- * Built-in arithmetic blocks that map to hand-written Verilog/VHDL primitives
- * instead of a bare `/` or `*` operator:
- *
- * - Divide:   signed integer divider. use_hard=0 (default) is a portable
- *             sequential shift/subtract engine (~width cycles, high Fmax);
- *             use_hard=1 emits a single-cycle native `$signed(a)/$signed(b)`.
- * - Multiply: signed integer multiplier that REGISTERS the full-width product
- *             (1-cycle latency), so the long multiply path can retime into a
- *             DSP block's pipeline registers.
- *
- * Both are width-parameterised and use the `sync ready` handshake, so they
- * back-pressure their producers and present one result per operand pair.
- ******************************************************************************/
+/*
+ * Copyright (c) 2024-2026 Neosyn (neosyn.io). All rights reserved.
+ * SPDX-License-Identifier: LicenseRef-Neosyn-Proprietary
+ * Proprietary software of Neosyn; licensed, not sold. Provided "AS IS".
+ */
 package std.math;
 
 /**
@@ -33,7 +19,7 @@ package std.math;
  *     and caps Fmax).
  *
  * Signed, width-parameterised, truncated toward zero (b == 0 is undefined, as
- * for `/` in RTL). `sync ready` handshake: the divider back-pressures its
+ * for `/` in RTL). `stream` handshake: the divider back-pressures its
  * producers while it computes and presents one quotient per (a, b) pair.
  */
 task Divide {
@@ -45,7 +31,7 @@ task Divide {
 	const int width = 32;
 	const int use_hard = 0;
 
-	sync ready {
+	stream {
 		in int<width> a;
 		in int<width> b;
 		out int<width> q;
@@ -59,7 +45,7 @@ task Divide {
  * so the tool can place/retime it into the DSP pipeline registers.
  *
  * `p = a * b`, signed, full-width (`p` is 2*width bits, so no product bit is lost).
- * `sync ready` handshake: p is held until the consumer takes it, and the producers
+ * `stream` handshake: p is held until the consumer takes it, and the producers
  * are back-pressured while a product is in flight — the same handshake as
  * std.math.Divide.
  */
@@ -72,7 +58,7 @@ task Multiply {
 	const int width = 32;
 	const int pwidth = width * 2;
 
-	sync ready {
+	stream {
 		in int<width> a;
 		in int<width> b;
 		out int<pwidth> p;

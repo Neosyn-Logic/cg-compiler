@@ -1,0 +1,25 @@
+package com.neosyn.test.codegen;
+
+/*
+ * Regression fixture, TRAPS T120: a local written one BIT at a time and never initialised.
+ *
+ * `p[0] = x[3]` becomes `p_2 = (p | 1)` / `(p & ~1)` over a start value `p` that nothing drives.
+ * The simulator reads it as 0; the HDL declared `p` and never drove it, so the three bits the
+ * source does not write were X in Verilog and 'U' in VHDL. MacPack's CRC and nibble swaps have
+ * the same shape but write EVERY bit, which is why no shipped core showed it.
+ *
+ * See PartialBitsLocalTest, and tools/qa/repro/T120_PartialBits.cg for the three-way repro.
+ */
+network PartialBitsLocal {
+	in push u4 v;
+	out push u4 part;
+
+	dut = new task {
+		void loop() {
+			u4 x = v.read();
+			u4 p;
+			p[0] = x[3];
+			part.write(p);
+		}
+	};
+}

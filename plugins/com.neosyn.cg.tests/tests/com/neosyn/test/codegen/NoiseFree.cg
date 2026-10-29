@@ -1,0 +1,45 @@
+package com.neosyn.test.codegen;
+
+/*
+ * Regression fixture, TRAPS T116: the UartTx shape -- a setup write, labelled waits on a tick, a
+ * counted loop. Its generated task used to carry `if to_boolean('1')` (VHDL), empty
+ * `begin // line N end` blocks and `// line 0` comments. See GeneratedNoiseTest.
+ */
+network NoiseFree {
+	in stream u8 din;
+	out bool tx;
+
+	tick = new task {
+		out push bool t;
+		u4 n;
+		void loop() {
+			n++;
+			if (n == 0) {
+				t.write(true);
+			}
+		}
+	};
+
+	txTask = new task {
+		u8 data;
+		u4 i;
+
+		void setup() {
+			tx.write(true);
+		}
+
+		void loop() {
+			readData: data = din.read;
+			fence;
+			startBit: tick.t.read;
+			tx.write(0);
+			sendData: for (i = 0; i < 8; i++) {
+				tick.t.read;
+				tx.write(data[0]);
+				data >>= 1;
+			}
+			stopBit: tx.write(true);
+			tick.t.read;
+		}
+	};
+}

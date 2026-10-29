@@ -31,8 +31,6 @@ import static com.neosyn.core.util.DebugLogger.Category.SPECIALIZER;
 /**
  * This class specializes an entity based on the properties of an instance.
  * 
-
- *
  */
 public class Specializer {
 

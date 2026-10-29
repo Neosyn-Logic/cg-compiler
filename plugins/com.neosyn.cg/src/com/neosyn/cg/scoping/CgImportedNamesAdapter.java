@@ -20,8 +20,6 @@ import org.eclipse.xtext.scoping.IScope;
  * This class extends the default imported names adapter to use case-sensitive imported names. Makes
  * it easier to find objects directly using their qualified name.
  * 
-
- *
  */
 public class CgImportedNamesAdapter extends ImportedNamesAdapter {
 

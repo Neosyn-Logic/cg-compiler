@@ -10,6 +10,7 @@
 package com.neosyn.cg;
 
 import static com.neosyn.cg.CgConstants.DIR_IN;
+import static com.neosyn.cg.cg.CgPackage.Literals.INSTANTIABLE__PARAMS;
 import static com.neosyn.cg.cg.CgPackage.Literals.VARIABLE__PARAMETERS;
 import static com.neosyn.models.util.SwitchUtil.DONE;
 import static com.neosyn.models.util.SwitchUtil.visit;
@@ -34,6 +35,7 @@ import com.neosyn.cg.cg.Bundle;
 import com.neosyn.cg.cg.CgExpression;
 import com.neosyn.cg.cg.CgType;
 import com.neosyn.cg.cg.ExpressionVariable;
+import com.neosyn.cg.cg.Instantiable;
 import com.neosyn.cg.cg.Module;
 import com.neosyn.cg.cg.MultiPortDecl;
 import com.neosyn.cg.cg.Named;
@@ -59,8 +61,6 @@ import com.neosyn.models.util.Void;
 
 /**
  * This class defines utility functions for analysis of Cx.
- * 
-
  * 
  */
 public class CgUtil {
@@ -98,8 +98,6 @@ public class CgUtil {
 	/**
 	 * This class defines a switch that visits a function to find out if it has side effects. A side
 	 * effect is any action on a port, any cycle modifier, and any assignment to state variables.
-	 * 
-	
 	 * 
 	 */
 	public static class SideEffectSwitch extends ScheduleModifierSwitch {
@@ -279,6 +277,32 @@ public class CgUtil {
 	 *            a variable that belongs to a port definition
 	 * @return an interface type
 	 */
+	/**
+	 * Whether the port was declared {@code framed} (TRAPS T58): its stream carries a frame boundary,
+	 * written as {@code write(v, last)} and read as {@code port.last}. Like the interface, a port
+	 * without a type of its own takes it from the nearest previous port that has one.
+	 */
+	public static boolean isFramed(Variable port) {
+		if (!(port.eContainer() instanceof PortDef)) {
+			return false;
+		}
+		PortDef def = (PortDef) port.eContainer();
+		EObject cter = def.eContainer() == null ? null : def.eContainer().eContainer();
+		if (def.isFramed() || cter instanceof MultiPortDecl && ((MultiPortDecl) cter).isFramed()) {
+			return true;
+		}
+		if (port.getType() == null) {
+			PortDef typeDef = find(def, new Predicate<PortDef>() {
+				@Override
+				public boolean apply(PortDef p) {
+					return p.getVar().getType() != null;
+				}
+			});
+			return typeDef != null && typeDef.isFramed();
+		}
+		return false;
+	}
+
 	public static InterfaceType getInterface(Variable port) {
 		PortDef def = (PortDef) port.eContainer();
 		EObject cter = def.eContainer().eContainer();
@@ -293,8 +317,9 @@ public class CgUtil {
 			return InterfaceType.SYNC_ACK;
 		}
 
-		// NEW: stream -> SYNC_READY
-		if (def.isStream() || def.isStreamOld() || decl != null && decl.isStream()) {
+		// NEW: stream -> SYNC_READY; framed = a stream that also carries `last` (TRAPS T58)
+		if (def.isStream() || def.isStreamOld() || decl != null && decl.isStream()
+				|| def.isFramed() || decl != null && decl.isFramed()) {
 			return InterfaceType.SYNC_READY;
 		}
 		// OLD: ready -> SYNC_READY (deprecated)
@@ -311,41 +336,53 @@ public class CgUtil {
 			return InterfaceType.SYNC;
 		}
 
-		// If this port inherits its type from a previous port declaration,
-		// also inherit the interface attribute from that previous port.
-		// This fixes: "in push u3 reg, r_m;" where r_m should also be push.
+		// A port with no type of its own inherits BOTH its type and its interface from the
+		// nearest PREVIOUS port that declares a type -- "in push u3 reg, r_m;" makes r_m push.
+		//
+		// It must be the port it takes its TYPE from, and the search must STOP there even when
+		// that port carries no modifier. Searching on for the first previous port that has an
+		// interface skips over the one actually being inherited from, and pulls a modifier
+		// across unrelated ports: in
+		//
+		//     out u8 ttl, protocol, ipv4 srcIp, dstIp, u8 dout (push), bool end_of_header, busy;
+		//
+		// `busy` takes its type from `end_of_header` (bare) and used to take its interface from
+		// `dout (push)` four elements earlier, so it came out SYNC. The effect is positional and
+		// looks arbitrary from the source: whichever port ends the list silently acquires a
+		// modifier written anywhere before it, while the ports in between stay bare.
+		//
+		// That shipped a real defect. IP_Recv.busy became a push output wired to IpTop's bare
+		// `out bool busy`, so the emitted IpTop.v connected `.busy_valid(busy_valid)` to a signal
+		// its own port list never declared -- an implicit 1-bit wire going nowhere (TRAPS T55).
 		if (port.getType() == null) {
-			PortDef syncDef = find(def, new Predicate<PortDef>() {
+			PortDef typeDef = find(def, new Predicate<PortDef>() {
 				@Override
 				public boolean apply(PortDef p) {
-					// Find the first previous PortDef that has a type and interface
-					return p.getVar().getType() != null && hasInterface(p);
+					// The port this one inherits its TYPE from -- nearest previous with a type,
+					// whether or not it carries an interface modifier.
+					return p.getVar().getType() != null;
 				}
 			});
-			if (syncDef != null) {
+			if (typeDef != null) {
 				// confirm/ack -> SYNC_ACK
-				if (syncDef.isConfirm() || syncDef.isConfirmOld() || syncDef.isAck() || syncDef.isAckOld()) {
+				if (typeDef.isConfirm() || typeDef.isConfirmOld() || typeDef.isAck() || typeDef.isAckOld()) {
 					return InterfaceType.SYNC_ACK;
 				}
-				// stream/ready -> SYNC_READY
-				if (syncDef.isStream() || syncDef.isStreamOld() || syncDef.isReady() || syncDef.isReadyOld()) {
+				// stream/ready/framed -> SYNC_READY
+				if (typeDef.isStream() || typeDef.isStreamOld() || typeDef.isReady() || typeDef.isReadyOld()
+						|| typeDef.isFramed()) {
 					return InterfaceType.SYNC_READY;
 				}
 				// push/sync -> SYNC
-				return InterfaceType.SYNC;
+				if (typeDef.isPush() || typeDef.isPushOld() || typeDef.isSync() || typeDef.isSyncOld()) {
+					return InterfaceType.SYNC;
+				}
+				// No modifier on the port we inherit from: BARE. Falling through to a wider
+				// search is exactly the bug described above.
 			}
 		}
 
 		return InterfaceType.BARE;
-	}
-
-	/**
-	 * Returns true if the given port definition has any interface modifier.
-	 */
-	private static boolean hasInterface(PortDef p) {
-		return p.isPush() || p.isPushOld() || p.isSync() || p.isSyncOld()
-			|| p.isStream() || p.isStreamOld() || p.isReady() || p.isReadyOld()
-			|| p.isConfirm() || p.isConfirmOld() || p.isAck() || p.isAckOld();
 	}
 
 	/**
@@ -560,20 +597,20 @@ public class CgUtil {
 	}
 
 	/**
-	 * Returns the variables declared by the given task.
-	 * 
-	 * @param task
-	 *            a task
+	 * Returns the variables declared by the given instantiable (task or network).
+	 *
+	 * @param instantiable
+	 *            a task or a network
 	 * @return a list of variables
 	 */
-	public static List<Variable> getVariables(Task task) {
+	public static List<Variable> getVariables(Instantiable instantiable) {
 		List<Variable> variables = new ArrayList<Variable>();
 		// L3 Generics iter #2: angle-bracket formal params are implicitly-const
-		// entity variables. Exposing them here puts them in the task's VAR_REF
+		// entity variables. Exposing them here puts them in the entity's VAR_REF
 		// scope so `uint<W>` references resolve and the monomorphization engine's
 		// name-based value substitution (EntityMapper.setValues) finds them.
-		variables.addAll(task.getParams());
-		for (VarDecl vars : task.getDecls()) {
+		variables.addAll(instantiable.getParams());
+		for (VarDecl vars : instantiable.getDecls()) {
 			variables.addAll(vars.getVariables());
 		}
 		return variables;
@@ -609,7 +646,7 @@ public class CgUtil {
 			// function parameters and generic entity formal params are constant
 			EStructuralFeature feature = variable.eContainingFeature();
 			return feature == VARIABLE__PARAMETERS
-					|| feature == com.neosyn.cg.cg.CgPackage.Literals.INSTANTIABLE__PARAMS;
+					|| feature == INSTANTIABLE__PARAMS;
 		}
 	}
 
@@ -666,6 +703,22 @@ public class CgUtil {
 	 */
 	public static boolean isGlobal(Variable variable) {
 		return variable.eContainer() instanceof VarDecl;
+	}
+
+	/**
+	 * Returns true if the variable is an entity formal parameter, i.e. an
+	 * angle-bracket generic param such as the W of {@code task Foo<int W = 8>}.
+	 * <p>
+	 * Such a param is entity-scoped and implicitly const, exactly like a body
+	 * {@code const}, but it is NOT held in a VarDecl and so is not
+	 * {@link #isGlobal(Variable) global}.
+	 *
+	 * @param variable
+	 *            a variable
+	 * @return <code>true</code> if the variable is an entity formal parameter
+	 */
+	public static boolean isEntityParam(Variable variable) {
+		return variable.eContainingFeature() == INSTANTIABLE__PARAMS;
 	}
 
 	/**

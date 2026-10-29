@@ -36,8 +36,6 @@ import com.neosyn.models.ir.TypeInt;
 /**
  * This class defines many static utility methods to deal with values.
  * 
-
- * 
  */
 public class ValueUtil {
 

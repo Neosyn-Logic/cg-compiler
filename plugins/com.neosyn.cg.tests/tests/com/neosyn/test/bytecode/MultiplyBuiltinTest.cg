@@ -1,0 +1,59 @@
+/*
+ * Copyright (c) 2024-2026 Neosyn (neosyn.io). All rights reserved.
+ * SPDX-License-Identifier: LicenseRef-Neosyn-Proprietary
+ * Proprietary software of Neosyn; licensed, not sold. Provided "AS IS".
+ */
+package com.neosyn.test.bytecode;
+
+/**
+ * Value gate for the std.math.Multiply BUILT-IN: a registered signed multiplier,
+ * p = a * b, full width (p is 2*width = 64 bits). Drives signed known-answer
+ * vectors through a `sync ready` handshake and checks p on both backends
+ * (bytecode Fast-Sim and generated Verilog). Covers every sign combination, a
+ * product that exceeds 32 bits (46341^2, which is why p is 64 bits), and the
+ * INT_MIN / INT_MAX operand corners.
+ *
+ * Latency is one cycle and there is no input buffer, so the source spaces its
+ * writes with idle() > the handshake round-trip, exactly like the Divide KAT.
+ */
+network MultiplyBuiltinTest {
+
+	properties {
+		test: { terminate: "checker.finished" }
+	}
+
+	source = new task {
+		out sync ready int<32> a;
+		out sync ready int<32> b;
+		u8 i;
+		const int<32> A[12] = { 6, -6, 6, -6, 7, 100, -100, 100, 46341, -46341, 0x80000000, 2147483647 };
+		const int<32> B[12] = { 2,  2, -2, -2, 3,   7,    7,  -7, 46341,  46341,          2,          2 };
+		void setup() {
+			for (i = 0; i < 12; i++) {
+				a.write(A[i]);
+				b.write(B[i]);
+				idle(8);
+			}
+		}
+	};
+
+	dut = new std.math.Multiply();
+	dut.reads(source.a, source.b);
+
+	checker = new task {
+		in sync ready int<64> p;
+		bool finished;
+		u8 i;
+		const int<64> P[12] = { 12, -12, -12, 12, 21, 700, -700, -700,
+				2147488281, -2147488281, -4294967296, 4294967294 };
+		void setup() {
+			for (i = 0; i < 12; i++) {
+				int<64> v = p.read();
+				assert(v == P[i]);
+			}
+			print("std.math.Multiply KAT 12/12 OK\n");
+			finished = true;
+		}
+	};
+	checker.reads(dut.p);
+}

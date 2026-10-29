@@ -10,6 +10,7 @@
 package com.neosyn.cg.internal.compiler;
 
 import static com.neosyn.cg.CgConstants.PROP_AVAILABLE;
+import static com.neosyn.cg.CgConstants.PROP_LAST;
 import static com.neosyn.cg.CgConstants.PROP_READY;
 import static com.neosyn.cg.internal.TransformerUtil.getStartLine;
 
@@ -44,8 +45,6 @@ import com.neosyn.models.ir.Var;
 
 /**
  * This class transforms AST statements into IR instructions and/or nodes at the actor level.
- * 
-
  * 
  */
 public class ActorTransformer extends FunctionTransformer {
@@ -102,22 +101,46 @@ public class ActorTransformer extends FunctionTransformer {
 
 		int lineNumber = getStartLine(expression);
 
-		// translate expression to load from port
-		Port port = getBuilder().getPort(ref);
+		// translate expression to load from port. An ARRAY port reference (`W[0].read()`)
+		// selects one element port; the index is a constant, since it picks a physical port.
+		Port port;
+		if (!expression.getIndexes().isEmpty()
+				&& builder.getArrayPortElements(ref) != null) {
+			port = builder.getArrayPortElement(ref, expression.getIndexes().get(0));
+		} else {
+			port = getBuilder().getPort(ref);
+		}
 		if (port == null) {
+			if (builder.getArrayPortElements(ref) != null) {
+				throw new RuntimeException("Array port '" + variable.getName() + "' must be "
+					+ "indexed to select one element, for example '" + variable.getName()
+					+ "[0].read()'");
+			}
 			throw new RuntimeException("Port not found for variable: " + variable.getName()
 				+ " (ref objects: " + ref.getObjects().size() + ")");
 		}
 		String prop = expression.getPropertyName();
 		Var source, target;
+		// name the local after the ELEMENT port, not the array: reading W[0] and W[1] in one
+		// action would otherwise ask for two locals of the same name.
+		String baseName = port.getName();
 		if (PROP_AVAILABLE.equals(prop) || PROP_READY.equals(prop)) {
 			source = port.getAdditionalInputs().get(0);
 
-			String targetName = "is_" + variable.getName() + "_" + prop;
+			String targetName = "is_" + baseName + "_" + prop;
 			target = builder.createLocal(lineNumber, ir.createTypeBool(), targetName);
+		} else if (PROP_LAST.equals(prop)) {
+			// TRAPS T58: the frame boundary of a framed input, a wire that travels with the data
+			// (AXI-Stream TLAST) -- read in the cycle of the read, it belongs to the value read.
+			source = port.getLast();
+			if (source == null) {
+				throw new RuntimeException("'" + variable.getName() + ".last' needs a framed input port"
+					+ " (declare it `in framed ...`)");
+			}
+			target = builder.createLocal(lineNumber, ir.createTypeBool(), "is_" + baseName + "_" + prop);
 		} else {
 			source = port;
-			target = builder.createLocal(lineNumber, port.getType(), variable.getName());
+			target = builder.createLocal(lineNumber, port.getType(), baseName);
 		}
 
 		builder.add(ir.createInstLoad(lineNumber, target, source));
@@ -166,8 +189,21 @@ public class ActorTransformer extends FunctionTransformer {
 			}
 		}
 
-		Port port = getBuilder().getPort(write.getPort());
+		// An array port write (`y[0].write(v)`) selects one element port. The index is a
+		// constant: it picks a physical port, so it cannot depend on run-time state.
+		Port port;
+		if (!write.getIndexes().isEmpty()) {
+			port = builder.getArrayPortElement(write.getPort(), write.getIndexes().get(0));
+		} else {
+			port = getBuilder().getPort(write.getPort());
+		}
 		if (port == null) {
+			if (builder.getArrayPortElements(write.getPort()) != null) {
+				throw new RuntimeException("Array port '"
+					+ write.getPort().getVariable().getName() + "' must be indexed to select "
+					+ "one element, for example '"
+					+ write.getPort().getVariable().getName() + "[0].write(v)'");
+			}
 			VarRef writePort = write.getPort();
 			String portDesc = writePort != null && writePort.getObjects() != null && !writePort.getObjects().isEmpty()
 				? writePort.getObjects().get(writePort.getObjects().size() - 1).getName()
@@ -175,12 +211,22 @@ public class ActorTransformer extends FunctionTransformer {
 			throw new RuntimeException("Port not found for write: " + portDesc);
 		}
 		Expression expr = builder.transformExpr(write.getValue(), port.getType());
+		// TRAPS T58: `write(v, last)` on a framed port -- the boundary is the second argument
+		Expression last = write.getLast() == null ? null
+			: builder.transformExpr(write.getLast(), ir.createTypeBool());
 		InstStore store = ir.createInstStore(getStartLine(write), port, expr);
 		builder.add(store);
 
-		// for additional output signals
+		// for additional output signals: the handshake is raised; the frame boundary, if the port
+		// carries one, gets the written flag (never a constant true: that would end every frame)
 		for (Var signal : port.getAdditionalOutputs()) {
-			store = ir.createInstStore(getStartLine(write), signal, ir.createExprBool(true));
+			Expression value;
+			if (signal == port.getLast()) {
+				value = last != null ? last : ir.createExprBool(false);
+			} else {
+				value = ir.createExprBool(true);
+			}
+			store = ir.createInstStore(getStartLine(write), signal, value);
 			builder.add(store);
 		}
 

@@ -19,7 +19,6 @@ import org.eclipse.xtext.util.Strings;
 /**
  * This class defines a value converter for floating point numbers.
  * 
-
  */
 public class BigDecimalValueConverter extends AbstractLexerBasedConverter<BigDecimal> {
 

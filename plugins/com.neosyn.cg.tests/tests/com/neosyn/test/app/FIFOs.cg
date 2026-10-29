@@ -12,6 +12,12 @@
 package com.neosyn.test.app.fifos;
 
 network TestSynchronousFIFO {
+	// Without a terminate condition every HDL leg could only check "no assert fired", which a reader
+	// stuck forever also satisfies -- how this fixture hid a deadlock in VHDL (T102) and 45 lost values
+	// behind a "fixture timing" XFAIL in Verilog (T57's FIFO half) until S182.
+	properties {
+		test: { terminate: "sink.finished" }
+	}
 
 	fifo = new std.fifo.SynchronousFIFO({size: 16, width: 8});
 	
@@ -75,6 +81,7 @@ task Sink {
 	in sync ready u8 inp;
 
 	u8 i;
+	bool finished;
 
 	void setup() {
 		for (; i < 15; i++) {
@@ -115,5 +122,6 @@ task Sink {
 			assert(din == i);
 		}
 		print("test passed.");
+		finished = true;
 	}
 }

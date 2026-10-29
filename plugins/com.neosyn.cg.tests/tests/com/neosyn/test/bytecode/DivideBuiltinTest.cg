@@ -1,0 +1,60 @@
+/*
+ * Copyright (c) 2024-2026 Neosyn (neosyn.io). All rights reserved.
+ * SPDX-License-Identifier: LicenseRef-Neosyn-Proprietary
+ * Proprietary software of Neosyn; licensed, not sold. Provided "AS IS".
+ */
+package com.neosyn.test.bytecode;
+
+/**
+ * Value gate for the std.math.Divide BUILT-IN (default sequential engine,
+ * use_hard = 0). Drives signed known-answer vectors through the divider over a
+ * `sync ready` handshake and checks q on both backends (bytecode Fast-Sim and
+ * generated Verilog). Covers the power-of-two fast path (all sign combinations
+ * + /1 = shift-by-0), the sequential shift/subtract path (all sign
+ * combinations), the |INT_MIN| magnitude corner, and graceful b == 0.
+ *
+ * The sequential engine's latency is ~width cycles and it has no input buffer,
+ * so the source over-writes with idle spacing > that latency (mirrors the soft
+ * SeqDiv KAT); a real design would front it with a FIFO or a paced producer.
+ */
+network DivideBuiltinTest {
+
+	properties {
+		test: { terminate: "checker.finished" }
+	}
+
+	source = new task {
+		out sync ready int<32> a;
+		out sync ready int<32> b;
+		u8 i;
+		//                        pow2 -------------------  seq ---------------  /1   INTMIN  b0
+		const int<32> A[12] = {  6, -6,  6, -6,  7,  100, -100,  100,  42, 0x80000000, 0x80000000, 5 };
+		const int<32> B[12] = {  2,  2, -2, -2,  2,    7,    7,   -7,   1,          2,          7, 0 };
+		void setup() {
+			for (i = 0; i < 12; i++) {
+				a.write(A[i]);
+				b.write(B[i]);
+				idle(40);
+			}
+		}
+	};
+
+	dut = new std.math.Divide();
+	dut.reads(source.a, source.b);
+
+	checker = new task {
+		in sync ready int<32> q;
+		bool finished;
+		u8 i;
+		const int<32> Q[12] = { 3, -3, -3, 3, 3, 14, -14, -14, 42, -1073741824, -306783378, 0 };
+		void setup() {
+			for (i = 0; i < 12; i++) {
+				int<32> v = q.read();
+				assert(v == Q[i]);
+			}
+			print("std.math.Divide KAT 12/12 OK\n");
+			finished = true;
+		}
+	};
+	checker.reads(dut.q);
+}

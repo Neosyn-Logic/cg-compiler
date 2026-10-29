@@ -25,8 +25,6 @@ import com.neosyn.models.dpn.Entity;
  * This class defines a switch that extends the statement switch to handle loops. It returns true if
  * a loop is complex (i.e. if it is not compile-time unrollable).
  * 
-
- * 
  */
 public class LoopSwitch extends ScheduleModifierSwitch {
 

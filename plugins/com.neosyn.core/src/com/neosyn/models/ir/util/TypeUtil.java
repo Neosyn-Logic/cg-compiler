@@ -34,8 +34,6 @@ import com.neosyn.models.ir.TypeInt;
 /**
  * This class defines static utility methods to deal with types.
  * 
-
- * 
  */
 public class TypeUtil {
 
@@ -229,6 +227,23 @@ public class TypeUtil {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Like {@link #canAssignBool(Type, Type)} but ALSO permits assigning a wider
+	 * integer to a narrower one (silent truncation to the target width). Used for
+	 * assignments to a LOCAL variable of an explicitly declared width, where that
+	 * width is the developer's stated intent — exactly like a Verilog {@code reg}
+	 * or a C {@code uintN_t} ({@code x = x << 1} keeps the low bits, no diagnostic).
+	 * Interface boundaries (port writes, function returns, connections) must keep
+	 * the strict {@link #canAssign}/{@link #canAssignBool} check, where an
+	 * unintended narrowing is the dangerous silent-truncation bug class.
+	 */
+	public static boolean canAssignBoolTruncating(Type src, Type dst) {
+		if (src != null && dst != null && src.isInt() && dst.isInt()) {
+			return true;
+		}
+		return canAssignBool(src, dst);
 	}
 
 	/**

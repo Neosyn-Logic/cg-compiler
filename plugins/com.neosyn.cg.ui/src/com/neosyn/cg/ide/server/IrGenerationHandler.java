@@ -31,6 +31,7 @@ import com.neosyn.cg.cg.Inst;
 import com.neosyn.cg.cg.Module;
 import com.neosyn.cg.cg.Network;
 import com.neosyn.cg.cg.Task;
+import com.neosyn.cg.instantiation.CompilerLock;
 import com.neosyn.cg.instantiation.IInstantiator;
 import com.neosyn.models.dpn.Entity;
 
@@ -64,6 +65,30 @@ public class IrGenerationHandler {
     }
 
     /**
+     * Entities whose transform threw during the last generation. The HDL pass uses this to
+     * SKIP them rather than emit a module with the right ports and a body that drives
+     * nothing (TRAPS T70). Empty when the last run was clean.
+     */
+    public java.util.Set<String> getFailedTransformEntities() {
+        return transformationHandler.getFailedEntityNames();
+    }
+
+    /** Transform errors from the last generation, entity name included. See TRAPS T70. */
+    public java.util.List<String> getTransformErrors() {
+        return transformationHandler.getTransformErrors();
+    }
+
+    /** Hold transform crash lines until {@link #releaseTransformPrints}. TRAPS T180. */
+    public void holdTransformPrints() {
+        transformationHandler.holdPrints();
+    }
+
+    /** Print (true) or drop (false) the held transform crash lines. TRAPS T180. */
+    public void releaseTransformPrints(boolean print) {
+        transformationHandler.releasePrints(print);
+    }
+
+    /**
      * Clear tracking state for fresh generation.
      */
     public void clearTrackingState() {
@@ -93,6 +118,11 @@ public class IrGenerationHandler {
      * the resource cannot be loaded, or no validation helper is wired.
      */
     public ValidationHelper.ValidationResult validateFileResult(String fileUri) {
+        // The @Check pass updates the shared instantiator (CgValidator.checkModule): TRAPS T78, see CompilerLock.
+        return CompilerLock.call(() -> validateFileResultLocked(fileUri));
+    }
+
+    private ValidationHelper.ValidationResult validateFileResultLocked(String fileUri) {
         if (validationHelper == null) {
             return new ValidationHelper.ValidationResult();
         }
@@ -141,6 +171,11 @@ public class IrGenerationHandler {
      * Generate IR for all .cg files in a project.
      */
     public GenerateResult generateIR(GenerateIRParams params) {
+        // TRAPS T78: every compile shares the instantiator and the resource set; see CompilerLock.
+        return CompilerLock.call(() -> generateIRLocked(params));
+    }
+
+    private GenerateResult generateIRLocked(GenerateIRParams params) {
         GenerateResult result = new GenerateResult();
         List<String> generatedFiles = new ArrayList<>();
 
@@ -164,6 +199,11 @@ public class IrGenerationHandler {
                 return result;
             }
 
+            // The single .cg the caller asked about, if any -- a directory/project run has
+            // no one target, so the @Check pass below is skipped there.
+            String targetFileUri = (params.getUri() != null && !params.getUri().isEmpty()
+                    && params.getUri().endsWith(".cg")) ? params.getUri() : null;
+
             String filePath = ServerUtils.convertUriToPath(fileUri);
             if (filePath == null) {
                 result.setSuccess(false);
@@ -174,7 +214,7 @@ public class IrGenerationHandler {
             // Find all .cg files starting from the workspace folder
             Path searchPath = Paths.get(filePath);
             if (!Files.isDirectory(searchPath)) {
-                searchPath = searchPath.getParent();
+                searchPath = projectOrParent(searchPath);
             }
 
             List<String> allCgUris;
@@ -257,6 +297,13 @@ public class IrGenerationHandler {
             // printed to stderr and lost — collect them so callers (simulate,
             // generateIR) can surface them instead of "succeeding" on a broken IR.
             transformationHandler.clearTransformErrors();
+            // The target's @Check below runs AFTER its IR -- running it first broke cross-file and
+            // builtin (`classpath:/builtin-cg/Mem.cg`) resolution in 140 of 246 core files, TRAPS
+            // T180 -- so a transform crash on code that check then refuses would be printed FIRST.
+            // Its lines are held until the check has run. No target (simulate): nothing held.
+            if (targetFileUri != null) {
+                transformationHandler.holdPrints();
+            }
 
             for (String uri : urisToProcess) {
                 try {
@@ -297,6 +344,35 @@ public class IrGenerationHandler {
 
             // Set result with validation info
             result.setErrors(allErrors);
+            // Run the full declarative @Check pass on the TARGET file, exactly as the
+            // generate and simulate handlers do. Without this `cg_check`/generate-ir saw
+            // ONLY syntax and linking: a program the IDE flags -- `bool == 1`, assigning
+            // to a const -- came back clean, so a model was told its code was fine by the
+            // very call meant to tell it otherwise. Bounded to the one target file, which
+            // is why it is safe here: it is the per-FILE @Check over a whole project that
+            // hangs simulate, not this.
+            if (targetFileUri != null) {
+                ValidationHelper.ValidationResult targetValidation = validateFileResult(targetFileUri);
+                for (String warn : targetValidation.getWarnings()) {
+                    if (!allWarnings.contains(warn)) {
+                        allWarnings.add(warn);
+                        System.err.println("[neosyn] warning: " + warn);
+                    }
+                }
+                for (String err : targetValidation.getErrors()) {
+                    if (!allErrors.contains(err)) {
+                        allErrors.add(err);
+                    }
+                }
+                // A blocking error in the target: its transform crash is that code's consequence, not
+                // a second error, and a model read the NullPointerException as its error (T180).
+                boolean refused = !targetValidation.getErrors().isEmpty();
+                if (refused) {
+                    allErrors.removeAll(transformationHandler.getTransformErrors());
+                }
+                transformationHandler.releasePrints(!refused);
+            }
+
             result.setWarnings(allWarnings);
             result.setSuccess(allErrors.isEmpty());
 
@@ -320,6 +396,9 @@ public class IrGenerationHandler {
             result.setSuccess(false);
             result.setMessage("Error generating IR: " + e.getMessage());
             e.printStackTrace();
+        } finally {
+            // no-op unless a path out of the try skipped the release after the target check
+            transformationHandler.releasePrints(true);
         }
 
         return result;
@@ -335,6 +414,11 @@ public class IrGenerationHandler {
      * backend emits, rather than a source-text approximation.
      */
     public Module transformInMemory(String fileUri) {
+        // TRAPS T78: clears and refills the shared instantiator; see CompilerLock.
+        return CompilerLock.call(() -> transformInMemoryLocked(fileUri));
+    }
+
+    private Module transformInMemoryLocked(String fileUri) {
         // Preload every sibling .cg file in the project and resolve cross-file
         // proxies BEFORE transforming, exactly as generateIR does. Without this,
         // a file that `import`s another (e.g. a network instantiating a task
@@ -400,9 +484,39 @@ public class IrGenerationHandler {
     }
 
     /**
+     * Where a FILE target's .cg walk starts: its project root, as generate does. It was the file's
+     * own directory, so a reference into a parent or sibling package never resolved -- 144 of 246
+     * core files failed `generate-ir <file>`, and every save in the editor refilled .ir from that
+     * subtree only (TRAPS T182). Only a root marked by `.project` or by the file's `src/` ancestor
+     * counts: the package-declaration fallback can name a directory far above a loose file (the
+     * kit's flat temp folder), and walking that is wrong.
+     */
+    private static Path projectOrParent(Path file) {
+        Path parent = file.toAbsolutePath().normalize().getParent();
+        String root = ServerUtils.findProjectRoot(file.toString());
+        if (root != null) {
+            Path r = Paths.get(root).toAbsolutePath().normalize();
+            if (Files.exists(r.resolve(".project")) || parent.startsWith(r.resolve("src"))) {
+                return r;
+            }
+        }
+        return parent;
+    }
+
+    /**
      * Generate IR for a single C⏚ file.
      */
     public List<String> generateIRForFile(String fileUri, String outputDir) throws IOException {
+        // TRAPS T78: clears the shared instantiator, then serializes from it; see CompilerLock.
+        CompilerLock.lock();
+        try {
+            return generateIRForFileLocked(fileUri, outputDir);
+        } finally {
+            CompilerLock.unlock();
+        }
+    }
+
+    private List<String> generateIRForFileLocked(String fileUri, String outputDir) throws IOException {
         List<String> generatedFiles = new ArrayList<>();
 
         ServerUtils.debugLog("[IR] generateIRForFile called for: " + fileUri);
@@ -467,6 +581,27 @@ public class IrGenerationHandler {
                 }
             }
         }
+
+        // Also serialize every specialization created during this transform. A
+        // specialization is filed under its TEMPLATE cx entity (InstantiatorData.
+        // mapSpecialized), so a cross-file specialization -- e.g. LoadKey specialized
+        // from a parameterized Expander in another file -- is keyed under a template
+        // NOT in this module, and the loop above (over module.getEntities()) never
+        // reaches it. Left unserialized, its href in the parent .ir dangles and HDL
+        // emit fails with "Instance '...' has null entity". The single-file case works
+        // only because the template happens to share the module. Fresh instantiator per
+        // generate, so mapSpecialized holds only this file's specializations.
+        instantiator.forEachSpecializedEntity(entity -> {
+            if (entity == null) return;
+            try {
+                String irFile = serializeEntity(entity, outputDir);
+                if (irFile != null && !generatedFiles.contains(irFile)) {
+                    generatedFiles.add(irFile);
+                }
+            } catch (Exception e) {
+                ServerUtils.debugLog("[IR] Error serializing specialized entity: " + e.getMessage());
+            }
+        });
 
         return generatedFiles;
     }

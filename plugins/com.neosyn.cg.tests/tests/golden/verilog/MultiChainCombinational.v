@@ -1,28 +1,46 @@
+/**
+ * Title      : Generated from com.neosyn.test.golden.MultiChainCombinational by Neosyn IDE
+ * File       : com.neosyn.test.golden.MultiChainCombinational.v
+ * Standard   : Verilog-2001
+ */
+
 /*
  * Copyright (c) 2024 Neosyn. All rights reserved.
- *  *
+ *
  * Golden file test - Combinational logic for regression testing.
  * Tests: properties { type: "combinational" }, pure logic without state.
  */
 
 /**
  * MultiChainCombinational - Tests multiple independent if-else chains.
- *  *
+ *
  * This is a regression test for the RouteAddr bug (Session 48/49) where
  * combinational tasks with multiple if-else chains generated empty branches
  * instead of proper combinational logic.
- *  *
+ *
  * Based on: Intel-8088/RegisterFile.cg RouteAddr task
- *  *
+ *
  * The bug occurred because:
  * - CycleScheduler.translateMultiCycleIf() was being called instead of
  *   CombinationalScheduler.caseStatementIf()
  * - This created separate actions/transitions per if-branch
  * - Result: 10 empty if-else branches, no actual logic
- *  *
+ *
  * Expected behavior: Single always block with all if-else logic intact.
  */
-module MultiChainCombinational(input [7 : 0] a1, input [7 : 0] a2, input [7 : 0] b1, input [7 : 0] b2, input  a1_valid, input  a2_valid, input  b1_valid, input  b2_valid, output reg [7 : 0] half1, output reg [7 : 0] half2, output reg [1 : 0] enabled);
+module MultiChainCombinational(
+  input [7 : 0] a1,
+  input [7 : 0] a2,
+  input [7 : 0] b1,
+  input [7 : 0] b2,
+  input  a1_valid,
+  input  a2_valid,
+  input  b1_valid,
+  input  b2_valid,
+  output reg [7 : 0] half1,
+  output reg [7 : 0] half2,
+  output reg [1 : 0] enabled
+);
 
 
   /**
@@ -49,6 +67,15 @@ module MultiChainCombinational(input [7 : 0] a1, input [7 : 0] a2, input [7 : 0]
       reg  v_b1;
       reg  v_b2;
       reg [1 : 0] en;
+      va1 = 0;
+      va2 = 0;
+      vb1 = 0;
+      vb2 = 0;
+      v_a1 = 0;
+      v_a2 = 0;
+      v_b1 = 0;
+      v_b2 = 0;
+      en = 0;
     
       // Read port values first (required before use)
       va1 = a1;
@@ -64,24 +91,18 @@ module MultiChainCombinational(input [7 : 0] a1, input [7 : 0] a2, input [7 : 0]
       // First chain: select half1 from a1 or a2
       if (v_a1) begin
         half1 = va1;
+      end else if (v_a2) begin
+        half1 = va2;
       end else begin
-        // First chain: select half1 from a1 or a2
-        if (v_a2) begin
-          half1 = va2;
-        end else begin
-          en = (en & 2'h2);
-        end
+        en = (en & 2'h2);
       end
       // Second chain: select half2 from b1 or b2
       if (v_b1) begin
         half2 = vb1;
+      end else if (v_b2) begin
+        half2 = vb2;
       end else begin
-        // Second chain: select half2 from b1 or b2
-        if (v_b2) begin
-          half2 = vb2;
-        end else begin
-          en = (en & 2'h1);
-        end
+        en = (en & 2'h1);
       end
       enabled = en;
     end

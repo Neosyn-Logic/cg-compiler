@@ -134,4 +134,31 @@ public class ProjectRootResolutionTest {
 
 		assertEquals(proj.toString(), ServerUtils.findProjectRoot(file.toString()));
 	}
+
+	/**
+	 * A DIRECTORY argument roots at that directory, not its parent (TRAPS T63).
+	 * Before this, `generate <proj>` began the walk one level above the project and
+	 * resolved to the parent, so the CLI compiled sibling projects and wrote output
+	 * outside the project it was given.
+	 */
+	@Test
+	public void directoryArgumentRootsAtItselfNotParent() throws IOException {
+		Path parent = tmp.resolve("workspace");
+		Path proj = parent.resolve("A");
+		writeCg(proj.resolve("src").resolve("pa"), "Alpha.cg", "pa");
+		// a sibling project that must NOT capture the root
+		writeCg(parent.resolve("B").resolve("src").resolve("pb"), "Beta.cg", "pb");
+
+		assertEquals(proj.toString(), ServerUtils.findProjectRoot(proj.toString()));
+	}
+
+	/** The src/ directory itself still roots at its parent when passed directly. */
+	@Test
+	public void srcDirectoryArgumentRootsAtParent() throws IOException {
+		Path proj = tmp.resolve("proj2");
+		Path src = proj.resolve("src");
+		writeCg(src.resolve("pa"), "Alpha.cg", "pa");
+
+		assertEquals(proj.toString(), ServerUtils.findProjectRoot(src.toString()));
+	}
 }

@@ -1,0 +1,33 @@
+package com.neosyn.test.bytecode;
+
+/*
+ * TRAPS T115. A task with TWO stream outputs writes `a`, then `b` twice; the consumer takes both
+ * `b`s, waits, and only then takes `a`. A stream output stays presented until it is taken, so
+ * `a` must still be there. It was dropped: every stream output shared one `stall` flag, writing
+ * `b` cleared it, and `a`'s valid fell although nobody had accepted it -- the run hung.
+ */
+network SharedStallTest {
+	properties { test: { terminate: "sink.finished" } }
+
+	src = new task {
+		out stream u8 a, stream u8 b;
+		void setup() {
+			a.write(1);
+			b.write(2);
+			b.write(3);
+		}
+	};
+
+	sink = new task {
+		in stream u8 a, stream u8 b;
+		bool finished;
+		void setup() {
+			assert(b.read() == 2);
+			assert(b.read() == 3);
+			idle(4);                    // not ready for `a` yet
+			assert(a.read() == 1);
+			finished = true;
+		}
+	};
+	sink.reads(src.a, src.b);
+}

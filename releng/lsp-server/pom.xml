@@ -247,9 +247,13 @@
                                         <include>lib/verilog/**</include>
                                     </includes>
                                 </resource>
-                                <!-- Copy built-in IR files (std.mem.*, std.fifo.*, std.lib.*) -->
+                                <!-- Copy built-in IR files (std.mem.*, std.fifo.*, std.lib.*)
+                                     from the single authoritative source in com.neosyn.core.
+                                     (There used to be a checked-in duplicate under
+                                     src/main/resources/builtin-ir that shadowed this and drifted
+                                     stale — removed; this copy is now the only source.) -->
                                 <resource>
-                                    <directory>../../plugins/com.neosyn.cg/.ir</directory>
+                                    <directory>../../plugins/com.neosyn.core/builtin-ir</directory>
                                     <targetPath>builtin-ir</targetPath>
                                     <includes>
                                         <include>std/**/*.ir</include>

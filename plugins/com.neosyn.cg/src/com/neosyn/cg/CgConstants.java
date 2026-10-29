@@ -14,8 +14,6 @@ import com.google.gson.JsonPrimitive;
 /**
  * This interface defines constants.
  * 
-
- * 
  */
 public interface CgConstants {
 
@@ -46,6 +44,8 @@ public interface CgConstants {
 	String NAME_SIZEOF = "sizeof";
 
 	String PROP_AVAILABLE = "available";
+
+	String PROP_LAST = "last";
 
 	String PROP_LENGTH = "length";
 

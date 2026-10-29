@@ -9,21 +9,32 @@
 
 package com.neosyn.neosynide.internal.generators.verilog.transformations;
 
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import java.math.BigInteger;
 
 import com.neosyn.models.dpn.Entity;
+import com.neosyn.models.dpn.State;
+import org.eclipse.emf.ecore.EObject;
+
 import com.neosyn.models.ir.Block;
 import com.neosyn.models.ir.BlockBasic;
 import com.neosyn.models.ir.ExprBinary;
 import com.neosyn.models.ir.ExprInt;
 import com.neosyn.models.ir.ExprResize;
 import com.neosyn.models.ir.ExprTypeConv;
+import com.neosyn.models.ir.ExprUnary;
+import com.neosyn.models.ir.ExprVar;
 import com.neosyn.models.ir.Expression;
+import com.neosyn.models.ir.InstAssign;
+import com.neosyn.models.ir.InstStore;
 import com.neosyn.models.ir.Instruction;
 import com.neosyn.models.ir.IrFactory;
 import com.neosyn.models.ir.OpBinary;
+import com.neosyn.models.ir.OpUnary;
 import com.neosyn.models.ir.Procedure;
 import com.neosyn.models.ir.Type;
 import com.neosyn.models.ir.TypeInt;
@@ -34,35 +45,19 @@ import com.neosyn.models.ir.util.TypeUtil;
 import com.neosyn.models.util.EcoreHelper;
 
 /**
- * This class implements resizes in a lint-friendly way using temporary variables.
- * 
-
- *
+ * Hoists {@link ExprResize} nodes out of larger expressions into their own temporary
+ * register assignments, so the emitted Verilog resizes a named value once instead of
+ * nesting bit-slices inside a bigger expression — which reads better and avoids lint
+ * noise. Each temporary is named after the value it holds (see {@link #nameFor}).
  */
 public class ResizeExtractor extends AbstractExpressionTransformer {
 
 	private static final IrFactory ir = IrFactory.eINSTANCE;
 
-	/**
-	 * Names handed to the holding registers this pass extracts. Rather than a
-	 * bland {@code temp}/{@code temp_0}, each extracted resize operand is named
-	 * after a constellation, so the generated HDL reads as e.g.
-	 * {@code orion = (a + b); sum <= orion[7:0];}. Plain lowercase identifiers,
-	 * all valid Verilog. Cycled per entity; {@link UniqueNameComputer} appends
-	 * {@code _N} if a module needs more temps than the pool has names.
-	 */
-	private static final String[] CONSTELLATIONS = {
-			"orion", "lyra", "cygnus", "draco", "aquila", "pegasus", "perseus",
-			"andromeda", "phoenix", "hydra", "centaurus", "cassiopeia", "carina",
-			"vela", "auriga", "cepheus", "columba", "corvus", "crux", "fornax",
-			"gemini", "hercules", "indus", "lupus", "lynx", "norma", "octans",
-			"pictor", "pyxis", "sagitta", "serpens", "tucana", "volans", "vulpecula"
-	};
-
 	private UniqueNameComputer nameComputer;
 
-	/** Index into {@link #CONSTELLATIONS} for the next extracted temp. */
-	private int constellationIndex = 0;
+	/** Longest name spelled from an expression before falling back to the variable it feeds. */
+	private static final int MAX_NAME = 24;
 
 	@Override
 	public Expression caseExprResize(ExprResize resize) {
@@ -99,11 +94,74 @@ public class ResizeExtractor extends AbstractExpressionTransformer {
 		if (sourceSize < targetSize) {
 			return extract(ti.isSigned() ? "sext" : "zext", ti, targetSize, expr);
 		} else if (targetSize < sourceSize) {
+			if (assignmentTruncates(resize, targetSize, expr)) {
+				return expr;
+			}
 			return extract("trunc", ti, targetSize, expr);
 		} else {
 			// unnecessary resize, ignore it and replace by expr
 			return expr;
 		}
+	}
+
+	/**
+	 * True when the truncation can be left to the assignment itself: `i <= i + 4'h1;` instead of
+	 * `i_plus_1 = (i + 4'h1); i <= i_plus_1[3 : 0];` in its own named block (TRAPS T116, ~1500
+	 * sites). Exact only when all of these hold:
+	 * <ul>
+	 * <li>the truncation is the whole value of an assignment whose target is exactly
+	 * {@code targetSize} wide -- the assignment keeps the same low bits;</li>
+	 * <li>the expression uses only {@code + - *}, bitwise {@code & | ^ ~} and unary minus: the low N
+	 * bits of those depend only on the low N bits of their operands, so evaluating at the target's
+	 * width (Verilog sizes an expression by its context) gives the bits the wider temporary held.
+	 * NOT a right shift, a division or a remainder, whose operand's upper bits reach the low ones;
+	 * a comparison is a leaf -- its operands are sized among themselves, not by the context;</li>
+	 * <li>no leaf is wider than the target, so nothing is truncated implicitly and no width lint
+	 * is added (the temporary's own `tmp9 = a8 + b8` WIDTHEXPAND goes away).</li>
+	 * </ul>
+	 */
+	private boolean assignmentTruncates(ExprResize resize, int targetSize, Expression expr) {
+		EObject cter = resize.eContainer();
+		Var target;
+		if (cter instanceof InstAssign && ((InstAssign) cter).getValue() == resize) {
+			target = ((InstAssign) cter).getTarget().getVariable();
+		} else if (cter instanceof InstStore && ((InstStore) cter).getValue() == resize) {
+			target = ((InstStore) cter).getTarget().getVariable();
+		} else {
+			return false;
+		}
+		Type type = target.getType().isArray() ? ((com.neosyn.models.ir.TypeArray) target.getType()).getElementType()
+				: target.getType();
+		return type.isInt() && ((TypeInt) type).getSize() == targetSize && isModular(expr, targetSize, 0);
+	}
+
+	private boolean isModular(Expression expr, int width, int depth) {
+		if (depth > 32) {
+			return false;
+		}
+		if (expr instanceof ExprBinary) {
+			ExprBinary bin = (ExprBinary) expr;
+			switch (bin.getOp()) {
+			case PLUS: case MINUS: case TIMES: case BITAND: case BITOR: case BITXOR:
+				return isModular(bin.getE1(), width, depth + 1) && isModular(bin.getE2(), width, depth + 1);
+			default:
+				return bin.getOp().isComparison() && fits(bin, 1);
+			}
+		}
+		if (expr instanceof ExprUnary) {
+			ExprUnary un = (ExprUnary) expr;
+			return (un.getOp() == OpUnary.BITNOT || un.getOp() == OpUnary.MINUS) && isModular(un.getExpr(), width, depth + 1);
+		}
+		if (expr instanceof ExprVar || expr instanceof ExprInt || expr instanceof ExprTypeConv) {
+			return fits(expr, width);
+		}
+		return false;
+	}
+
+	/** The leaf is at most {@code width} bits. */
+	private static boolean fits(Expression expr, int width) {
+		Type type = TypeUtil.getType(expr);
+		return type != null && (type.isBool() || (type.isInt() && ((TypeInt) type).getSize() <= width));
 	}
 
 	/**
@@ -144,16 +202,121 @@ public class ResizeExtractor extends AbstractExpressionTransformer {
 		return value.and(lowMask).equals(lowMask);
 	}
 
+	/**
+	 * A name that says what the temporary HOLDS: {@code i + 1} is {@code i_plus_1}, {@code srcIp >> 16}
+	 * is {@code srcIp_shr_16}, {@code (ttl - 1) << 8} is {@code ttl_minus_1_shl_8}. An expression too
+	 * involved to spell in {@value #MAX_NAME} characters takes the name of the variable it is
+	 * assigned to plus {@code _value} ({@code header_value}), failing that {@code value}.
+	 *
+	 * <p>Decision S186: temporaries are named after the value they hold. They used to be named after
+	 * constellations ({@code orion}, {@code lyra}, ...) -- 5911 declarations across the IP cores that
+	 * told a reader nothing.
+	 */
+	private static String nameFor(Expression expr, Instruction inst) {
+		String spelled = spell(expr, 3);
+		if (spelled != null && spelled.length() <= MAX_NAME) {
+			// a bare constant spells as a number, and an identifier cannot start with a digit
+			return identifier(spelled);
+		}
+		String target = null;
+		if (inst instanceof InstStore) {
+			target = ((InstStore) inst).getTarget().getVariable().getName();
+		} else if (inst instanceof InstAssign) {
+			target = ((InstAssign) inst).getTarget().getVariable().getName();
+		}
+		return target != null ? identifier(target + "_value") : "value";
+	}
+
+	/** Spells {@code e} as an identifier, or null when it cannot (too deep, or an unhandled form). */
+	private static String spell(Expression e, int depth) {
+		if (e instanceof ExprVar) {
+			Var v = ((ExprVar) e).getUse().getVariable();
+			return v == null || v.getName() == null ? null : identifier(v.getName());
+		}
+		if (e instanceof ExprInt) {
+			BigInteger n = ((ExprInt) e).getValue();
+			return n.signum() < 0 ? "neg" + n.negate() : n.toString();
+		}
+		if (depth <= 0) {
+			return null;
+		}
+		if (e instanceof ExprResize) {
+			return spell(((ExprResize) e).getExpr(), depth);
+		}
+		if (e instanceof ExprTypeConv) {
+			return spell(((ExprTypeConv) e).getExpr(), depth);
+		}
+		if (e instanceof ExprUnary) {
+			ExprUnary u = (ExprUnary) e;
+			String x = spell(u.getExpr(), depth - 1);
+			String op = u.getOp() == OpUnary.MINUS ? "neg" : u.getOp() == OpUnary.BITNOT ? "not" : "lnot";
+			return x == null ? null : identifier(op + "_" + x);
+		}
+		if (e instanceof ExprBinary) {
+			ExprBinary b = (ExprBinary) e;
+			String op = word(b.getOp());
+			Expression left = b.getE1();
+			Expression right = b.getE2();
+			// a constant reads better last when the order does not matter: `length_plus_20`
+			if (commutative(b.getOp()) && left instanceof ExprInt && !(right instanceof ExprInt)) {
+				Expression t = left;
+				left = right;
+				right = t;
+			}
+			String l = spell(left, depth - 1);
+			String r = spell(right, depth - 1);
+			return op == null || l == null || r == null ? null : identifier(l + "_" + op + "_" + r);
+		}
+		return null;
+	}
+
+	private static String word(OpBinary op) {
+		switch (op) {
+		case PLUS: return "plus";
+		case MINUS: return "minus";
+		case TIMES: return "times";
+		case DIV: case DIV_INT: return "div";
+		case MOD: return "mod";
+		case SHIFT_LEFT: return "shl";
+		case SHIFT_RIGHT: return "shr";
+		case BITAND: return "and";
+		case BITOR: return "or";
+		case BITXOR: return "xor";
+		case LOGIC_AND: return "land";
+		case LOGIC_OR: return "lor";
+		case EQ: return "eq";
+		case NE: return "ne";
+		case LT: return "lt";
+		case LE: return "le";
+		case GT: return "gt";
+		case GE: return "ge";
+		default: return null;
+		}
+	}
+
+	private static boolean commutative(OpBinary op) {
+		switch (op) {
+		case PLUS: case TIMES: case BITAND: case BITOR: case BITXOR: case LOGIC_AND: case LOGIC_OR:
+		case EQ: case NE:
+			return true;
+		default:
+			return false;
+		}
+	}
+
+	/** A Verilog identifier cannot start with a digit. */
+	private static String identifier(String name) {
+		return !name.isEmpty() && Character.isDigit(name.charAt(0)) ? "n_" + name : name;
+	}
+
 	private Expression extract(String operation, TypeInt source, int targetSize, Expression expr) {
 		if (!expr.isExprVar()) {
-			// must extract expr into a holding variable before resizing it;
-			// name it after a constellation rather than a bland `temp`.
+			// must extract expr into a holding variable before resizing it
 			Type type = ir.createTypeInt(source.getSize(), source.isSigned());
-			String constellation = CONSTELLATIONS[constellationIndex++ % CONSTELLATIONS.length];
-			String name = nameComputer.getUniqueName(constellation);
+			Instruction inst = EcoreHelper.getContainerOfType(expr, Instruction.class);
+			String name = nameComputer.getUniqueName(nameFor(expr, inst));
 			Var resizeTmp = ir.newTempLocalVariable(getProcedure(), type, name);
 
-			Instruction inst = EcoreHelper.getContainerOfType(expr, Instruction.class);
 			if (inst == null) {
 				Block block = EcoreHelper.getContainerOfType(expr, Block.class);
 				List<Block> blocks = EcoreHelper.getContainingList(block);
@@ -176,8 +339,25 @@ public class ResizeExtractor extends AbstractExpressionTransformer {
 	@Override
 	public void setProcedure(Procedure procedure) {
 		if (nameComputer == null) {
+			// Every name the module can refer to, not just its state variables: a temporary is
+			// declared inside a named block, where it SHADOWS any outer name spelled the same.
+			// Measured: `$signed(b)` spelled `b` shadowed the port `b` in Divide, and four IP
+			// gates failed. Ports and their valid/ready, every procedure's locals and parameters,
+			// function names, FSM states.
 			Entity entity = EcoreHelper.getContainerOfType(procedure, Entity.class);
-			nameComputer = new UniqueNameComputer(entity.getVariables());
+			Set<String> taken = new HashSet<>();
+			for (Iterator<EObject> it = entity.eAllContents(); it.hasNext();) {
+				EObject o = it.next();
+				if (o instanceof Var) {
+					taken.add(((Var) o).getName());
+				} else if (o instanceof Procedure) {
+					taken.add(((Procedure) o).getName());
+				} else if (o instanceof State) {
+					taken.add(((State) o).getName());
+				}
+			}
+			taken.remove(null);
+			nameComputer = new UniqueNameComputer(taken);
 		}
 
 		super.setProcedure(procedure);

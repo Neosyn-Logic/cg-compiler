@@ -222,6 +222,22 @@ public class ScheduleFsm extends Schedule {
 		return false;
 	}
 
+	/**
+	 * After an `if` in which only some branches started a new cycle, several transitions are open
+	 * at once, and a write that follows the `if` happens on whichever one is taken. It was recorded
+	 * on getAction() -- the node's own transition, from BEFORE the branch -- so no live transition
+	 * listed the port, and the simulator, which holds a producer on the output patterns, let it
+	 * overwrite a value its consumer had not taken yet: `for (...) { if (i == 6) { fence; }
+	 * d.write(x); }` into a consumer that paused delivered 1 then 12 (TRAPS T135). Verilog derives
+	 * its stall from the writes themselves and was right. Record it where hasBeenWritten looks.
+	 */
+	@Override
+	protected void addToOutputPattern(Port port) {
+		for (Transition transition : getTransitions()) {
+			transition.getAction().getOutputPattern().add(port);
+		}
+	}
+
 	@Override
 	protected boolean hasBeenWritten(Port port) {
 		for (Transition transition : getTransitions()) {

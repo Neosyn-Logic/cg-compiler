@@ -12,7 +12,12 @@ package com.neosyn.cg.internal.scheduler;
 import static com.neosyn.models.util.SwitchUtil.visit;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.WeakHashMap;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.util.Switch;
@@ -62,6 +67,37 @@ public class Schedule {
 	}
 
 	protected final Actor actor;
+
+	/**
+	 * TRAPS T31: a handshaked read registered in a cycle that had ALREADY written a port -- the
+	 * source says "send, then wait for the answer" inside one action. Recorded per actor so the
+	 * network-level check (TransformationHandler) can see whether the answer comes from the very
+	 * instance the request goes to, which can never complete. Kept outside the model on purpose;
+	 * the actor is the key and is cleared before it is scheduled again.
+	 */
+	public static final class ReadAfterWrite {
+		public final Port read;
+		public final VarRef ref;
+		public final List<Port> writtenBefore;
+
+		ReadAfterWrite(Port read, VarRef ref, List<Port> writtenBefore) {
+			this.read = read;
+			this.ref = ref;
+			this.writtenBefore = writtenBefore;
+		}
+	}
+
+	private static final Map<Actor, Set<ReadAfterWrite>> READS_AFTER_WRITE =
+			Collections.synchronizedMap(new WeakHashMap<>());
+
+	public static Set<ReadAfterWrite> readsAfterWrite(Actor actor) {
+		Set<ReadAfterWrite> set = READS_AFTER_WRITE.get(actor);
+		return set == null ? Collections.emptySet() : set;
+	}
+
+	public static void forgetReadsAfterWrite(Actor actor) {
+		READS_AFTER_WRITE.remove(actor);
+	}
 
 	protected final IInstantiator instantiator;
 
@@ -115,7 +151,7 @@ public class Schedule {
 	 *            reference to an input port
 	 */
 	public void available(VarRef ref) {
-		Port port = instantiator.getPort(actor, ref);
+		Port port = patternPort(ref);
 		if (port == null) {
 			// Port could not be resolved (e.g., built-in entity port like line1.q)
 			return;
@@ -123,6 +159,23 @@ public class Schedule {
 		if (hasBeenRead(port)) {
 			startNewCycle();
 		}
+	}
+
+	/**
+	 * The port a read, write or test of {@code ref} registers in the patterns. A STRUCT port has no
+	 * Port of its own: it fans out to field ports, and for a push/stream struct only the FIRST field
+	 * carries the handshake (SkeletonMaker, Tier 2.4). That field stands for the whole struct here.
+	 * Returning null for it -- as before -- left every struct read and write out of the patterns:
+	 * the reader never asserted ready nor waited on valid, and a stream struct through a task hung
+	 * in Verilog (TRAPS T169). Null still means "not a port of this actor" (a built-in's port).
+	 */
+	private Port patternPort(VarRef ref) {
+		Port port = instantiator.getPort(actor, ref);
+		if (port != null) {
+			return port;
+		}
+		Map<String, Port> fields = instantiator.getStructPortFields(actor, ref);
+		return fields == null || fields.isEmpty() ? null : fields.values().iterator().next();
 	}
 
 	/**
@@ -199,7 +252,7 @@ public class Schedule {
 	 *            reference to an input port
 	 */
 	public void read(VarRef ref) {
-		Port port = instantiator.getPort(actor, ref);
+		Port port = patternPort(ref);
 		if (port == null) {
 			// Port could not be resolved (e.g., built-in entity port like line1.q)
 			// Skip pattern registration - the port will be handled during code generation
@@ -207,6 +260,9 @@ public class Schedule {
 		}
 		if (hasBeenRead(port)) {
 			startNewCycle();
+		} else if (!usePeek && port.isSynchronous() && !getAction().getOutputPattern().isEmpty()) {
+			READS_AFTER_WRITE.computeIfAbsent(actor, a -> Collections.synchronizedSet(new LinkedHashSet<>()))
+					.add(new ReadAfterWrite(port, ref, new ArrayList<>(getAction().getOutputPattern().getPorts())));
 		}
 
 		if (usePeek) {
@@ -223,7 +279,7 @@ public class Schedule {
 	 *            reference to an output port
 	 */
 	public void ready(VarRef ref) {
-		Port port = instantiator.getPort(actor, ref);
+		Port port = patternPort(ref);
 		if (port == null) {
 			// Port could not be resolved (e.g., built-in entity port like line1.q)
 			return;
@@ -312,11 +368,19 @@ public class Schedule {
 	 *            a write statement
 	 */
 	public void write(Switch<Void> voidSwitch, StatementWrite stmt) {
-		// first check for existing writes
-		Port port = instantiator.getPort(actor, stmt.getPort());
+		// first check for existing writes: a second write to the same port starts its new cycle
+		// BEFORE the value is visited. Visiting the value first registered a read inside it
+		// (`packet.write(x); packet.write(body.read());`) in the PREVIOUS cycle's input pattern,
+		// while the value itself was used one cycle later: the token was taken a cycle early and
+		// the next one was used instead, on every backend (TRAPS T100).
+		Port port = patternPort(stmt.getPort());
+		if (port != null && hasBeenWritten(port)) {
+			startNewCycle();
+		}
 
-		// only then visit the value (always visit, even if port is null)
-		visit(voidSwitch, stmt.getValue());
+		// only then visit the value -- and the `last` argument of `write(v, last)`, which can read
+		// ports too (TRAPS T151) -- (always visit, even if port is null)
+		visit(voidSwitch, stmt.getValue(), stmt.getLast());
 
 		if (port == null) {
 			// Port could not be resolved (e.g., built-in entity port like line1.d)
@@ -324,11 +388,15 @@ public class Schedule {
 			return;
 		}
 
-		if (hasBeenWritten(port)) {
-			startNewCycle();
-		}
-
 		// and records the fact that we are doing a write
+		addToOutputPattern(port);
+	}
+
+	/**
+	 * Records a write of {@code port} in the current action's output pattern. ScheduleFsm records
+	 * it on EVERY open transition (TRAPS T135).
+	 */
+	protected void addToOutputPattern(Port port) {
 		getAction().getOutputPattern().add(port);
 	}
 

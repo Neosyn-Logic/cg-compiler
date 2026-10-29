@@ -30,8 +30,6 @@ import com.neosyn.models.util.Void;
  * This class visits all references to local variables, and each local variable which is found to be
  * used across more than one procedure is promoted to a state variable.
  * 
-
- * 
  */
 public class VariablePromoter extends AbstractIrVisitor {
 

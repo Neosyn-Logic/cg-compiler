@@ -16,6 +16,7 @@ import com.neosyn.models.dpn.FSM
 import com.neosyn.models.ir.util.TypeUtil
 import com.neosyn.neosynide.internal.generators.Namer
 import com.neosyn.neosynide.internal.generators.verilog.VerilogIrPrinter
+import com.neosyn.neosynide.transformations.ArrayWritePort
 import java.util.ArrayList
 
 import static com.neosyn.core.IProperties.PROP_CLOCKS
@@ -82,6 +83,14 @@ class ActorPrinter {
 		«irPrinter.printStateVar(actor, stateVar)»
 		«ENDFOR»
 
+		«IF !skipFsm && actor.actions.exists[!scheduler.inlinable]»
+		// Argument for the scheduler functions' unused input. A literal would make every call
+		// all-constant, and Yosys evaluates such a call as a constant function.
+		/* verilator lint_off UNUSED */
+		wire _sched_dummy = 1'b0;
+		/* verilator lint_on UNUSED */
+
+		«ENDIF»
 		«IF !actor.procedures.empty»
 
 		/**
@@ -116,6 +125,18 @@ class ActorPrinter {
 		 * Synchronous process
 		 */
 		«new SynchronousPrinter(namer, pathResolver).printProcess(actor, readyOutputPorts)»
+		«FOR ram : ArrayWritePort.ports(actor)»
+
+		/**
+		 * «namer.getName(ram.array)»: one write per cycle, through a registered port, in a process
+		 * without reset -- so synthesis can map the array to RAM (TRAPS T45).
+		 */
+		always @(posedge «actor.properties.getAsJsonArray(PROP_CLOCKS).head.asString») begin
+		  if («namer.getName(ram.we)») begin
+		    «namer.getName(ram.array)»[«namer.getName(ram.waddr)»] <= «namer.getName(ram.wdata)»;
+		  end
+		end
+		«ENDFOR»
 		«ENDIF»
 		'''
 	}
@@ -132,7 +153,7 @@ class ActorPrinter {
 		}
 		'''
 		// Scheduler of «actionName» (line «action.scheduler.lineNumber»)
-		function «schedulerName»(input _dummy);
+		function «schedulerName»(input _dummy«FOR variable : SchedulerInputs.of(action)», input «irPrinter.doSwitch(variable)»«ENDFOR»);
 		  «FOR variable : action.scheduler.locals»
 		  	reg «irPrinter.doSwitch(variable)»;
 		  «ENDFOR»

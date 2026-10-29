@@ -19,8 +19,6 @@ import com.google.gson.JsonObject;
  * This class defines an abstract properties checker that is subclassed by concrete implementations
  * to check entities and instances respectively.
  * 
-
- * 
  */
 public abstract class PropertiesChecker {
 

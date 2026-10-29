@@ -16,8 +16,6 @@ import com.neosyn.models.graph.Vertex;
 /**
  * This class defines an endpoint.
  * 
-
- * 
  */
 public class Endpoint {
 

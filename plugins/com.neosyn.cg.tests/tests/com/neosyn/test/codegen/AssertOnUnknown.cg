@@ -1,0 +1,22 @@
+package com.neosyn.test.codegen;
+
+/*
+ * Regression fixture, TRAPS T121: an assertion whose condition is X must FAIL.
+ *
+ * The Verilog backend printed `assert(c)` as `if (~(c))`. On X, `~X` is X and an `if` on X takes
+ * the else branch, so the failure was silently skipped -- a design whose checked output was X
+ * for every value passed its test. VHDL never had the hole (`numeric_std."="` is FALSE on a
+ * metavalue). The test drives `v` to X from outside: the assertion must fire. Driven to 5, it
+ * must not -- the control that the check is not simply always failing.
+ *
+ * See VerilogAssertMessageTest.
+ */
+network AssertOnUnknown {
+	in push u8 v;
+
+	chk = new task {
+		void loop() {
+			assert(v.read() == 5);
+		}
+	};
+}

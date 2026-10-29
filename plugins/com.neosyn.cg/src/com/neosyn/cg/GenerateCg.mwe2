@@ -60,8 +60,10 @@ Workflow {
 					enabled = true
 					name = "${projectName}.ui"
 				}
+				// No Eclipse plugin: the product is the VS Code extension + the CLI jar (REFACTOR 4a.2).
+				// genericIde still generates into com.neosyn.cg.ui: the jar takes com/neosyn/cg/ide/** from it.
 				eclipsePlugin = {
-					enabled = true
+					enabled = false
 				}
 				eclipsePluginTest = {
 					enabled = false
@@ -128,44 +130,19 @@ Workflow {
 				generateStub = true
 			}
 
-			// labeling API
-			fragment = ui.labeling.LabelProviderFragment2 {}
-			
-			// outline API
-			fragment = ui.outline.QuickOutlineFragment2 {}
-			fragment = ui.outline.OutlineTreeProviderFragment2 {}
-
-			// quickfix API
-			fragment = ui.quickfix.QuickfixProviderFragment2 {}
-
-			// content assist API
-			fragment = ui.contentAssist.ContentAssistFragment2 {}
-
 			// generates junit test support classes into Generator#pathTestProject
 			fragment = junit.JUnitFragment {}
 
-			// project wizard (optional)
-			fragment = ui.projectWizard.TemplateProjectWizardFragment {
-			     //generatorProjectName = "${projectName}"
-			     //modelFileExtension = file.extensions
-			}
-			
-			// rename refactoring
+			// rename refactoring -- NOT Eclipse-only: it binds IRenameService2 in AbstractCgIdeModule,
+			// which the language server's textDocument/rename uses.
 			fragment = ui.refactoring.RefactorElementNameFragment2 {}
-			
+
 			// provides the necessary bindings for java types integration			
 			fragment = types.TypesGeneratorFragment2 {}
 			
 			// generates the required bindings only if the grammar inherits from Xbase
 			fragment = xbase.XtypeGeneratorFragment2 {}
 			fragment = xbase.XbaseGeneratorFragment2 {}
-			
-			fragment = ui.templates.CodetemplatesGeneratorFragment2 {}
-			
-			// provides a compare view
-			fragment = ui.compare.CompareFragment2 {}
-
-			fragment = ui.fileWizard.TemplateFileWizardFragment {}
 		}
 	}
 }

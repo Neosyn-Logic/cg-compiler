@@ -14,8 +14,6 @@ import com.google.gson.JsonElement;
 /**
  * This interface defines a method to report an error with a given JSON element.
  * 
-
- *
  */
 public interface IJsonErrorHandler {
 
@@ -28,5 +26,13 @@ public interface IJsonErrorHandler {
 	 *            a message
 	 */
 	void addError(JsonElement element, String message);
+
+	/**
+	 * Adds an error carrying an issue code, so that it can block a build (see
+	 * {@code ValidationHelper.BLOCKING_ISSUE_CODES}).
+	 */
+	default void addError(JsonElement element, String message, String code) {
+		addError(element, message);
+	}
 
 }

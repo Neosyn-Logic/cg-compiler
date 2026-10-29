@@ -29,8 +29,6 @@ import com.neosyn.models.ir.util.TypeUtil;
 /**
  * This interface defines an abstract expression transformer.
  * 
-
- * 
  */
 public abstract class AbstractExpressionTransformer extends IrSwitch<Expression> {
 

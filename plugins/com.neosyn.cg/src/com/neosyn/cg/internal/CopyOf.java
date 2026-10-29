@@ -18,8 +18,6 @@ import org.eclipse.emf.ecore.EObject;
 /**
  * This class defines an adapter that records the original object from which a copy is made.
  * 
-
- * 
  */
 public class CopyOf extends AdapterImpl implements Adapter {
 

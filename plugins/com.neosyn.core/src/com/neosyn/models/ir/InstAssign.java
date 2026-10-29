@@ -13,7 +13,6 @@ package com.neosyn.models.ir;
  * This interface defines an Assign instruction. The target is a local variable, and the value an
  * expression.
  * 
-
  * @model extends="net.sf.orcc.ir.Instruction"
  */
 public interface InstAssign extends Instruction {

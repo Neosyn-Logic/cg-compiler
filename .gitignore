@@ -338,3 +338,16 @@ site/
 
 # Confidential dev-manual distribution archive (make docs-dist)
 neosyn-studio-dev-manual.zip
+
+
+# HDL simulator artifacts (Vivado xsim / iverilog) — tests run in temp dirs,
+# but guard against stray artifacts if a bench is run in-tree.
+xvhdl.pb
+xvlog.pb
+xelab.pb
+xsim.dir/
+*.wdb
+*.jou
+webtalk*.jou
+webtalk*.log
+*.vvp

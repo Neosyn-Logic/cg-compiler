@@ -70,11 +70,28 @@ public final class ServerUtils {
      */
     public static String findProjectRoot(String filePath) {
         Path path = Paths.get(filePath);
-        Path current = path.getParent();
+
+        // Starting at getParent() is right for a FILE (.../A/src/pkg/Foo.cg begins the
+        // walk at .../A/src/pkg) but wrong for a DIRECTORY: `generate <proj>` began the
+        // walk one level ABOVE the project and resolved the root to its PARENT, so the
+        // CLI compiled every SIBLING project it found there and wrote the whole lot to
+        // <parent>/verilog-gen — outside the project the caller named. Measured: pointing
+        // it at one project pulled in a sibling repo's sources and wrote 1658 files into
+        // the directory above both. See TRAPS T63.
+        boolean givenDirectory = Files.isDirectory(path);
+        Path current = givenDirectory ? path : path.getParent();
 
         while (current != null) {
             Path projectFile = current.resolve(".project");
             if (Files.exists(projectFile)) {
+                return current.toString();
+            }
+
+            // A directory CONTAINING src/ is a project root. Applied only when the caller
+            // handed us a directory, so every file-path caller keeps its exact previous
+            // resolution — IrGenerationHandler and SimulationHandler both pass files, and
+            // ProjectRootResolutionTest pins that behaviour.
+            if (givenDirectory && Files.isDirectory(current.resolve("src"))) {
                 return current.toString();
             }
 

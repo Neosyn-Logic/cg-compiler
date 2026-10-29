@@ -24,8 +24,6 @@ import com.neosyn.core.NeosynCore;
  * This class defines an implementation of a IFileWriter based on the native Java file classes. The
  * name of a file must be relative to the output directory.
  * 
-
- * 
  */
 public class NativeFileWriter implements IFileWriter {
 

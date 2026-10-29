@@ -65,9 +65,10 @@ import com.neosyn.models.util.EcoreHelper;
 import com.neosyn.models.util.Executable;
 
 /**
- * This class defines a generator for Cx resources.
- * 
-
+ * Xtext {@code doGenerate} entry point for C⏚ resources: instantiates the design, schedules each
+ * actor into an FSM (via CombinationalScheduler / the production ExperimentalScheduler), lowers
+ * the AST to IR ({@code internal/compiler}), and writes the {@code .ir} files the HDL/bytecode
+ * backends consume. This is the Tycho/CLI path; the LSP mirrors it in {@code TransformationHandler}.
  */
 public class CgGenerator implements IGenerator {
 

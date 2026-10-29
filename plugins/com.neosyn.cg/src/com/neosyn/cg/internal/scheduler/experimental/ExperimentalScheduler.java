@@ -33,6 +33,14 @@ import com.neosyn.models.dpn.State;
 import com.neosyn.models.dpn.Transition;
 import com.neosyn.models.node.Node;
 
+/**
+ * The FSM scheduler actually used in production — despite the {@code experimental} package
+ * name it is the live path selected by {@code CgGenerator} and the LSP
+ * {@code TransformationHandler}. It extends {@link CycleScheduler} and refines how a
+ * multi-cycle {@code if} is lowered ({@link #translateMultiCycleIf}): each branch forks a
+ * sub-schedule and, via a {@link CycleListener}, injects the {@code goto}s that re-join the
+ * branches once the fork's transitions are known.
+ */
 public class ExperimentalScheduler extends CycleScheduler {
 
 	private class CycleListener implements ICycleListener {
@@ -58,9 +66,6 @@ public class ExperimentalScheduler extends CycleScheduler {
 					addGoto(transition, currentTransition.getSource(), branch.getCondition());
 				}
 			}
-
-			// Transition transition = ScheduleFsm.getTransition(fork);
-			// addGoto(transition, currentTransition.getSource(), branch.getCondition());
 		}
 
 	}

@@ -9,6 +9,12 @@
 
 package com.neosyn.cg.internal.services;
 
+import java.util.List;
+
+import java.util.ArrayList;
+
+import com.neosyn.cg.cg.ExpressionCast;
+
 import static com.neosyn.models.util.SwitchUtil.check;
 
 import com.google.common.collect.Iterables;
@@ -36,8 +42,6 @@ import com.neosyn.cg.cg.util.CgSwitch;
 /**
  * This class defines a full boolean switch.
  * 
-
- * 
  */
 public class BoolCxSwitch extends CgSwitch<Boolean> {
 
@@ -62,6 +66,16 @@ public class BoolCxSwitch extends CgSwitch<Boolean> {
 	}
 
 	@Override
+	public Boolean caseExpressionCast(ExpressionCast expr) {
+		// Missing until 2026-09-29 (TRAPS T128): a cast fell through to caseCgExpression and
+		// answered false, so whatever it wrapped was invisible to every subclass. The one that
+		// mattered: ScheduleModifierSwitch did not see `a.read()` in `s = (u8) (s + a.read());`,
+		// so a loop reading a port was judged "simple", unrolled into ONE cycle that never waited
+		// for its input, and computed garbage -- on the simulator and in both HDLs.
+		return doSwitch(expr.getExpression());
+	}
+
+	@Override
 	public Boolean caseExpressionIf(ExpressionIf expr) {
 		return check(this, expr.getCondition(), expr.getThen(), expr.getElse());
 	}
@@ -78,7 +92,14 @@ public class BoolCxSwitch extends CgSwitch<Boolean> {
 
 	@Override
 	public Boolean caseExpressionVariable(ExpressionVariable expr) {
-		return check(this, Iterables.concat(expr.getIndexes(), expr.getParameters()));
+		List<CgExpression> slice = new ArrayList<>();
+		if (expr.getSliceHigh() != null) {
+			slice.add(expr.getSliceHigh());
+		}
+		if (expr.getSliceLow() != null) {
+			slice.add(expr.getSliceLow());
+		}
+		return check(this, Iterables.concat(expr.getIndexes(), slice, expr.getParameters()));
 	}
 
 	@Override
@@ -128,7 +149,8 @@ public class BoolCxSwitch extends CgSwitch<Boolean> {
 
 	@Override
 	public Boolean caseStatementWrite(StatementWrite write) {
-		return doSwitch(write.getValue());
+		// both arguments of `write(v, last)` (TRAPS T151)
+		return check(this, write.getValue(), write.getLast());
 	}
 
 	@Override

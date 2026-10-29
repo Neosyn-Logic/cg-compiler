@@ -9,6 +9,7 @@
 
 package com.neosyn.neosynide.internal.generators.verilog
 
+import com.neosyn.neosynide.internal.generators.GeneratedHeader
 import com.google.gson.JsonArray
 import com.neosyn.core.IPathResolver
 import com.neosyn.models.dpn.Actor
@@ -25,9 +26,7 @@ import com.neosyn.neosynide.internal.generators.verilog.dpn.DpnPrinter
 import com.neosyn.models.ir.Type
 import com.neosyn.models.ir.TypeInt
 import java.util.ArrayList
-import java.util.Calendar
 import java.util.List
-import org.eclipse.core.runtime.Path
 
 import static com.neosyn.core.IProperties.PROP_CLOCKS
 import static com.neosyn.core.IProperties.PROP_COPYRIGHT
@@ -152,47 +151,42 @@ class VerilogPrinter extends DpnSwitch<CharSequence> {
 	def private printComment(JsonArray lines) {
 		'''
 		«FOR line : lines»
-		* «line.asString»
+		*«IF !line.asString.empty» «line.asString»«ENDIF»
 		«ENDFOR»
 		'''
 	}
 
+	/**
+	 * The file header: what was generated from what, then the source's OWN copyright and doc
+	 * comment. Author and copyright come from the .cg source and are left out when it has none --
+	 * never the OS login or the current year (see GeneratedHeader).
+	 */
 	def private printHeader(Entity entity) {
-		val project = new Path(entity.fileName).segment(0)
 		val copyright = entity.properties.getAsJsonArray(PROP_COPYRIGHT)
 		val javadoc = entity.properties.getAsJsonArray(PROP_JAVADOC)
-		
-		if (copyright === null && javadoc === null) {
-			'''
-			/**
-			 * Title      : Generated from «entity.name» by Neosyn IDE
-			 * Project    : «project»
-			 *
-			 * File       : «entity.name».v
-			 * Author     : «System.getProperty("user.name")»
-			 * Standard   : Verilog-2001
-			 *
-			 *
-			 * Copyright (c) «Calendar.instance.get(Calendar.YEAR)»
-			 *
-			 *
-			 */
-			'''
-		} else {
-			'''
-			«IF copyright !== null»
-			/*
-			 «copyright.printComment»
-			 */
-			«ENDIF»
-			«IF javadoc !== null»
+		val author = GeneratedHeader.author(entity)
+		'''
+		/**
+		 * Title      : Generated from «entity.name» by Neosyn IDE
+		 * File       : «entity.name».v
+		«IF author !== null»
+		 * Author     : «author»
+		«ENDIF»
+		 * Standard   : Verilog-2001
+		 */
+		«IF copyright !== null»
 
-			/**
-			 «javadoc.printComment»
-			 */
-			«ENDIF»
-			'''
-		}
+		/*
+		 «copyright.printComment»
+		 */
+		«ENDIF»
+		«IF javadoc !== null»
+
+		/**
+		 «javadoc.printComment»
+		 */
+		«ENDIF»
+		'''
 	}
 
 	def private printModuleDeclaration(Entity entity) {
@@ -209,9 +203,19 @@ class VerilogPrinter extends DpnSwitch<CharSequence> {
 		// add ports
 		(entity.inputs + entity.outputs).forEach[p|addPorts(signals, p, entity)]
 
+		// One port per line (decision S187): a 15-port task no longer declares its
+		// whole interface on one line of several hundred characters.
 		'''
 		«printHeader(entity)»
-		module «entity.simpleName»(«signals.join(', ')»);
+		«IF signals.empty»
+		module «entity.simpleName»();
+		«ELSE»
+		module «entity.simpleName»(
+		  «FOR i : 0 ..< signals.size»
+		  «signals.get(i)»«IF i < signals.size - 1»,«ENDIF»
+		  «ENDFOR»
+		);
+		«ENDIF»
 
 		  «printImports(entity)»
 		'''

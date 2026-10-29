@@ -14,8 +14,6 @@ import com.google.gson.JsonPrimitive;
 /**
  * This interface defines useful well-known constants.
  * 
-
- * 
  */
 public interface IProperties {
 

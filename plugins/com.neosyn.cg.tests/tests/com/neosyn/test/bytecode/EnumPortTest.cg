@@ -1,0 +1,113 @@
+/*
+ * Copyright (c) 2024-2026 Neosyn (neosyn.io). All rights reserved.
+ * SPDX-License-Identifier: LicenseRef-Neosyn-Proprietary
+ * Proprietary software of Neosyn; licensed, not sold. Provided "AS IS".
+ */
+package com.neosyn.test.bytecode;
+
+/**
+ * Regression: an ENUM is a legal PORT type (S162).
+ *
+ * The L2 enum spec once planned to reject enum-typed ports (ERR_ENUM_AS_PORT_TYPE),
+ * and older docs/fixtures still say so — but no such check exists (or was ever
+ * enforced). An enum port carries the enum's underlying integer width (implicit
+ * from the literal count, or an explicit `: uN`); values are the literals' codes.
+ * It works for input AND output ports, single-task AND cross-actor (a bundle-shared
+ * enum), on the bytecode sim and both HDL backends. These tasks value-check it so it
+ * cannot silently regress — and so the "publish an int code instead" workaround can
+ * be retired for typed control/opcode fields that cross a port.
+ */
+
+/** Enum-typed OUTPUT port — the port carries the enum code (u2). */
+task EnumOutputPort {
+	properties {
+		test: {
+			tick: [ 0, 0, 0, 0 ],
+			op:   [ 0, 1, 2, 0 ]
+		}
+	}
+
+	enum Op { ADD, SUB, AND }
+
+	sync { in u2 tick; out Op op; }
+
+	Op cur;
+
+	void loop() {
+		tick.read();
+		op.write(cur);                                  // publish current state (enum) on the port
+		if (cur == AND) { cur = ADD; }
+		else if (cur == ADD) { cur = SUB; }
+		else { cur = AND; }
+	}
+}
+
+/** Enum-typed INPUT port, driven by numeric 0/1/2 vectors (coerced to the enum). */
+task EnumInputPort {
+	properties {
+		test: {
+			cmd: [ 0, 1, 2, 1 ],
+			res: [ 10, 20, 30, 20 ]
+		}
+	}
+
+	enum Op { ADD, SUB, AND }
+
+	sync { in Op cmd; out u8 res; }
+
+	void loop() {
+		Op c = cmd.read();
+		if (c == ADD) { res.write(10); }
+		else if (c == SUB) { res.write(20); }
+		else { res.write(30); }
+	}
+}
+
+/** Explicit underlying width: `enum : u4` → a 4-bit port. */
+task EnumWidePort {
+	properties {
+		test: {
+			cmd: [ 1, 5, 9 ],
+			res: [ 1, 5, 9 ]
+		}
+	}
+
+	enum Wide : u4 { A = 1, B = 5, C = 9 }
+
+	sync { in Wide cmd; out u4 res; }
+
+	void loop() { Wide c = cmd.read(); res.write((u4) c); }
+}
+
+/** A shared enum in a bundle, used as a port type on BOTH sides of a link. */
+bundle EnumPortOps { enum Op { ADD, SUB, AND, OR } }
+
+/** Cross-actor: producer writes an enum port, consumer reads it. */
+network EnumPortLink {
+	properties { test: { terminate: "mon.finished" } }
+
+	src = new task {
+		out push EnumPortOps.Op op;
+		u3 i = 0;
+		void loop() {
+			if (i == 0) { op.write(EnumPortOps.Op.ADD); }
+			else if (i == 1) { op.write(EnumPortOps.Op.SUB); }
+			else { op.write(EnumPortOps.Op.OR); }
+			if (i < 2) { i = i + 1; }
+		}
+	};
+
+	mon = new task {
+		in push EnumPortOps.Op op;
+		bool finished = false;
+		u3 n = 0;
+		void loop() {
+			EnumPortOps.Op v = op.read();
+			if (n == 0) { assert(v == EnumPortOps.Op.ADD); }
+			else if (n == 1) { assert(v == EnumPortOps.Op.SUB); print("=== EnumPortLink OK ===\n"); finished = true; }
+			if (n < 2) { n = n + 1; }
+		}
+	};
+
+	mon.reads(src.op);
+}

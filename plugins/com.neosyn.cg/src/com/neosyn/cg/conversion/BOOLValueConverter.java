@@ -17,7 +17,6 @@ import org.eclipse.xtext.util.Strings;
 /**
  * This class defines a value converter for BOOL rule.
  * 
-
  */
 public class BOOLValueConverter extends AbstractLexerBasedConverter<Boolean> {
 

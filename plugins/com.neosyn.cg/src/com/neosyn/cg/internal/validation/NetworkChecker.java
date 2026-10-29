@@ -40,8 +40,6 @@ import com.neosyn.cg.validation.IssueCodes;
 /**
  * This class defines a checker for networks.
  * 
-
- * 
  */
 
 public class NetworkChecker extends Checker {

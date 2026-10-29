@@ -59,6 +59,9 @@ task CopyingOut {
 	}
 }
 
+// ELABORATE-ONLY BY NATURE (S166 audit): declares ports and no body, so there is no
+// behaviour to value-check. Its point is that the compiler emits a valid empty entity,
+// which num_states/num_transitions assert. Empty vectors are deliberate, not an omission.
 task EmptyTask {
 	properties {
 		num_states: 0, num_transitions: 0,
@@ -71,6 +74,7 @@ task EmptyTask {
 //
 // should be equivalent to EmptyTask (empty setup and empty loop)
 //
+// ELABORATE-ONLY BY NATURE (S166 audit): an empty setup()/loop(); same as EmptyTask.
 task EmptyTask2 {
 	properties {
 		num_states: 0, num_transitions: 0,
@@ -190,9 +194,12 @@ task PortDeclsBig {
 
 task PragmaOnce {
 	properties {
-		// outp: [42] removed — setup-only tasks produce output once, but the test
-		// infrastructure adds a 1-cycle NOP delay causing the value to be missed
-		test: {inp: [ ], outp: [ ] }
+		// The output WAS removed here, with the note "setup-only tasks produce output
+		// once, but the test infrastructure adds a 1-cycle NOP delay causing the value
+		// to be missed". Re-tested S166: that is no longer true, the vector is checked
+		// on all three backends. Deleting a check to work around a harness limitation
+		// leaves a fixture that verifies nothing — re-test before believing such a note.
+		test: {inp: [ ], outp: [ 42 ] }
 	}
 
 	in u16 inp; out u16 outp;

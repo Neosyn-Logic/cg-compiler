@@ -15,7 +15,7 @@
  * - size: FIFO depth (number of entries)
  * - width: Bit width of each entry
  *
- * Ports use sync/ready handshaking for flow control.
+ * Ports use stream (valid/ready) handshaking for flow control.
  ******************************************************************************/
 
 package std.fifo;
@@ -31,10 +31,15 @@ task SynchronousFIFO {
 
 	const int size, width, depth = sizeof(size - 1);
 
-	sync ready {
+	stream {
 		in unsigned<width> din;
 		out unsigned<width> dout;
 	}
+
+	// High while fewer than 3 more values can be accepted on `din`. A producer that stops
+	// writing when it rises never has to wait with a value in flight -- e.g. one fed by a
+	// RAM, whose read data would move on while it waited (TRAPS T145).
+	out bool almost_full;
 }
 
 task AsynchronousFIFO {
@@ -43,12 +48,18 @@ task AsynchronousFIFO {
 		clocks: ["din_clock", "dout_clock"],
 		implementation: {
 			type: "builtin",
+			// Both languages' helpers: Verilog uses the FIFO_Flag_* pair and DualPortRAM, VHDL
+			// FIFO_Pointer_Sync and PseudoDualPortRAM. Each generator copies the files that exist in
+			// its own library and skips the rest. Keep builtin-ir/std/fifo/AsynchronousFIFO.ir in
+			// step: generate reads THAT list (TRAPS T133).
 			dependencies: [
 				"com.neosyn.fifo.FIFO_Flag_Async",
+				"com.neosyn.fifo.FIFO_Flag_Controller",
+				"com.neosyn.fifo.FIFO_Pointer_Sync",
 				"com.neosyn.fifo.FIFO_Read_Controller",
 				"com.neosyn.fifo.FIFO_Write_Controller",
-				"com.neosyn.fifo.FIFO_Flag_Controller",
-				"std.mem.DualPortRAM"
+				"std.mem.DualPortRAM",
+				"std.mem.PseudoDualPortRAM"
 			]
 		},
 		domains: {
@@ -59,7 +70,7 @@ task AsynchronousFIFO {
 
 	const int size, width, depth = sizeof(size - 1);
 
-	sync ready {
+	stream {
 		in unsigned<width> din;
 		out unsigned<width> dout;
 	}

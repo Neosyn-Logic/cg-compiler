@@ -20,8 +20,6 @@ import org.eclipse.xtext.util.Strings;
  * This class defines a qualified name value converter. Implementation is copied from Xbase. No idea
  * why it is necessary.
  * 
-
- * 
  */
 public class CgQualifiedNameValueConverter extends QualifiedNameValueConverter {
 

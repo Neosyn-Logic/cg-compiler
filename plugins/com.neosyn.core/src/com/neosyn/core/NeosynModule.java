@@ -33,16 +33,12 @@ import com.google.inject.util.Modules;
 /**
  * This class defines a module made of modules contributed by extensions.
  * 
-
- * 
  */
 public class NeosynModule extends AbstractModule {
 
 	/**
 	 * This class sorts configuration elements based on bundle dependencies.
 	 * 
-	
-	 *
 	 */
 	private static class BundleSorter implements Comparator<IConfigurationElement> {
 

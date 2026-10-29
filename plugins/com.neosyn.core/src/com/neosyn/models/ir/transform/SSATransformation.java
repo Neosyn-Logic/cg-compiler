@@ -41,8 +41,6 @@ import com.neosyn.models.util.Void;
 /**
  * This class converts the given actor to SSA form.
  * 
-
- * 
  */
 public class SSATransformation extends AbstractIrVisitor {
 

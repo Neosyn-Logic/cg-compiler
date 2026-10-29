@@ -16,7 +16,6 @@ import org.eclipse.emf.common.util.EList;
  * This interface defines a instruction that Stores data to memory from an expression. The target
  * can be a global (scalar or array), or a local array.
  * 
-
  * @model extends="net.sf.orcc.ir.Instruction"
  */
 public interface InstStore extends Instruction {

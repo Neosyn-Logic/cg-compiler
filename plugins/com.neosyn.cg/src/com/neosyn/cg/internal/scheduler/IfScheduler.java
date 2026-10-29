@@ -28,8 +28,6 @@ import com.neosyn.models.util.SwitchUtil;
 /**
  * This class defines a scheduler of 'if' statements.
  * 
-
- * 
  */
 public class IfScheduler {
 
@@ -70,7 +68,6 @@ public class IfScheduler {
 		List<Transition> transitions = new ArrayList<>();
 		IfDeveloper developer = new IfDeveloper(instantiator, actor);
 		for (Path path : new PathIterable(node)) {
-			// System.out.println(path);
 			transitions.add(developer.visit(transition, path));
 		}
 

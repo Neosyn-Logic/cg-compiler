@@ -13,8 +13,8 @@ import static com.neosyn.core.ICoreConstants.FILE_EXT_CX;
 
 import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.xtext.testing.InjectWith;
-import org.eclipse.xtext.junit4.validation.AssertableDiagnostics.DiagnosticPredicate;
 import org.eclipse.xtext.validation.AbstractValidationDiagnostic;
 import org.junit.Test;
 
@@ -29,36 +29,37 @@ import com.neosyn.cg.cg.Primitive;
 /**
  * This class defines Cx tests that are expected to fail.
  * 
-
- * 
  */
 @InjectWith(CgInjectorProvider.class)
 public class XFailTests extends AbstractCxTest {
 
 	/**
-	 * Asserts that the entity has an expected issue.
-	 * 
+	 * Asserts that the entity has its expected issue among the MODULE's diagnostics. Validating the
+	 * entity alone ran only the entity-level checks: the type checks run per module, so 4 of the 5
+	 * cases could never pass (TRAPS T174) -- unseen, because this class was never run (T172).
+	 *
 	 * @param entity
 	 *            a Cx entity
+	 * @param diagnostics
+	 *            every diagnostic of the module that contains it
 	 */
-	private void assertExpectedFail(CgEntity entity) {
+	private void assertExpectedFail(CgEntity entity, Iterable<Diagnostic> diagnostics) {
 		final String issue = getExpectedIssue(entity);
 		if (issue == null) {
 			throw new IllegalArgumentException("entity " + entity.getName()
 					+ " has no \"issue\" property");
 		}
-
-		DiagnosticPredicate predicate = new DiagnosticPredicate() {
-			public boolean apply(Diagnostic d) {
-				if (d instanceof AbstractValidationDiagnostic) {
-					AbstractValidationDiagnostic diag = (AbstractValidationDiagnostic) d;
-					return issue.equals(diag.getIssueCode());
+		for (Diagnostic d : diagnostics) {
+			if (d instanceof AbstractValidationDiagnostic) {
+				AbstractValidationDiagnostic diag = (AbstractValidationDiagnostic) d;
+				EObject source = diag.getSourceEObject();
+				if (issue.equals(diag.getIssueCode()) && source != null
+						&& (source == entity || EcoreUtil.isAncestor(entity, source))) {
+					return;
 				}
-				return false;
 			}
-		};
-
-		tester.validate(entity).assertAny(predicate);
+		}
+		throw new AssertionError("entity " + entity.getName() + ": expected issue " + issue + " not found");
 	}
 
 	@Test
@@ -93,14 +94,14 @@ public class XFailTests extends AbstractCxTest {
 		int total = 1;
 		try {
 			Module module = getModule(fileName);
-			tester.validate(module);
+			Iterable<Diagnostic> diagnostics = tester.validate(module).getAllDiagnostics();
 
 			// set to 0
 			total = 0;
 			for (CgEntity entity : module.getEntities()) {
 				total++;
 				try {
-					assertExpectedFail(entity);
+					assertExpectedFail(entity, diagnostics);
 				} catch (Throwable t) {
 					printFailure(fileName, t);
 					failed++;

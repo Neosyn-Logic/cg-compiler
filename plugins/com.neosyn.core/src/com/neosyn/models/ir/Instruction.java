@@ -14,7 +14,6 @@ import org.eclipse.emf.ecore.EObject;
 /**
  * This class defines an instruction.
  * 
-
  * @model abstract="true"
  */
 public interface Instruction extends EObject {

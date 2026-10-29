@@ -25,8 +25,6 @@ import com.neosyn.models.util.Void;
 /**
  * This class builds an n-ary hierarchical tree that matches the conditions of the Cx code.
  * 
-
- * 
  */
 public class IfAnalyzer extends VoidCxSwitch {
 

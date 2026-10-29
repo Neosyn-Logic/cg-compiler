@@ -48,8 +48,6 @@ import com.neosyn.models.ir.util.IrUtil;
  * This class defines utility methods to find .ir files from qualified class names (as well as the
  * other way around).
  * 
-
- * 
  */
 public class CoreUtil {
 

@@ -1,0 +1,39 @@
+package com.neosyn.test.codegen;
+
+/*
+ * Regression fixture: an assert inside a guarded branch. `chk`'s two `if`s are
+ * developed into three actions (x only, y only, both), and developing an `if`
+ * copies the branch's statements into the action's scheduler function, which
+ * runs every cycle. The asserts must stay in the action bodies only, or they
+ * check `src.x` on cycles where nothing has been written. See
+ * VerilogAssertInSchedulerTest; tools/qa/repro/T114_AssertInScheduler.cg runs it.
+ */
+network AssertInGuardedBranch {
+	properties { test: { terminate: "chk.finished" } }
+
+	src = new task {
+		out push u8 x, push u8 y;
+		void setup() {
+			idle(4);
+			x.write(7);
+			idle(3);
+			y.write(9);
+		}
+	};
+
+	chk = new task {
+		bool got_x;
+		bool finished;
+		void loop() {
+			if (src.x.available()) {
+				assert(src.x.read() == 7);
+				got_x = true;
+			}
+			if (src.y.available()) {
+				assert(got_x);
+				assert(src.y.read() == 9);
+				finished = true;
+			}
+		}
+	};
+}

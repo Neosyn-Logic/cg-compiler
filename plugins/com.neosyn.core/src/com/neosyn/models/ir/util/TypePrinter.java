@@ -23,8 +23,6 @@ import com.neosyn.models.util.Void;
 /**
  * This class defines a type printer for Cx-like types.
  * 
-
- * 
  */
 public class TypePrinter extends IrSwitch<Void> {
 

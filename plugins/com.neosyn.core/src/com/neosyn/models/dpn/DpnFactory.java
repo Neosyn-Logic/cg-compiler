@@ -203,6 +203,12 @@ public interface DpnFactory extends EFactory {
 	Port createPort(Type type, String name, InterfaceType iface, List<Port> ports);
 
 	/**
+	 * Creates a new port; a {@code framed} one also carries its frame boundary ({@link Port#getLast},
+	 * TRAPS T58). Type is copied if needed.
+	 */
+	Port createPort(Type type, String name, InterfaceType iface, boolean framed, List<Port> ports);
+
+	/**
 	 * Returns a new object of class '<em>State</em>'. <!-- begin-user-doc --> <!-- end-user-doc -->
 	 * 
 	 * @return a new object of class '<em>State</em>'.

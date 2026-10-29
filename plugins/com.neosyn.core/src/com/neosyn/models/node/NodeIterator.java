@@ -14,8 +14,6 @@ import java.util.ListIterator;
 /**
  * This class defines an iterator over a node's children.
  * 
-
- * 
  */
 public class NodeIterator implements ListIterator<Node> {
 

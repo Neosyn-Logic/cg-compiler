@@ -20,8 +20,6 @@ import com.neosyn.models.util.Void;
  * This class defines an IR transformation that renames local variables when
  * using SSA.
  * 
-
- * 
  */
 public class SSAVariableRenamer extends AbstractIrVisitor {
 

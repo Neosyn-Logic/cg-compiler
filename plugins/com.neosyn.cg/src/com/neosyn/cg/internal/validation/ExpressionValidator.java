@@ -10,8 +10,10 @@
 package com.neosyn.cg.internal.validation;
 
 import static com.neosyn.cg.CgConstants.PROP_AVAILABLE;
+import static com.neosyn.cg.CgConstants.PROP_LAST;
 import static com.neosyn.cg.CgConstants.PROP_READ;
 import static com.neosyn.cg.CgConstants.PROP_READY;
+import static com.neosyn.cg.validation.IssueCodes.ERR_FRAMED_MISUSE;
 import static com.neosyn.cg.validation.IssueCodes.ERR_LOCAL_NOT_INITIALIZED;
 import static com.neosyn.cg.validation.IssueCodes.ERR_MULTIPLE_READS;
 import static com.neosyn.cg.validation.IssueCodes.ERR_NO_SIDE_EFFECTS;
@@ -55,15 +57,11 @@ import com.neosyn.models.util.Executable;
 /**
  * This class defines a validator for Cx expressions.
  * 
-
- * 
  */
 public class ExpressionValidator extends AbstractDeclarativeValidator {
 
 	/**
 	 * This class defines a visitor that returns true when a function called is not constant.
-	 * 
-	
 	 * 
 	 */
 	private static class ConstantCallSwitch extends BoolCxSwitch {
@@ -185,6 +183,15 @@ public class ExpressionValidator extends AbstractDeclarativeValidator {
 					Port port = instantiator.getPort(entity, expr.getSource());
 					if (port != null) {
 						checkPortExpression(expr, port);
+						return;
+					}
+					// An ARRAY port has no single IR port -- it fanned out to one per
+					// element -- so getPort returns null and the check above would skip
+					// it entirely. Validate the index against the elements instead.
+					java.util.List<Port> elements =
+							instantiator.getArrayPortElements(entity, expr.getSource());
+					if (elements != null) {
+						checkArrayPortIndex(expr, elements);
 					}
 				}
 			});
@@ -227,6 +234,23 @@ public class ExpressionValidator extends AbstractDeclarativeValidator {
 	 *            an expression variable
 	 */
 	private void checkPortExpression(ExpressionVariable expr, Port port) {
+		checkPortProperty(expr, port);
+
+		// A scalar port is not indexable. An ARRAY port never reaches here (it has no
+		// single IR port); checkArrayPortIndex handles that case and then calls
+		// checkPortProperty itself, so the direction rules apply to both.
+		if (!expr.getIndexes().isEmpty()) {
+			error("Port error: an input port cannot be used with indexes", expr, null);
+		}
+	}
+
+	/**
+	 * The direction / interface rules for a port property, shared by scalar ports and by the
+	 * ELEMENT of an array port. Split out because array ports do not reach
+	 * {@link #checkPortExpression}: without this they silently escaped every rule here, and
+	 * `y[1].write(y[0].read())` -- reading an OUTPUT port -- compiled clean.
+	 */
+	private void checkPortProperty(ExpressionVariable expr, Port port) {
 		String prop = expr.getPropertyName();
 		InterfaceType iface = port.getInterface();
 		if (PROP_AVAILABLE.equals(prop)) {
@@ -239,6 +263,12 @@ public class ExpressionValidator extends AbstractDeclarativeValidator {
 				error("Port error: '" + PROP_READ + "' can only be used on input ports", expr,
 						null);
 			}
+		} else if (PROP_LAST.equals(prop)) {
+			Variable variable = expr.getSource() == null ? null : expr.getSource().getVariable();
+			if (port.getDirection() == Direction.OUTPUT || variable == null || !CgUtil.isFramed(variable)) {
+				error("Port error: '" + PROP_LAST + "' can only be used on a 'framed' input port"
+						+ " (declare it `in framed ...`)", expr, null, ERR_FRAMED_MISUSE);
+			}
 		} else if (PROP_READY.equals(prop)) {
 			if (port.getDirection() == Direction.INPUT || !iface.isSyncReady()) {
 				error("Port error: '" + PROP_READY + "' can only be used on 'ready' output ports",
@@ -248,12 +278,60 @@ public class ExpressionValidator extends AbstractDeclarativeValidator {
 			error("Port error: an output port can only be accessed with write", expr, null);
 		}
 
-		if (!expr.getIndexes().isEmpty()) {
-			error("Port error: an input port cannot be used with indexes", expr, null);
-		}
-
 		if (!expr.getParameters().isEmpty()) {
 			error("Port error: the '" + prop + "' function does not accept arguments", expr, null);
+		}
+	}
+
+	/**
+	 * Checks the index of an array port reference in the EDITOR. The same rules are enforced
+	 * again in the lowering, which is what actually protects the `generate-ir` CLI path --
+	 * checks like this one do not fire there (TRAPS T69). Duplicated deliberately: this one
+	 * carries a squiggle and a file:line, the lowering one carries the guarantee.
+	 */
+	private void checkArrayPortIndex(ExpressionVariable expr, List<Port> elements) {
+		Variable portVar = expr.getSource().getVariable();
+		String name = portVar == null ? "?" : portVar.getName();
+		if (expr.getIndexes().isEmpty()) {
+			error("Port error: '" + name + "' is an array port and must be indexed to select "
+					+ "one element, for example '" + name + "[0].read()'", expr, null);
+			return;
+		}
+		if (expr.getIndexes().size() > 1) {
+			error("Port error: an array port takes exactly one index", expr, null);
+			return;
+		}
+		// The index is read straight off the AST rather than folded through the
+		// instantiator, so a validator does no constant evaluation and cannot drag the
+		// instantiator's machinery into the editor path. That covers the literal case
+		// only -- the one worth a squiggle. A `const` index is left to the lowering,
+		// which owns the verdict on every path anyway.
+		//
+		// (An earlier version called evaluate() here and I blamed it for the
+		// `warning: Error executing EValidator` that array ports produced. That was
+		// WRONG: removing it changed nothing. The real cause was Typer.caseVarRef
+		// falling into printError -- whose Eclipse marker API the CLI does not carry --
+		// because getPort() returns null for an array port. Fixed there.)
+		com.neosyn.cg.cg.CgExpression index = expr.getIndexes().get(0);
+		if (!(index instanceof com.neosyn.cg.cg.ExpressionInteger)) {
+			return;
+		}
+		java.math.BigInteger literal = ((com.neosyn.cg.cg.ExpressionInteger) index).getValue();
+		if (literal == null) {
+			return;
+		}
+		int i = literal.intValue();
+		if (i < 0 || i >= elements.size()) {
+			error("Port error: index " + i + " is out of range for array port '" + name
+					+ "' (declared with " + elements.size() + " element"
+					+ (elements.size() == 1 ? "" : "s") + ", so the last valid index is "
+					+ (elements.size() - 1) + ")", expr, null);
+			return;
+		}
+		// The element is an ordinary port, so it obeys the ordinary direction rules.
+		Port element = elements.get(i);
+		if (element != null) {
+			checkPortProperty(expr, element);
 		}
 	}
 
@@ -261,6 +339,16 @@ public class ExpressionValidator extends AbstractDeclarativeValidator {
 	public void checkWrite(StatementWrite stmt) {
 		Variable variable = stmt.getPort().getVariable();
 		if (CgUtil.isPort(variable)) {
+			// TRAPS T58: the frame boundary goes with the value on a framed stream, and only there.
+			boolean framed = CgUtil.isFramed(variable);
+			if (stmt.getLast() != null && !framed) {
+				error("Port error: write(value, last) needs a 'framed' output port"
+						+ " (declare it `out framed ...`)", stmt, null, ERR_FRAMED_MISUSE);
+			} else if (stmt.getLast() == null && framed) {
+				error("Port error: '" + variable.getName() + "' is framed -- write its frame boundary"
+						+ " with every value: " + variable.getName() + ".write(value, last)", stmt, null,
+						ERR_FRAMED_MISUSE);
+			}
 			Task task = EcoreUtil2.getContainerOfType(stmt, Task.class);
 
 			// checks that the given reference to a port variable has the proper semantics.
@@ -276,6 +364,19 @@ public class ExpressionValidator extends AbstractDeclarativeValidator {
 			});
 		} else {
 			error("Port error: only ports can be written.", stmt, null);
+		}
+	}
+
+	/**
+	 * TRAPS T58: a struct port fans out to one port per field, and reading or writing its frame
+	 * boundary as a whole is not lowered yet. Refused, rather than generated with `last` on one field.
+	 */
+	@Check(NORMAL)
+	public void checkFramedStructPort(Variable variable) {
+		if (CgUtil.isPort(variable) && CgUtil.isFramed(variable)
+				&& CgUtil.asStruct(CgUtil.getType(variable)) != null) {
+			error("A struct port cannot be 'framed' yet (TRAPS T58): frame a scalar stream, or send the"
+					+ " struct's fields over separate ports", variable, null, ERR_FRAMED_MISUSE);
 		}
 	}
 

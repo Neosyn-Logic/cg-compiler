@@ -21,8 +21,6 @@ import com.neosyn.models.graph.Vertex;
 /**
  * This class defines Depth-First Search (DFS) for a graph.
  * 
-
- * 
  */
 public class DFS extends Ordering {
 

@@ -1,0 +1,50 @@
+/*
+ * Array ports: `in u8 W[4]` / `out u8 y[2]`. Guards the feature added 2026-09-09.
+ *
+ * An array port is SUGAR for N scalar ports -- `W[4]` fans out to `W_0`..`W_3`, each
+ * keeping the declared interface and its own handshake. That is exactly the shape the
+ * old diagnostic told people to hand-write (TRAPS T50), so this adds no new hardware
+ * semantics. The vectors below name the ELEMENTS, because those are the ports the
+ * generated HDL actually carries.
+ *
+ * Vectors, not a self-checking monitor, so the harness verifies the VALUES on every
+ * backend rather than only that it elaborates (feedback_compiler §35).
+ */
+package com.neosyn.test.pass.arrayport;
+
+task ArrayPort {
+	properties {
+		test: {
+			W_0:   [ 1, 10 ],
+			W_1:   [ 2, 20 ],
+			W_2:   [ 3, 30 ],
+			W_3:   [ 4, 40 ],
+			sum:   [ 10, 100 ],
+			first: [ 1, 10 ],
+			last:  [ 4, 40 ],
+			y_0:   [ 1, 10 ],
+			y_1:   [ 4, 40 ]
+		}
+	}
+
+	// LAST exercises a `const`-folded index: the index picks a physical port, so it must
+	// be known at compile time, but it does not have to be a literal.
+	const u8 LAST = 3;
+
+	in u8 W[4];
+	out u16 sum;
+	out u8 first, last;
+	out u8 y[2];
+
+	void loop() {
+		u8 a = W[0].read();
+		u8 b = W[1].read();
+		u8 c = W[2].read();
+		u8 d = W[LAST].read();
+		sum.write((u16) (a + b + c + d));
+		first.write(a);
+		last.write(d);
+		y[0].write(a);
+		y[1].write(d);
+	}
+}

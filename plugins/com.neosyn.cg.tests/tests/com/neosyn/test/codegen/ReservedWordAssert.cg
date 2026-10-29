@@ -1,0 +1,27 @@
+package com.neosyn.test.codegen;
+
+/*
+ * Regression fixture: an assertion over a signal named with a Verilog keyword. The backend
+ * stringifies the asserted expression into a $display("Assertion failed: ...") message, so the
+ * name ends up inside a string literal. It used to print as the ESCAPED identifier `\reg `, and
+ * Verilator then rejected the leading backslash as an unknown string escape (iverilog is
+ * lenient); a keyword is RENAMED now. `EXPECT` was escaped as well, though Verilog is
+ * case-sensitive and `EXPECT` is not a keyword at all. See VerilogAssertMessageTest.
+ */
+task ReservedWordAssert {
+    const int EXPECT = 0xFF;   // uppercase const -> no Verilog keyword, kept as EXPECT
+    u8 reg;                    // a Verilog keyword -> renamed to reg_v
+    bool finished;
+
+    void setup() {
+        reg = (u8) 0xFF;
+        finished = false;
+    }
+
+    void loop() {
+        if (!finished) {
+            assert(reg == EXPECT);
+            finished = true;
+        }
+    }
+}

@@ -15,7 +15,6 @@ import org.eclipse.emf.ecore.EObject;
 /**
  * This class defines a pattern as a list of ports that are read/written.
  * 
-
  * @model
  */
 public interface Pattern extends EObject {

@@ -173,15 +173,26 @@ task Controller {
 		addr.write(i);
 		fence;
 
-		q.read;
-		q.read;
+		// These two reads used to DISCARD their values, which is why every RAM fixture
+		// was "elaborate-only" and verified nothing -- and why bug #16 (dual-port RAM
+		// widths never resolving) sat undetected until a width warning caught it.
+		assert(q.read == 4);
+		assert(q.read == 6);
+		print("Controller: dual-port readback OK\n");
+		finished = true;
 	}
+
+	bool finished;
 }
 
 network TestDualPortRam {
 
 	properties {
-		clocks: ["clk_a", "clk_b"]
+		clocks: ["clk_a", "clk_b"],
+		// The terminate had to be omitted in S166 because the bytecode backend could not
+		// instantiate std.mem.DualPortRAM at all (it emitted a create(int,int) call
+		// against a create(int,int,int) runtime). Fixed, so the completion proof is back.
+		test: { terminate: "ctrl1.finished" }
 	}
 
 	ram = new std.mem.DualPortRAM({size: 256, width: 12});

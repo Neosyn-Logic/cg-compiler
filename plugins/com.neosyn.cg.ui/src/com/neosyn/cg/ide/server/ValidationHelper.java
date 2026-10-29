@@ -9,13 +9,19 @@
 package com.neosyn.cg.ide.server;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import org.eclipse.emf.common.util.Diagnostic;
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.xtext.nodemodel.INode;
+import org.eclipse.xtext.nodemodel.util.NodeModelUtils;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.util.Diagnostician;
+import org.eclipse.xtext.linking.impl.XtextLinkingDiagnostic;
 import org.eclipse.xtext.resource.XtextResource;
+import org.eclipse.xtext.resource.XtextSyntaxDiagnostic;
 import org.eclipse.xtext.util.CancelIndicator;
 import org.eclipse.xtext.validation.AbstractValidationDiagnostic;
 import org.eclipse.xtext.validation.CheckMode;
@@ -23,7 +29,7 @@ import org.eclipse.xtext.validation.IResourceValidator;
 import org.eclipse.xtext.validation.Issue;
 
 import com.google.inject.Inject;
-import com.neosyn.cg.validation.IssueCodes;
+import com.neosyn.cg.validation.BlockingIssueCodes;
 
 /**
  * Helper class to run Xtext validation and collect errors/warnings.
@@ -33,27 +39,8 @@ import com.neosyn.cg.validation.IssueCodes;
  */
 public class ValidationHelper {
 
-    /**
-     * Issue codes whose @Check ERROR diagnostics hard-fail a CLI build
-     * ({@code generate}/{@code simulate}). Deliberately a short allowlist: the
-     * declarative validators also flag idiomatic narrowing the sim/Verilog
-     * backends handle correctly via truncation (e.g. {@code i = i + 1} on a u8,
-     * the RISC-V multiplier's u128→u64), so blocking on every @Check error would
-     * reject pervasive, valid designs. Codes listed here are genuine silent
-     * miscompiles that the backend does NOT handle. Everything else from the
-     * validators is surfaced as a non-blocking advisory warning. Extend this set
-     * as further real-miscompile checks are vetted.
-     */
-    private static final Set<String> BLOCKING_ISSUE_CODES = Set.of(
-            // A mismatched-width network connection silently zero-extends /
-            // truncates on both backends (the S132 check).
-            IssueCodes.ERR_PORT_WIDTH_MISMATCH,
-            // A bad generic/instantiation argument: a name that isn't a const
-            // parameter, or a non-const value where a const is required. The
-            // instance is built wrong (or with silent defaults) rather than
-            // truncated, so this is a genuine error, not a tolerated narrowing.
-            IssueCodes.ERR_GENERIC_ARG_UNKNOWN,
-            IssueCodes.ERR_GENERIC_ARG_NOT_CONST);
+    /** The codes that block a build: one list, shared with the editor (TRAPS T4). */
+    private static final Set<String> BLOCKING_ISSUE_CODES = BlockingIssueCodes.CODES;
 
     private IResourceValidator resourceValidator;
 
@@ -119,9 +106,24 @@ public class ValidationHelper {
         }
 
         public void addError(String error) {
-            if (error != null && !errors.contains(error)) {
-                errors.add(error);
+            if (error == null || errors.contains(error)) {
+                return;
             }
+            // The same mistake, once plain and once explained ("X cannot be resolved" and
+            // "X cannot be resolved: it is declared at the top of Y.cg, ..."): a file linked
+            // before its sibling was loaded gets the plain message, and again after, the
+            // explained one. Keep only the explained one.
+            for (int i = 0; i < errors.size(); i++) {
+                String known = errors.get(i);
+                if (error.startsWith(known + ":")) {
+                    errors.set(i, error);
+                    return;
+                }
+                if (known.startsWith(error + ":")) {
+                    return;
+                }
+            }
+            errors.add(error);
         }
 
         public void addWarning(String warning) {
@@ -129,6 +131,38 @@ public class ValidationHelper {
                 warnings.add(warning);
             }
         }
+    }
+
+    /**
+     * M3 (model friendliness, 2026-09-30): on a line where the PARSER failed, only its first parse
+     * error. Once the parser derails, the rest of that line is cascade -- `in stream u8 in;` gave
+     * the right message plus "extraneous input ')'" and "read cannot be resolved", and a model
+     * treats all three as real and spends a turn on the two that are not. Fix the first, check
+     * again, and a genuine second error on that line comes back.
+     *
+     * <p>A line the parser accepted keeps EVERY error: its link errors are not cascade. The first
+     * version kept one error per line regardless and dropped T123's "declared at the top of X"
+     * hint and two of the three unresolved names behind T109's simulate verdict. Unlocated errors
+     * and errors of any other kind are always kept.
+     */
+    static List<Resource.Diagnostic> firstErrorPerLine(List<Resource.Diagnostic> errors) {
+        Set<Integer> derailed = new HashSet<>();
+        for (Resource.Diagnostic d : errors) {
+            if (d instanceof XtextSyntaxDiagnostic && d.getLine() > 0) {
+                derailed.add(d.getLine());
+            }
+        }
+        List<Resource.Diagnostic> kept = new ArrayList<>();
+        Set<Integer> reported = new HashSet<>();
+        for (Resource.Diagnostic d : errors) {
+            boolean cascadeKind = d instanceof XtextSyntaxDiagnostic || d instanceof XtextLinkingDiagnostic;
+            if (!cascadeKind || !derailed.contains(d.getLine())) {
+                kept.add(d);
+            } else if (d instanceof XtextSyntaxDiagnostic && reported.add(d.getLine())) {
+                kept.add(d);
+            }
+        }
+        return kept;
     }
 
     /**
@@ -146,7 +180,7 @@ public class ValidationHelper {
         if (resource == null) {
             return result;
         }
-        for (Resource.Diagnostic diagnostic : resource.getErrors()) {
+        for (Resource.Diagnostic diagnostic : firstErrorPerLine(resource.getErrors())) {
             result.addError(formatLocation(resource, diagnostic) + diagnostic.getMessage());
         }
         for (Resource.Diagnostic diagnostic : resource.getWarnings()) {
@@ -170,7 +204,7 @@ public class ValidationHelper {
         }
 
         // Check for syntax errors first
-        for (Resource.Diagnostic diagnostic : resource.getErrors()) {
+        for (Resource.Diagnostic diagnostic : firstErrorPerLine(resource.getErrors())) {
             String location = formatLocation(resource, diagnostic);
             result.addError(location + diagnostic.getMessage());
         }
@@ -311,16 +345,76 @@ public class ValidationHelper {
                     ? ((AbstractValidationDiagnostic) diagnostic).getIssueCode()
                     : null;
             if (issueCode != null && BLOCKING_ISSUE_CODES.contains(issueCode)) {
-                result.addError(diagnostic.getMessage());
+                result.addError(located(diagnostic));
             } else {
-                result.addWarning(diagnostic.getMessage());
+                result.addWarning(located(diagnostic));
             }
         } else if (severity == Diagnostic.WARNING || severity == Diagnostic.INFO) {
-            result.addWarning(diagnostic.getMessage());
+            result.addWarning(located(diagnostic));
         }
 
         for (Diagnostic child : diagnostic.getChildren()) {
             collectCheckDiagnostics(child, result);
+        }
+    }
+
+    /**
+     * TRAPS T130: a validator that throws surfaces as Xtext's bare "Error executing EValidator"
+     * -- and the jar's log4j config silences CompositeEValidator, so the exception went nowhere
+     * while every later check on that object was skipped. Name it where the user sees it.
+     */
+    static String internalError(Throwable t) {
+        if (t == null) {
+            return "";
+        }
+        String where = "";
+        for (StackTraceElement frame : t.getStackTrace()) {
+            if (frame.getClassName().startsWith("com.neosyn.")) {
+                String cls = frame.getClassName();
+                where = " at " + cls.substring(cls.lastIndexOf('.') + 1) + "." + frame.getMethodName()
+                        + ":" + frame.getLineNumber();
+                break;
+            }
+        }
+        return " (internal compiler error: " + t.getClass().getSimpleName()
+                + (t.getMessage() != null ? ": " + t.getMessage() : "") + where
+                + " -- some checks were skipped; please report this)";
+    }
+
+    /**
+     * {@code File.cg:LINE: message} for a validator finding, or the bare message when the
+     * position cannot be recovered.
+     *
+     * <p>These were emitted as bare text, which reads fine to a human staring at one file
+     * and is nearly useless to a tool: the agent kit parses {@code file:line:} to build
+     * structured diagnostics, so an unlocated validator finding reached the caller as
+     * "not ok, no diagnostics" -- nothing to act on, which is precisely the state that
+     * makes a model rewrite its program instead of fixing the line. The position is on the
+     * diagnostic's source EObject, via the node model.
+     */
+    private static String located(Diagnostic diagnostic) {
+        if (diagnostic.getMessage() == null) {
+            // the per-file container chain: no finding of its own (and a null result is not printed)
+            return null;
+        }
+        String message = diagnostic.getMessage() + internalError(diagnostic.getException());
+        try {
+            List<?> data = diagnostic.getData();
+            if (data == null || data.isEmpty() || !(data.get(0) instanceof EObject)) {
+                return message;
+            }
+            EObject source = (EObject) data.get(0);
+            INode node = NodeModelUtils.findActualNodeFor(source);
+            if (node == null) {
+                return message;
+            }
+            String file = null;
+            if (source.eResource() != null && source.eResource().getURI() != null) {
+                file = source.eResource().getURI().lastSegment();
+            }
+            return (file == null ? "" : file + ":") + node.getStartLine() + ": " + message;
+        } catch (Exception e) {
+            return message;   // a diagnostic must never be lost to its own formatting
         }
     }
 }

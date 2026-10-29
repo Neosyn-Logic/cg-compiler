@@ -96,6 +96,19 @@ public class GoldenFileTests extends AbstractCxTest {
 	}
 
 	// =========================================================================
+	// GoldenReduction.cg - streaming reduction with a CONDITIONAL stream read
+	// Pins the per-branch ready structure: a stream port read only on some
+	// actions must assert its `ready` (and clear its skid buffer) ONLY there.
+	// A regression that asserts `bias_ready` in the cnt==1 branches (dropping the
+	// buffered value → stale read) changes this golden.
+	// =========================================================================
+
+	@Test
+	public void testVerilog_GoldenReduction_CondReadReduction() throws Exception {
+		testVerilogGeneration("GoldenReduction", "com.neosyn.test.golden.CondReadReduction");
+	}
+
+	// =========================================================================
 	// GoldenBasicTasks.cg - Basic task patterns
 	// =========================================================================
 
@@ -401,12 +414,13 @@ public class GoldenFileTests extends AbstractCxTest {
 	private void compareOrUpdate(String goldenPath, String generatedContent, String description)
 			throws IOException {
 		Path goldenFile = Paths.get(goldenPath).toAbsolutePath();
+		String generated = GoldenText.normalizeSourcePaths(generatedContent);
 
 		if (UPDATE_GOLDEN_FILES) {
 			// Create parent directories if needed
 			Files.createDirectories(goldenFile.getParent());
-			// Write the golden file
-			Files.write(goldenFile, generatedContent.getBytes(StandardCharsets.UTF_8));
+			// Write the golden file -- with the checkout location already stripped
+			Files.write(goldenFile, generated.getBytes(StandardCharsets.UTF_8));
 			System.out.println("Updated golden file: " + goldenPath);
 		} else {
 			if (!Files.exists(goldenFile)) {
@@ -417,12 +431,9 @@ public class GoldenFileTests extends AbstractCxTest {
 
 			String expectedContent = new String(Files.readAllBytes(goldenFile), StandardCharsets.UTF_8);
 
-			// Normalize line endings + absolute paths. Goldens must be
-			// checkout-location independent: IR resource URIs (fileName="…")
-			// and Verilog $readmemh paths otherwise embed an absolute
-			// filesystem path that varies per machine / CI runner.
-			String normalizedExpected = normalizePaths(normalizeLineEndings(expectedContent));
-			String normalizedGenerated = normalizePaths(normalizeLineEndings(generatedContent));
+			// Normalize line endings and source paths for comparison
+			String normalizedExpected = normalizeLineEndings(GoldenText.normalizeSourcePaths(expectedContent));
+			String normalizedGenerated = normalizeLineEndings(generated);
 
 			if (!normalizedExpected.equals(normalizedGenerated)) {
 				// Find first difference for better error message

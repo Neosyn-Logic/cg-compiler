@@ -25,8 +25,6 @@ import com.neosyn.models.util.Executable;
 /**
  * This interface defines an instantiator.
  * 
-
- * 
  */
 @ImplementedBy(InstantiatorImpl.class)
 public interface IInstantiator {
@@ -75,6 +73,32 @@ public interface IInstantiator {
 	 * @see #execute(Entity, Executable)
 	 */
 	void forEachMapping(CgEntity cxEntity, Executable<Entity> executable);
+
+	/**
+	 * Calls <code>executable.exec(entity)</code> for every specialized IR entity created
+	 * during this transform, across all templates. This reaches specializations whose
+	 * template lives in another module (e.g. a cross-file LoadKey specialized from
+	 * Expander), which {@link #forEachMapping} keyed by the current module's entities
+	 * cannot see.
+	 *
+	 * @param executable
+	 *            an executable
+	 */
+	void forEachSpecializedEntity(Executable<Entity> executable);
+
+	/**
+	 * Calls {@code consumer.accept(templateCxEntity, specializedEntity)} for every
+	 * specialization created during this transform, pairing each specialized IR entity with
+	 * the TEMPLATE cx entity it was specialized from. Unlike {@link #forEachSpecializedEntity}
+	 * (entity only, for serialization), this exposes the template so callers can drive body
+	 * compilation — dispatching on the template's TASK/NETWORK kind and passing it as the
+	 * source, exactly as the per-module transform loop does. Reaches cross-file
+	 * specializations whose template lives in another module.
+	 *
+	 * @param consumer
+	 *            receives (template cx entity, specialized IR entity)
+	 */
+	void forEachSpecialization(java.util.function.BiConsumer<CgEntity, Entity> consumer);
 
 	/**
 	 * Returns the Cx entity currently associated with the given URI.
@@ -136,6 +160,42 @@ public interface IInstantiator {
 	 * @return the field-name -> IR Port map, or null
 	 */
 	java.util.Map<String, Port> getStructPortFields(Entity entity, VarRef ref);
+
+	/**
+	 * Registers one element port of an ARRAY port (`in u8 W[4]`). Called by the
+	 * skeleton maker as it fans the declaration out to N scalar element ports,
+	 * in index order.
+	 *
+	 * <p>
+	 * Unlike the struct fan-out, every element keeps the declared interface and
+	 * therefore its OWN handshake: `in push u8 W[4]` is four independent push
+	 * ports, not one push whose remaining elements ride along as bare data. An
+	 * array port is sugar for "declare one port per element", which is what the
+	 * diagnostic used to tell people to write by hand (TRAPS T50).
+	 *
+	 * @param entity
+	 *            the entity owning the port
+	 * @param portVar
+	 *            the Cx array port variable
+	 * @param index
+	 *            the element's index, registered in ascending order
+	 * @param port
+	 *            the element IR port
+	 */
+	void putArrayPort(Entity entity, com.neosyn.cg.cg.Variable portVar, int index, Port port);
+
+	/**
+	 * Returns the index-ordered element ports of an array port reference, or
+	 * null if {@code ref} is not an array port. Resolves the same way as
+	 * {@link #getPort}.
+	 *
+	 * @param entity
+	 *            the entity in which the reference is used
+	 * @param ref
+	 *            a reference to a Cx array port
+	 * @return the element ports in index order, or null
+	 */
+	java.util.List<Port> getArrayPortElements(Entity entity, VarRef ref);
 
 	/**
 	 * Registers one flattened leaf field IR Var of a struct-typed STATE

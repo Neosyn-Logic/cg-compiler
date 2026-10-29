@@ -33,8 +33,6 @@ import com.neosyn.models.util.Void;
  * This class splits code between combinational and body procedures depending on the type of ports
  * written (combinational or not).
  * 
-
- *
  */
 public class CombinationalVisitor {
 

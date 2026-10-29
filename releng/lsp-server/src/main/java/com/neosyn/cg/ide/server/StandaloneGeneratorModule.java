@@ -18,9 +18,8 @@ import com.neosyn.neosynide.internal.generators.verilog.VerilogCodeGenerator;
 /**
  * Guice module that provides HDL generator bindings for standalone LSP mode.
  *
- * This module is used instead of NeosynIdeModule when running the language
- * server outside of Eclipse. It provides the same generator bindings but
- * uses NativeFileWriter instead of EclipseFileWriter.
+ * This module is used instead of NeosynIdeModule by the standalone language
+ * server. It provides the same generator bindings and the same NativeFileWriter.
  */
 public class StandaloneGeneratorModule extends AbstractModule {
 

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <com.neosyn.models.dpn:Actor xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:com.neosyn.models.dpn="http://www.neosyn.io/2013/Dpn"
-    xmlns:com.neosyn.models.ir="http://www.neosyn.io/2013/Ir" fileName="/home/nicolas06/neosyn/neosyn-studio/plugins/com.neosyn.cg.tests/tests/golden/GoldenBasicTasks.cg"
-    lineNumber="89" name="com.neosyn.test.golden.BitManip" properties="{&quot;clocks&quot;:[&quot;clock&quot;],&quot;resets&quot;:[{&quot;type&quot;:&quot;asynchronous&quot;,&quot;active&quot;:&quot;low&quot;,&quot;name&quot;:&quot;reset_n&quot;}],&quot;copyright&quot;:[&quot;Copyright (c) 2024 Neosyn. All rights reserved.&quot;,&quot; *&quot;,&quot;Golden file test - Basic tasks for regression testing.&quot;,&quot;Tests: simple state variables, arithmetic, output ports.&quot;],&quot;javadoc&quot;:[&quot;Bit manipulation task - tests shifts and masks.&quot;],&quot;comments&quot;:{&quot;97&quot;:[&quot;Reverse high/low nibbles&quot;],&quot;99&quot;:[&quot;Swap alternate bits&quot;]}}">
+    xmlns:com.neosyn.models.ir="http://www.neosyn.io/2013/Ir" fileName="tests/golden/GoldenBasicTasks.cg"
+    lineNumber="89" name="com.neosyn.test.golden.BitManip" properties="{&quot;clocks&quot;:[&quot;clock&quot;],&quot;resets&quot;:[{&quot;type&quot;:&quot;asynchronous&quot;,&quot;active&quot;:&quot;low&quot;,&quot;name&quot;:&quot;reset_n&quot;}],&quot;copyright&quot;:[&quot;Copyright (c) 2024 Neosyn. All rights reserved.&quot;,&quot;&quot;,&quot;Golden file test - Basic tasks for regression testing.&quot;,&quot;Tests: simple state variables, arithmetic, output ports.&quot;],&quot;javadoc&quot;:[&quot;Bit manipulation task - tests shifts and masks.&quot;],&quot;comments&quot;:{&quot;97&quot;:[&quot;Reverse high/low nibbles&quot;],&quot;99&quot;:[&quot;Swap alternate bits&quot;]}}">
   <inputs name="data" uses="#//@actions.0/@body/@blocks.0/@instructions.0/@value/@use">
     <type xsi:type="com.neosyn.models.ir:TypeInt" size="8"/>
   </inputs>

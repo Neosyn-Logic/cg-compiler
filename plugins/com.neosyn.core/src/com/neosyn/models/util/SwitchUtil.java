@@ -15,8 +15,6 @@ import org.eclipse.emf.ecore.util.Switch;
 /**
  * This class defines utility stuff for EMF-switch based code transformations.
  * 
-
- * 
  */
 public class SwitchUtil {
 

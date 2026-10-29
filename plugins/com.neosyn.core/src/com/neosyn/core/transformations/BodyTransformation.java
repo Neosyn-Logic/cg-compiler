@@ -19,8 +19,6 @@ import com.neosyn.models.util.Void;
 /**
  * This class defines a transformation that transforms the body of actions.
  * 
-
- * 
  */
 public class BodyTransformation extends Transformation {
 

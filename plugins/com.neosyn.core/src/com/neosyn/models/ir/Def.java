@@ -14,7 +14,6 @@ import org.eclipse.emf.ecore.EObject;
 /**
  * This interface defines a definition of a variable.
  * 
-
  * @model
  */
 public interface Def extends EObject {

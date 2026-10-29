@@ -20,8 +20,6 @@ import org.osgi.framework.Bundle;
 /**
  * This class defines a factory that injects objects.
  * 
-
- * 
  */
 public class InjectableExtensionFactory implements IExecutableExtension,
 		IExecutableExtensionFactory {

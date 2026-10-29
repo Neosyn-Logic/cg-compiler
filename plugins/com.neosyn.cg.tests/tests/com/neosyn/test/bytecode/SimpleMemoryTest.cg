@@ -37,7 +37,15 @@ network SimpleMemoryTest {
                     // Read phase: read back from addresses 0-3
                     u4 readAddr = i - 4;
                     ram.address.write(readAddr);
-                    fence;  // Wait one cycle for RAM to process address and commit q
+                    fence;
+                    // std.mem.SinglePortRAM registers its read: `dout <= ram[address]`
+                    // fires on the clock edge, and a write's `data_valid` additionally
+                    // write-THROUGHS `data` onto dout. So after applying an address the
+                    // FIRST q sample still carries the previous value (here: the write-
+                    // through of the last write, 0x1e) and the SECOND carries the
+                    // addressed cell. Discarding one sample is the read discipline; see
+                    // TestSinglePortRam in app/RAMs.cg for the same pattern.
+                    u8 unused = ram.q.read;
                     u8 readData = ram.q.read;
                     u8 expected = readAddr * 10;
                     print("Read: addr=", readAddr, " got=", readData, " expected=", expected, "\n");

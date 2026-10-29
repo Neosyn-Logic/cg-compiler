@@ -47,8 +47,6 @@ import com.neosyn.models.util.Void;
  * This class defines a simple Cx pretty printer (a lightweight alternative to the whole Xtext
  * serialization thing).
  * 
-
- * 
  */
 public class CgPrinter extends CgSwitch<Void> {
 

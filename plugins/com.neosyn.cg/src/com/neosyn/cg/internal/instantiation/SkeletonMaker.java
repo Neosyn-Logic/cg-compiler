@@ -21,7 +21,6 @@ import static com.neosyn.models.util.SwitchUtil.DONE;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.emf.ecore.EObject;
@@ -53,14 +52,14 @@ import com.neosyn.models.ir.ExprList;
 import com.neosyn.models.ir.Expression;
 import com.neosyn.models.ir.Procedure;
 import com.neosyn.models.ir.Type;
+import com.neosyn.models.ir.TypeArray;
+import com.neosyn.models.ir.util.IrUtil;
 import com.neosyn.models.ir.Var;
 import com.neosyn.models.util.Void;
 
 /**
  * This class creates the skeleton of an IR entity: state variables, ports.
  * 
-
- *
  */
 public class SkeletonMaker extends DpnSwitch<Void> {
 
@@ -115,7 +114,12 @@ public class SkeletonMaker extends DpnSwitch<Void> {
 	public Void caseDPN(DPN dpn) {
 		Network network = (Network) cxEntity;
 		setFileAndLine(dpn, network);
-		translateTypesAndVars(dpn, network.getTypes(), Collections.emptyList());
+		// A network's const params must be translated to IR Vars exactly as a
+		// task's are: Evaluator.caseExpressionVariable takes the "already mapped
+		// by the instantiator" branch for any entity-scoped const (isGlobal() is
+		// true for anything held in a VarDecl), so leaving these untranslated
+		// makes forwarding a const to a child instance NPE on a null mapping.
+		translateTypesAndVars(dpn, network.getTypes(), CgUtil.getVariables(network));
 		translatePorts(dpn, network);
 		return DONE;
 	}
@@ -161,6 +165,8 @@ public class SkeletonMaker extends DpnSwitch<Void> {
 		String name = port.getName();
 		List<Port> ports = CgUtil.isInput(port) ? entity.getInputs() : entity.getOutputs();
 		boolean combinational = ((PortDef) port.eContainer()).isCombinational();
+		// TRAPS T58: a framed stream also carries its frame boundary (`<name>_last`)
+		boolean framed = CgUtil.isFramed(port);
 
 		// Tier 2.2: a struct-typed port fans out to N scalar field ports
 		// (`p$lo`, `p$hi`), registered in the struct-port map so port reads /
@@ -181,7 +187,8 @@ public class SkeletonMaker extends DpnSwitch<Void> {
 				Type fieldType = instantiator.computeType(entity, leaf.field);
 				String fieldName = name + "$" + leaf.path;
 				InterfaceType fieldIface = firstField ? ifType : InterfaceType.BARE;
-				Port fieldPort = DpnFactory.eINSTANCE.createPort(fieldType, fieldName, fieldIface, ports);
+				Port fieldPort = DpnFactory.eINSTANCE.createPort(fieldType, fieldName, fieldIface,
+						framed && firstField, ports);
 				if (combinational) {
 					fieldPort.setSynchronous(false);
 				}
@@ -191,8 +198,44 @@ public class SkeletonMaker extends DpnSwitch<Void> {
 			return;
 		}
 
+		// An ARRAY port fans out to N scalar element ports, `W_0`..`W_N-1`. Unlike the
+		// struct fan-out above, EVERY element keeps the declared interface and therefore
+		// its own handshake -- `in push u8 W[4]` is four independent push ports. That is
+		// exactly the shape the old diagnostic told people to hand-write, so this adds
+		// sugar and no new hardware semantics (TRAPS T50).
+		//
+		// Elements are named `W_0`, NOT `W$0` as the struct fan-out does. A `$` cannot
+		// appear in a properties key (`Pair: key=ID`), so `$` names would be impossible to
+		// give test vectors to -- a design with an array port could not carry a `test:`
+		// block at all. `_` is a legal ID, so `W_0: [...]` works; the cost is that it CAN
+		// collide with a hand-declared port, which translatePorts rejects explicitly.
+		if (!port.getDimensions().isEmpty()) {
+			if (port.getDimensions().size() > 1) {
+				throw new RuntimeException("Array port '" + name + "' has "
+						+ port.getDimensions().size() + " dimensions, but a port array is "
+						+ "one-dimensional -- each element is a physical port. Declare "
+						+ "'" + name + "[N]' and flatten the index, or use a memory.");
+			}
+			Type arrayType = instantiator.computeType(entity, port);
+			Type elementType = (arrayType instanceof TypeArray)
+					? ((TypeArray) arrayType).getElementType()
+					: arrayType;
+			int size = instantiator.evaluateInt(entity, port.getDimensions().get(0));
+			for (int i = 0; i < size; i++) {
+				// each element needs its OWN type instance: Type is a containment
+				// feature, so sharing one would re-parent it onto the last port.
+				Port element = DpnFactory.eINSTANCE.createPort(IrUtil.copy(elementType),
+						name + "_" + i, ifType, framed, ports);
+				if (combinational) {
+					element.setSynchronous(false);
+				}
+				instantiator.putArrayPort(entity, port, i, element);
+			}
+			return;
+		}
+
 		Type type = instantiator.computeType(entity, port);
-		Port dpnPort = DpnFactory.eINSTANCE.createPort(type, name, ifType, ports);
+		Port dpnPort = DpnFactory.eINSTANCE.createPort(type, name, ifType, framed, ports);
 		if (combinational) {
 			dpnPort.setSynchronous(false);
 		}
@@ -264,8 +307,36 @@ public class SkeletonMaker extends DpnSwitch<Void> {
 	}
 
 	private void translatePorts(Entity entity, Instantiable instantiable) {
+		Iterable<Variable> declared = CgUtil.getPorts(instantiable.getPortDecls());
+
+		// An array port `W[4]` fans out to `W_0`..`W_3`. Those names are ordinary
+		// identifiers, so a hand-declared port could already be using one -- and the
+		// element would then silently overwrite it in the generated HDL. Reject the clash
+		// instead: it is rare, and the alternative is two ports with one name.
+		java.util.Set<String> declaredNames = new java.util.HashSet<>();
+		for (Variable variable : declared) {
+			if (variable.getName() != null) {
+				declaredNames.add(variable.getName());
+			}
+		}
+		for (Variable variable : declared) {
+			if (variable.getName() == null || variable.getDimensions().isEmpty()
+					|| variable.getDimensions().size() > 1) {
+				continue;
+			}
+			int size = instantiator.evaluateInt(entity, variable.getDimensions().get(0));
+			for (int i = 0; i < size; i++) {
+				String elementName = variable.getName() + "_" + i;
+				if (declaredNames.contains(elementName)) {
+					throw new RuntimeException("Array port '" + variable.getName()
+							+ "' fans out to '" + elementName + "', but a port of that name "
+							+ "is already declared. Rename one of them.");
+				}
+			}
+		}
+
 		// transform ports
-		for (Variable variable : CgUtil.getPorts(instantiable.getPortDecls())) {
+		for (Variable variable : declared) {
 			transformPort(entity, variable);
 		}
 	}

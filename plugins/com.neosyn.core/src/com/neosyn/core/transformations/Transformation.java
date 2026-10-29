@@ -16,8 +16,6 @@ import com.neosyn.models.util.Void;
 /**
  * This class defines an abstract transformation.
  * 
-
- * 
  */
 public abstract class Transformation extends DpnSwitch<Void> {
 

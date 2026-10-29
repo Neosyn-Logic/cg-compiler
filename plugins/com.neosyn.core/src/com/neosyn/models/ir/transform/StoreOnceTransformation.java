@@ -42,8 +42,6 @@ import com.neosyn.models.util.Void;
  * This class defines an actor transformation that transforms code so that at most it contains at
  * most one store per variable per cycle.
  * 
-
- * 
  */
 public class StoreOnceTransformation extends AbstractIrVisitor {
 
@@ -51,8 +49,6 @@ public class StoreOnceTransformation extends AbstractIrVisitor {
 	 * This class updates loads and stores. Loads of scalars are removed, stores of scalars that
 	 * need to be transformed are replaced by assigns. Loads/stores of arrays that need to be
 	 * transformed are updated to use a local copy of the array.
-	 * 
-	
 	 * 
 	 */
 	private class LoadStoreUpdater extends AbstractIrVisitor {
@@ -102,8 +98,6 @@ public class StoreOnceTransformation extends AbstractIrVisitor {
 	/**
 	 * This class fills the multiLocalMap table, which maps from each global variable to the local
 	 * variables that loads it.
-	 * 
-	
 	 * 
 	 */
 	private class MapFiller extends AbstractIrVisitor {
@@ -158,8 +152,6 @@ public class StoreOnceTransformation extends AbstractIrVisitor {
 
 	/**
 	 * This class counts the number of Load/Store of each global variable.
-	 * 
-	
 	 * 
 	 */
 	private class UseCounter extends AbstractIrVisitor {

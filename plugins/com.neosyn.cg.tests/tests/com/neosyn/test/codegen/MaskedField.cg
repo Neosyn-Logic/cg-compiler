@@ -1,0 +1,28 @@
+package com.neosyn.test.codegen;
+
+/*
+ * Regression fixture, TRAPS T116: a masked field is a slice, and a masked bit is a bit test.
+ *
+ * `w & 0x7f` compared against a constant is how the RISC-V decoder reads an opcode, and
+ * `w & 0x40000000` against zero is how the CRC and the UART read one bit. Both used to print as
+ * a mask under a resize -- `resize((w and x"0000007f"), 7) = "0110011"` -- where a person would
+ * write `w(6 downto 0) = "0110011"` and `w(30) = '1'`.
+ *
+ * `narrow` is signed, and numeric_std's resize of a SIGNED value to a smaller width keeps the
+ * sign bit rather than the low bits, so that one must NOT become a slice. See GeneratedNoiseTest.
+ */
+network MaskedField {
+	in push u32 word, push int<32> signedWord;
+	out push bool isAdd, push bool bit30, push int<32> narrow;
+
+	dut = new task {
+		void loop() {
+			u32 w = word.read();
+			int<32> s = signedWord.read();
+
+			isAdd.write((w & 0x7f) == 0x33);
+			bit30.write((w & 0x40000000) != 0);
+			narrow.write(s & 0x7f);
+		}
+	};
+}

@@ -23,7 +23,7 @@
  * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE
  */
-module DualPortRAM # ( parameter size = 0 , width = 0 , depth = 0 ) ( input clock_a , input clock_b , input [ depth - 1 : 0 ] address_a , input [ width - 1 : 0 ] data_a , input data_a_valid , output reg [ width - 1 : 0 ] q_a , input [ depth - 1 : 0 ] address_b , input [ width - 1 : 0 ] data_b , input data_b_valid , output reg [ width - 1 : 0 ] q_b ) ;
+module DualPortRAM # ( parameter size = 1 , width = 1 , depth = 1 ) ( input clock_a , input clock_b , input [ depth - 1 : 0 ] address_a , input [ width - 1 : 0 ] data_a , input data_a_valid , output reg [ width - 1 : 0 ] q_a , input [ depth - 1 : 0 ] address_b , input [ width - 1 : 0 ] data_b , input data_b_valid , output reg [ width - 1 : 0 ] q_b ) ;
 reg [ width - 1 : 0 ] w1 [ 0 : size - 1 ] ;
 always @ ( posedge clock_a ) begin
 if ( data_a_valid ) begin

@@ -130,6 +130,16 @@ network TestNetworkWithExternalTasks {
  * Test: Nested network with RAM
  * Inner network contains RAM, outer network instantiates inner network.
  */
+// Left WITHOUT a vector test on purpose (S166). Networks can carry one now, and this was
+// probed: read_data fills for two cycles and then REPEATS its first value instead of
+// tracking write_data. That is not a backend problem, it is the fixture -- `ctrl` writes
+// `ram.address` TWICE per iteration with a single `ram.data` write, and on a sync port
+// only the last write in a cycle takes effect, so the intended write-then-read-back never
+// happens and every iteration re-addresses the same location before `addr++`.
+//
+// A vector fitted to that behaviour would pin the accident rather than the intent, so it
+// is described here instead. Deciding what this fixture MEANT to exercise is the
+// prerequisite, not more test scaffolding. Same applies to its parent below.
 network InnerNetworkWithRAM {
     in sync u8 write_data;
     out u8 read_data;
@@ -170,6 +180,11 @@ network TestNestedNetworkWithRAM {
             idle(5);
 
             // Read outputs
+            // Still PRINTS instead of asserting (S166). Not for want of harness support --
+            // networks take vector tests now -- but because the value to assert is not
+            // derivable while InnerNetworkWithRAM's `ctrl` re-addresses the same location
+            // twice per iteration (see the note on that network). Fix the inner fixture's
+            // intent first; the assertion here is then a one-liner.
             u8 out1 = inner.read_data;
             print("Output: ", out1);
         }
@@ -283,7 +298,14 @@ network TestComplexNetwork {
 /**
  * Test: Network instantiating another network (two levels deep)
  */
+// A ported sub-network CAN be value-tested standalone (S166) -- it is also exercised
+// through TestDeepNestedNetworks, but this pins its own behaviour. One clocked task, so
+// one cycle of latency, which the expected actor's skip cycle covers: output == input.
 network Level1Network {
+    properties {
+        test: { input: [ 7, 8, 9, 10 ], output: [ 7, 8, 9, 10 ] }
+    }
+
     in sync u8 input;
     out u8 output;
 
@@ -294,7 +316,15 @@ network Level1Network {
     };
 }
 
+// TWO clocked stages (level1's buffer, then passthrough), so two cycles of latency where
+// the expected actor skips one -- the leading 0 below is that fill, written out rather
+// than trimmed away. Omitting it is exactly why TestDeepNestedNetworks is XFAIL'd on all
+// three backends (S166).
 network Level0Network {
+    properties {
+        test: { input: [ 7, 8, 9, 10 ], output: [ 0, 7, 8,  9 ] }
+    }
+
     in sync u8 input;
     out u8 output;
 

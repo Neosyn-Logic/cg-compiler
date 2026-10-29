@@ -29,6 +29,8 @@ import com.google.common.collect.Lists;
 import com.neosyn.cg.CgUtil;
 import com.neosyn.cg.cg.CgEntity;
 import com.neosyn.cg.cg.CgPackage;
+import com.neosyn.cg.cg.VarDecl;
+import com.neosyn.cg.cg.Bundle;
 import com.neosyn.cg.cg.CgPackage.Literals;
 import com.neosyn.cg.cg.Import;
 import com.neosyn.cg.cg.Imported;
@@ -39,8 +41,6 @@ import com.neosyn.cg.cg.Variable;
 
 /**
  * This class defines a simple namespace aware scope provider for Java-like imports in Cx.
- * 
-
  * 
  */
 public class CgImportedNamespaceScopeProvider extends ImportedNamespaceAwareLocalScopeProvider {
@@ -88,7 +88,47 @@ public class CgImportedNamespaceScopeProvider extends ImportedNamespaceAwareLoca
 		} else {
 			result = getResourceScope(context.eResource(), CgPackage.Literals.IMPORTED__TYPE);
 		}
+		if (context instanceof Module) {
+			result = scopeForFileDeclarations((Module) context, result);
+		}
 		return getLocalElementsScope(result, context, reference);
+	}
+
+	/**
+	 * Puts a file's TOP-LEVEL declarations in scope, unqualified, for everything in that
+	 * file.
+	 * <p>
+	 * `const int N = 4;` written straight after `package` parses into an unnamed Bundle
+	 * (grammar rule ImplicitBundle) rather than into the module itself, so that nothing
+	 * downstream needs a new concept -- a bundle already holds exactly these members. The
+	 * cost is that its members would otherwise need qualifying like any other bundle's,
+	 * which would defeat the point: the whole reason to write a declaration at file scope
+	 * is to use it as `N`, not `SomeName.N`.
+	 * <p>
+	 * They go in here rather than as a wildcard ImportNormalizer because a normalizer
+	 * resolves through the global index by QUALIFIED NAME, and this bundle deliberately
+	 * has none. Entity scopes chain up through their containing Module, so adding them at
+	 * this level makes them visible inside every task and network in the file.
+	 */
+	private IScope scopeForFileDeclarations(Module module, IScope outer) {
+		IScope result = outer;
+		for (CgEntity entity : module.getEntities()) {
+			if (!(entity instanceof Bundle) || ((Bundle) entity).getName() != null) {
+				continue;
+			}
+			Bundle bundle = (Bundle) entity;
+			List<EObject> members = Lists.newArrayList();
+			members.addAll(bundle.getTypes());
+			members.addAll(bundle.getStructs());
+			members.addAll(bundle.getEnums());
+			for (VarDecl decl : bundle.getDecls()) {
+				members.addAll(decl.getVariables());
+			}
+			if (!members.isEmpty()) {
+				result = Scopes.scopeFor(members, result);
+			}
+		}
+		return result;
 	}
 
 	/**

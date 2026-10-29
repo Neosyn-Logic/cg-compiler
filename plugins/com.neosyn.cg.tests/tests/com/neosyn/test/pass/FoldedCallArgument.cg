@@ -1,0 +1,25 @@
+/*
+ * A call argument that folds to a constant: `b` is inlined into `assert(!b)` and `print(.., b)`, and
+ * `!false` folds to `true`. The folder wrote the constant back with eSet on the call's argument LIST,
+ * which wants a whole collection: generate crashed (ClassCastException) and skipped the task (TRAPS
+ * T164). The simulator always ran it.
+ *
+ * Vectors, so the harness checks the VALUES on every backend, not only that the task is generated.
+ */
+package com.neosyn.test.pass.foldedcallargument;
+
+task FoldedCallArgument {
+	properties {
+		test: {
+			din:  [ 0x11, 0x22, 0x33 ],
+			dout: [ 0x11, 0x22, 0x33 ]
+		}
+	}
+	in u8 din; out u8 dout;
+	void loop() {
+		bool b = false;
+		assert(!b);
+		print("folded ", b);
+		dout.write(din.read());
+	}
+}

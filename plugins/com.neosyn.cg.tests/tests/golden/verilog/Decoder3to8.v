@@ -1,6 +1,12 @@
+/**
+ * Title      : Generated from com.neosyn.test.golden.Decoder3to8 by Neosyn IDE
+ * File       : com.neosyn.test.golden.Decoder3to8.v
+ * Standard   : Verilog-2001
+ */
+
 /*
  * Copyright (c) 2024 Neosyn. All rights reserved.
- *  *
+ *
  * Golden file test - Combinational logic for regression testing.
  * Tests: properties { type: "combinational" }, pure logic without state.
  */
@@ -8,7 +14,11 @@
 /**
  * Decoder - 3-to-8 decoder using lookup.
  */
-module Decoder3to8(input [2 : 0] sel, input  enable, output reg [7 : 0] y);
+module Decoder3to8(
+  input [2 : 0] sel,
+  input  enable,
+  output reg [7 : 0] y
+);
 
 
   /**
@@ -25,39 +35,26 @@ module Decoder3to8(input [2 : 0] sel, input  enable, output reg [7 : 0] y);
     y = 8'b0;
     begin : FSM_Decoder3to8_a // line 132
       reg [7 : 0] result;
+      result = 0;
     
-      if (! (enable)) begin
+      if (!enable) begin
         result = 8'h0;
+      end else if ((sel == 3'h0)) begin
+        result = 8'h1;
+      end else if ((sel == 3'h1)) begin
+        result = 8'h2;
+      end else if ((sel == 3'h2)) begin
+        result = 8'h4;
+      end else if ((sel == 3'h3)) begin
+        result = 8'h8;
+      end else if ((sel == 3'h4)) begin
+        result = 8'h10;
+      end else if ((sel == 3'h5)) begin
+        result = 8'h20;
+      end else if ((sel == 3'h6)) begin
+        result = 8'h40;
       end else begin
-        if ((sel == 3'h0)) begin
-          result = 8'h1;
-        end else begin
-          if ((sel == 3'h1)) begin
-            result = 8'h2;
-          end else begin
-            if ((sel == 3'h2)) begin
-              result = 8'h4;
-            end else begin
-              if ((sel == 3'h3)) begin
-                result = 8'h8;
-              end else begin
-                if ((sel == 3'h4)) begin
-                  result = 8'h10;
-                end else begin
-                  if ((sel == 3'h5)) begin
-                    result = 8'h20;
-                  end else begin
-                    if ((sel == 3'h6)) begin
-                      result = 8'h40;
-                    end else begin
-                      result = 8'h80;
-                    end
-                  end
-                end
-              end
-            end
-          end
-        end
+        result = 8'h80;
       end
       y = result;
     end

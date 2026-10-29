@@ -19,7 +19,6 @@ import com.google.common.base.Strings;
  * created with an existing parent node. To get an iterable over a node's children, call the
  * {@link #getChildren()} method.
  * 
-
  */
 public class Node {
 

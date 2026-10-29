@@ -47,8 +47,6 @@ import com.neosyn.models.util.Void;
 /**
  * This class visits and replaces references to implicit ports by actual ports.
  * 
-
- * 
  */
 public class ImplicitConnector extends VoidCxSwitch {
 
@@ -161,13 +159,24 @@ public class ImplicitConnector extends VoidCxSwitch {
 
 		// Resolve parameterized port types for built-in entities
 		// Uses BuiltinPortTypeResolver (single source of truth)
+		//
+		// Do NOT gate this on size == -1. Built-ins do not agree on how an
+		// unresolved width is spelled: RAMs/FIFOs leave the -1 placeholder, but
+		// others bake their DEFAULT const width onto the port (e.g. 32 for
+		// `uint<width>`). Gating on -1 skipped resolution for the baked-default
+		// ports, so `new SinglePortRAM({size: 16, width: 128})` read back through
+		// `ram.q` gave a 32-bit port -- Verilog silently pruned the high 96 bits
+		// and the bytecode sim read 0. resolvePortType already returns the
+		// original type when there is nothing to resolve, so it is safe to always
+		// ask for an instance-owned port.
 		Type portType = otherPort.getType();
-		if (!isDpnPort && portType instanceof TypeInt && ((TypeInt) portType).getSize() == -1) {
+		if (!isDpnPort && portType instanceof TypeInt) {
 			portType = BuiltinPortTypeResolver.resolvePortType(otherEndPoint.getInstance(), otherPort);
 		}
 
 		Port thisPort = DpnFactory.eINSTANCE.createPort(portType, portName,
-				otherPort.getInterface(), isThisInput ? entity.getInputs() : entity.getOutputs());
+				otherPort.getInterface(), otherPort.isFramed(),
+				isThisInput ? entity.getInputs() : entity.getOutputs());
 
 		// add connection to graph
 		Connection conn;

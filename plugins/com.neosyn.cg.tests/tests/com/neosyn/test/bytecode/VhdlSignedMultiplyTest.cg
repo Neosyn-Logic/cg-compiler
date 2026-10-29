@@ -1,0 +1,191 @@
+/*
+ * Copyright (c) 2024-2026 Neosyn (neosyn.io). All rights reserved.
+ * SPDX-License-Identifier: LicenseRef-Neosyn-Proprietary
+ * Proprietary software of Neosyn; licensed, not sold. Provided "AS IS".
+ */
+package com.neosyn.test.bytecode;
+
+/**
+ * Value gate for a MULTIPLY whose two operands disagree in signedness (trap T36).
+ *
+ * VHDL's numeric_std declares `*` for signed*signed and unsigned*unsigned only. A mixed pair
+ * therefore has no operator to resolve to, and what the backend used to emit split into a loud
+ * half and a silent half:
+ *
+ *   - VARIABLE * VARIABLE was the loud half: `unsigned(u) * signed(s)` matched no overload and
+ *     ghdl rejected the file outright.
+ *   - An integer LITERAL was the silent half, and the dangerous one. A bit string carries no
+ *     type of its own, so `7` emitted as "111" was context-typed against the signed sibling and
+ *     read as -1. `x >= 7 * K` became `x >= -K`, which is always true. Nothing warned, the
+ *     Verilog and bytecode outputs were pixel-perfect, and a video core's colour bars came out
+ *     solid black because every pixel compared against a negative bound and selected bar 7.
+ *     Every small literal was wrong the same way: 7 -> -1, 6 -> -2, 5 -> -3, 4 -> -4.
+ *
+ * The operands are now promoted to signed whenever the PRODUCT is signed, which is what the IR
+ * already means (getSum types a product signed as soon as either side is). One extra bit keeps
+ * the value, so the literal gains the leading zero that stops it reading as negative.
+ *
+ * Read the vectors as a pair with LitTimesUnsignedVar and U32ReciprocalShape at the bottom:
+ * those are NEGATIVE CONTROLS. An all-unsigned product must keep emitting its literal exactly
+ * as before, because the reciprocal-multiply magic constants (`unsigned(inp) * x"aaaaaaab"`)
+ * ride that path and were always correct. An earlier attempt at this fix widened every literal
+ * blindly, which broke 24 of these tests; the two controls are here so that failure mode is
+ * caught by THIS fixture rather than by the div/mod ones three files away.
+ *
+ * Expected values were produced by the bytecode simulator (which was always correct here) and
+ * not by hand.
+ */
+
+/* ---- the silent half: an integer literal against a signed sibling --------- */
+
+/**
+ * The exact T36 shape: a literal multiplied by a signed `const int`, used as a bound.
+ * With the bug, `7 * K` is -80 rather than 560, so every output is off by 640.
+ */
+task LitTimesSignedConst {
+	properties {
+		test: {
+			inp:  [    0,  100, 560, 1000, 4095 ],
+			outp: [ -560, -460,   0,  440, 3535 ]
+		}
+	}
+
+	const int K = 80;                 // 7 * K == 560
+
+	sync { in u12 inp; out int<20> outp; }
+
+	void loop() {
+		outp.write((int<20>) (inp.read() - 7 * K));
+	}
+}
+
+/** The same product with the operands the other way round. */
+task SignedConstTimesLit {
+	properties {
+		test: {
+			inp:  [    0,  100, 560, 1000, 4095 ],
+			outp: [ -560, -460,   0,  440, 3535 ]
+		}
+	}
+
+	const int K = 80;
+
+	sync { in u12 inp; out int<20> outp; }
+
+	void loop() {
+		outp.write((int<20>) (inp.read() - K * 7));
+	}
+}
+
+/** A literal against a signed VARIABLE, so the vectors move the signed operand too. */
+task LitTimesSignedVar {
+	properties {
+		test: {
+			inp:  [ 0, 1, -1, 100, -100,  2047, -2048 ],
+			outp: [ 0, 7, -7, 700, -700, 14329, -14336 ]
+		}
+	}
+
+	sync { in int<12> inp; out int<20> outp; }
+
+	void loop() {
+		outp.write((int<20>) (7 * inp.read()));
+	}
+}
+
+/**
+ * The mirror image: a NEGATIVE literal against an unsigned sibling. Here the literal is the
+ * signed one, so the promotion has to fall on the variable instead. With the bug the emitted
+ * "101" was context-typed unsigned and read as +5.
+ */
+task NegLitTimesUnsignedVar {
+	properties {
+		test: {
+			inp:  [ 0,  1,    2,  100,   4095 ],
+			outp: [ 0, -3,   -6, -300, -12285 ]
+		}
+	}
+
+	sync { in u12 inp; out int<20> outp; }
+
+	void loop() {
+		outp.write((int<20>) (-3 * inp.read()));
+	}
+}
+
+/* ---- the loud half: two variables of opposite signedness ----------------- */
+
+/**
+ * `unsigned * signed` with no literal anywhere. This did not ANALYSE before the fix
+ * ("no function declarations for operator *"), so reverting makes this fixture fail at
+ * compile time rather than on a vector.
+ */
+task UnsignedVarTimesSignedVar {
+	properties {
+		test: {
+			a:    [ 0,  1, 2,    100,    4095 ],
+			b:    [ 0, -1, 3,     -7,    2047 ],
+			outp: [ 0, -1, 6,   -700, 8382465 ]
+		}
+	}
+
+	sync { in u12 a; in int<12> b; out int<32> outp; }
+
+	void loop() {
+		outp.write((int<32>) (a.read() * b.read()));
+	}
+}
+
+/* ---- negative controls: an all-unsigned product must not change ---------- */
+
+/** Both operands unsigned, so nothing here is promoted and the literal stays as it was. */
+task LitTimesUnsignedVar {
+	properties {
+		test: {
+			inp:  [ 0, 1, 100, 4095 ],
+			outp: [ 0, 7, 700, 28665 ]
+		}
+	}
+
+	sync { in u12 inp; out u20 outp; }
+
+	void loop() {
+		outp.write((u20) (7 * inp.read()));
+	}
+}
+
+/**
+ * The shape the reciprocal-multiply lowering emits: a wide unsigned value times a wide
+ * unsigned magic constant, shifted back down. `x / 3` lowers to exactly this.
+ */
+task U32ReciprocalShape {
+	properties {
+		test: {
+			inp:  [ 7, 3, 2, 0, 10, 100, 4294967295, 2147483648, 1000000000 ],
+			outp: [ 2, 1, 0, 0,  3,  33, 1431655765,  715827882,  333333333 ]
+		}
+	}
+
+	sync { in u32 inp; out u32 outp; }
+
+	void loop() {
+		outp.write(inp.read() / 3);
+	}
+}
+
+/** Both operands signed: also unaffected, and pins that the promotion is not double-applied. */
+task SignedVarTimesSignedVar {
+	properties {
+		test: {
+			a:    [ 0,  1,  -2,  100, -2048 ],
+			b:    [ 0, -1,   3,   -7,  2047 ],
+			outp: [ 0, -1,  -6, -700, -4192256 ]
+		}
+	}
+
+	sync { in int<12> a; in int<12> b; out int<32> outp; }
+
+	void loop() {
+		outp.write((int<32>) (a.read() * b.read()));
+	}
+}

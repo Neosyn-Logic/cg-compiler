@@ -45,7 +45,7 @@ import java.util.Set;
  * <h2>Configuration</h2>
  * <p>Logging can be configured via system properties:</p>
  * <ul>
- *   <li>{@code neosyn.debug.enabled} - Enable/disable all logging (default: true)</li>
+ *   <li>{@code neosyn.debug.enabled} - Enable/disable all logging (default: false)</li>
  *   <li>{@code neosyn.debug.file} - Enable file logging (default: true)</li>
  *   <li>{@code neosyn.debug.console} - Enable console logging (default: false)</li>
  *   <li>{@code neosyn.debug.categories} - Comma-separated list of enabled categories</li>

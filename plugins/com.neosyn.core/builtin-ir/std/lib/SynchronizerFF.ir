@@ -2,7 +2,7 @@
 <com.neosyn.models.dpn:Actor xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:com.neosyn.models.dpn="http://www.neosyn.io/2013/Dpn"
     xmlns:com.neosyn.models.ir="http://www.neosyn.io/2013/Ir"
-    name="std.lib.SynchronizerFF" properties="{&quot;clocks&quot;:[&quot;din_clock&quot;,&quot;dout_clock&quot;],&quot;implementation&quot;:{&quot;type&quot;:&quot;builtin&quot;}}">
+    name="std.lib.SynchronizerFF" properties="{&quot;resets&quot;:[{&quot;type&quot;:&quot;asynchronous&quot;,&quot;active&quot;:&quot;low&quot;,&quot;name&quot;:&quot;reset_n&quot;}],&quot;clocks&quot;:[&quot;din_clock&quot;,&quot;dout_clock&quot;],&quot;implementation&quot;:{&quot;type&quot;:&quot;builtin&quot;}}">
   <inputs name="din">
     <type xsi:type="com.neosyn.models.ir:TypeBool"/>
   </inputs>

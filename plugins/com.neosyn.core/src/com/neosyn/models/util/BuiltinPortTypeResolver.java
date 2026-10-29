@@ -227,19 +227,38 @@ public final class BuiltinPortTypeResolver {
 		case "SinglePortRAM":
 		case "DualPortRAM":
 		case "PseudoDualPortRAM":
+			// The port names here must match the built-in Verilog/VHDL modules EXACTLY. The
+			// camelCase spellings below never matched anything: DualPortRAM declares
+			// address_a/data_a/q_a (and _b), and PseudoDualPortRAM declares rd_address/wr_address.
+			// Because an unmatched name resolves to 0, both dual-port RAMs silently fell back to
+			// the placeholder 32-bit port type — benign at width <= 32 (an over-wide wire, which
+			// iverilog reports as "Pruning N high bits"), but a SILENT TRUNCATION of real data at
+			// width > 32. That is bug #16, which d69e41f only ever fixed for SinglePortRAM, whose
+			// address/data/q names happen to match. The camelCase entries are kept in case some
+			// other backend spells them that way.
 			switch (portName) {
 			case "address":
+			case "address_a":
+			case "address_b":
+			case "rd_address":
+			case "wr_address":
 			case "addressA":
 			case "addressB":
 				return depth;
 			case "data":
+			case "data_a":
+			case "data_b":
 			case "dataA":
 			case "dataB":
 			case "q":
+			case "q_a":
+			case "q_b":
 			case "qA":
 			case "qB":
 				return width;
 			case "data_valid":
+			case "data_a_valid":
+			case "data_b_valid":
 			case "write_enable":
 			case "clock_enable":
 				return 1;

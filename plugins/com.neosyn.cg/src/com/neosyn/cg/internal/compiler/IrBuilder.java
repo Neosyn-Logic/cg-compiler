@@ -30,7 +30,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
-import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
 import com.neosyn.cg.CgUtil;
 import com.neosyn.cg.cg.CgExpression;
@@ -64,8 +63,6 @@ import com.neosyn.models.ir.util.TypeUtil;
 /**
  * This class defines an IR builder. The build state is composed of the current entity, procedure,
  * blocks, etc.
- * 
-
  * 
  */
 public class IrBuilder {
@@ -112,16 +109,30 @@ public class IrBuilder {
 		deque = new ArrayDeque<>();
 		localMap = new HashMap<>();
 
+		// A parse error can leave a member with a NULL name -- a reserved word used as a
+		// port name (`out push bool ack;`) or a misplaced `const` is enough, and the two
+		// arrive by completely different routes, so this is a whole CLASS of inputs rather
+		// than one shape. Those nulls used to reach this case-insensitive TreeSet and NPE
+		// inside the comparator, and the resulting
+		// "Transform error ... Cannot read field \"value\" because \"s1\" is null"
+		// printed ABOVE the real diagnostic, pointing at the IR layer when the actual
+		// problem was one token in the source.
+		//
+		// Skipping the nulls is not papering over it: this set exists only so a generated
+		// temporary does not collide with an existing name, and a member that failed to
+		// parse HAS no name to collide with. A well-formed program is unaffected, because
+		// none of its members can be nameless. The parse error remains, and is now the
+		// only thing reported.
 		existingSet = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-		existingSet.add(entity.getSimpleName());
-		Iterables.addAll(existingSet, Iterables.transform(
-				Iterables.concat(entity.getInputs(), entity.getOutputs(), entity.getVariables()),
-				new Function<Var, String>() {
-					@Override
-					public String apply(Var var) {
-						return var.getName();
-					}
-				}));
+		if (entity.getSimpleName() != null) {
+			existingSet.add(entity.getSimpleName());
+		}
+		for (Var var : Iterables.concat(entity.getInputs(), entity.getOutputs(),
+				entity.getVariables())) {
+			if (var.getName() != null) {
+				existingSet.add(var.getName());
+			}
+		}
 	}
 
 	final void add(Block block) {
@@ -185,10 +196,21 @@ public class IrBuilder {
 	}
 
 	private String getUniqueName(String hint) {
-		String name = hint;
+		// The LOOKUP half of the null-name defect guarded in the constructor. A parse error
+		// can leave a LOCAL with no name -- `int<32> in = x.read();`, where `in` is a
+		// reserved word, is enough -- and a null hint reached `existingSet.contains(null)`,
+		// which NPEs inside the same case-insensitive comparator. Guarding only the ADD side
+		// left this reachable, with the identical symptom: a "Transform error ... Cannot read
+		// field \"value\"" printed ABOVE the real parse error and naming the wrong layer.
+		//
+		// A nameless local cannot collide with anything, so any non-null base will do; the
+		// design is already failing to compile and the generated name is never emitted. What
+		// matters is that the parse error stays the only thing reported.
+		String base = hint == null ? "unnamed" : hint;
+		String name = base;
 		int i = 0;
 		while (existingSet.contains(name) || procedure.getLocal(name) != null) {
-			name = hint + "_" + i;
+			name = base + "_" + i;
 			i++;
 		}
 
@@ -482,7 +504,11 @@ public class IrBuilder {
 				return ir.createExprBool(true);
 			} else if (isZero(expr)) {
 				return ir.createExprBool(false);
-			} else if (!type.isBool()) {
+			} else if (type == null || !type.isBool()) {
+				// A null type means the source expression had no reconciled type
+				// (e.g. a `bool == int` comparison the validator flags as an undefined
+				// operator). Treat it like any other non-bool value being stored to a
+				// bool target — coerce with `!= 0` — instead of NPEing on isBool().
 				return ir.createExprBinary(expr, OpBinary.NE, ir.createExprInt(0));
 			}
 		}
@@ -832,6 +858,46 @@ public class IrBuilder {
 	 */
 	public Map<String, Port> getStructPortFields(VarRef ref) {
 		return instantiator.getStructPortFields(entity, ref);
+	}
+
+	/**
+	 * The index-ordered element ports of an array port reference, or null if
+	 * {@code ref} is not an array port. See InstantiatorImpl#getArrayPortElements.
+	 */
+	public java.util.List<Port> getArrayPortElements(VarRef ref) {
+		return instantiator.getArrayPortElements(entity, ref);
+	}
+
+	/**
+	 * Resolves one element of an array port. {@code index} is evaluated as a
+	 * constant -- a port index selects a physical port, so it cannot depend on
+	 * run-time state. Returns null if {@code ref} is not an array port; throws
+	 * if it is one and the index is out of range.
+	 */
+	public Port getArrayPortElement(VarRef ref, com.neosyn.cg.cg.CgExpression index) {
+		java.util.List<Port> elements = getArrayPortElements(ref);
+		if (elements == null) {
+			return null;
+		}
+		// evaluateInt returns -1 for anything it cannot fold rather than throwing, so a
+		// non-constant index must be detected BEFORE the range check -- otherwise `W[i]`
+		// reports "index -1 is out of range", which names neither the index nor the real
+		// problem. Measured: that is exactly what the first version of this did.
+		Object value = instantiator.evaluate(entity, index);
+		if (!com.neosyn.models.ir.util.ValueUtil.isInt(value)) {
+			throw new RuntimeException("Port index for array port '"
+					+ ref.getVariable().getName() + "' must be a constant -- it selects a "
+					+ "physical port, so it cannot depend on run-time state. Use a literal, "
+					+ "a `const`, or an `if` over the elements.");
+		}
+		int i = ((java.math.BigInteger) value).intValue();
+		if (i < 0 || i >= elements.size()) {
+			throw new RuntimeException("Port index " + i + " is out of range for array port '"
+					+ ref.getVariable().getName() + "' (declared with " + elements.size()
+					+ " element" + (elements.size() == 1 ? "" : "s") + ", so the last valid "
+					+ "index is " + (elements.size() - 1) + ")");
+		}
+		return elements.get(i);
 	}
 
 	/**

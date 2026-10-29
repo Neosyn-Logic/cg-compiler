@@ -18,8 +18,6 @@ import org.eclipse.xtext.formatting.IWhitespaceInformationProvider;
  * separator that is always "\n", because using the default implementation does
  * not work when formatting files from a different platform...
  * 
-
- * 
  */
 public class WhitespaceInfoProvider extends
 		IWhitespaceInformationProvider.Default {

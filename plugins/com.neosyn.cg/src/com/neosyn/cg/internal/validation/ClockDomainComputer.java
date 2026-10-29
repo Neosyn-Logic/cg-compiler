@@ -35,8 +35,6 @@ import com.neosyn.models.dpn.util.DpnSwitch;
 /**
  * This class defines a clock domain computer.
  * 
-
- * 
  */
 public class ClockDomainComputer extends DpnSwitch<JsonObject> {
 

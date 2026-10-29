@@ -1,0 +1,27 @@
+package com.neosyn.test.codegen;
+
+/*
+ * Regression fixture, F7: an FSM whose state count is NOT a power of two, so its state register
+ * holds encodings that are not states. Three states live in a two-bit register, and the fourth
+ * value is reachable in hardware from a single upset bit; with no synthesis-visible default the
+ * tool treats it as don't-care and the FSM can sit there forever.
+ *
+ * NoiseFree is the other side of the same check: four states in two bits, every encoding a state,
+ * so a safe state there would be dead code. See GeneratedNoiseTest.
+ */
+network SafeState {
+	in stream u8 din;
+	out push u8 dout;
+
+	dut = new task {
+		u8 v;
+
+		void loop() {
+			first: v = din.read;
+			fence;
+			second: v = (u8)(v + 1);
+			fence;
+			third: dout.write(v);
+		}
+	};
+}

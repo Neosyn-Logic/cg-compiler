@@ -9,29 +9,13 @@
 
 package com.neosyn.cg.tests;
 
-import static com.neosyn.core.ICoreConstants.FILE_EXT_IR;
-import static com.neosyn.neosynide.NeosynIdeModule.VERILOG;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-
-import org.eclipse.emf.common.util.URI;
-import org.eclipse.emf.ecore.resource.Resource;
-import org.eclipse.xtext.generator.IGenerator;
 import org.eclipse.xtext.testing.InjectWith;
 import org.eclipse.xtext.testing.XtextRunner;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-
-import com.google.inject.Inject;
-import com.google.inject.name.Named;
-import com.neosyn.core.ICodeGenerator;
-import com.neosyn.cg.cg.Module;
-import com.neosyn.models.dpn.DpnFactory;
-import com.neosyn.models.dpn.Entity;
 
 /**
  * Verifies that a {@code for} loop with a compile-time-constant trip count is
@@ -45,11 +29,7 @@ import com.neosyn.models.dpn.Entity;
  */
 @InjectWith(CustomCgInjectorProvider.class)
 @RunWith(XtextRunner.class)
-public class ConstantLoopUnrollTest extends AbstractCxTest {
-
-	@Inject
-	@Named(VERILOG)
-	private ICodeGenerator verilogGenerator;
+public class ConstantLoopUnrollTest extends AbstractVerilogCodegenTest {
 
 	/** A constant-bound loop unrolls — no `while` survives. */
 	@Test
@@ -73,35 +53,5 @@ public class ConstantLoopUnrollTest extends AbstractCxTest {
 				.replaceAll("\\s+", " ");
 		assertTrue("data-dependent loop must keep its runtime `k < bound` test",
 				v.contains("_a_k < FSM_DataDepLoop_a_bound"));
-	}
-
-	/** Generated Verilog for one entity, with comments stripped. */
-	private String codeOf(String sourceFile, String entityName) throws Exception {
-		String raw = generateVerilog(sourceFile, entityName);
-		return raw.replaceAll("(?s)/\\*.*?\\*/", "").replaceAll("(?m)//.*$", "");
-	}
-
-	/** Compile a fixture and return the generated Verilog for one entity. */
-	private String generateVerilog(String sourceFile, String entityName) throws Exception {
-		Module module = getModule(sourceFile);
-		assertOk(module);
-
-		IGenerator generator = getInjector().getInstance(IGenerator.class);
-		generator.doGenerate(module.eResource(), access);
-
-		String irPath = entityName.replace('.', '/') + "." + FILE_EXT_IR;
-		URI irUri = access.getURI(irPath);
-		Resource irResource = resourceSet.getResource(irUri, true);
-		Entity entity = (Entity) irResource.getContents().get(0);
-
-		verilogGenerator.setOutputFolder(outputPath);
-		for (Entity anEntity : DpnFactory.eINSTANCE.collectEntities(entity)) {
-			verilogGenerator.transform(anEntity);
-			verilogGenerator.print(anEntity);
-		}
-
-		String verilogPath = Paths.get(outputPath, "verilog-gen",
-				entityName.replace('.', '/').replace("/", java.io.File.separator) + ".v").toString();
-		return new String(Files.readAllBytes(Paths.get(verilogPath)), StandardCharsets.UTF_8);
 	}
 }

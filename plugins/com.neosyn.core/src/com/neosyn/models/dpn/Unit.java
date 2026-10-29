@@ -12,7 +12,6 @@ package com.neosyn.models.dpn;
 /**
  * This class defines a unit.
  * 
-
  * @model
  */
 public interface Unit extends Entity {

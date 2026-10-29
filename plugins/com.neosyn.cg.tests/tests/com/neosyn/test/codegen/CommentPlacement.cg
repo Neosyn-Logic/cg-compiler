@@ -1,0 +1,20 @@
+package com.neosyn.test.codegen;
+
+/*
+ * Regression fixture, TRAPS T116: a comment at the END of a line describes that line. It used to be
+ * printed above the NEXT statement, once per instruction (IP_Send.v said "identification" twice
+ * above the flags write). The task is declared inside the network, which used to lose its
+ * statement comments altogether. See VerilogCommentPlacementTest.
+ */
+network CommentPlacement {
+	out push u16 h;
+
+	src = new task {
+		void loop() {
+			h.write(0x1234); // identification
+			h.write(0x0000); // flags
+			// ttl and protocol
+			h.write(0x4011);
+		}
+	};
+}

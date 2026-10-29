@@ -17,7 +17,6 @@ import com.neosyn.models.ir.Var;
 /**
  * This interface defines an argument that can be given to an instance.
  * 
-
  * @model
  */
 public interface Argument extends EObject {

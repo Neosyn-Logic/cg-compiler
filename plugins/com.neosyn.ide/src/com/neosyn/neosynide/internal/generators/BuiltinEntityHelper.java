@@ -11,10 +11,24 @@ package com.neosyn.neosynide.internal.generators;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.InternalEObject;
+
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 
 import com.neosyn.core.IPathResolver;
+import com.neosyn.models.dpn.Connection;
+import com.neosyn.models.dpn.Endpoint;
 import com.neosyn.models.dpn.Entity;
 import com.neosyn.models.dpn.Instance;
 import com.neosyn.models.dpn.Port;
@@ -268,5 +282,143 @@ public class BuiltinEntityHelper {
 	 */
 	public Type getResolvedPortType(Instance instance, Port port) {
 		return BuiltinPortTypeResolver.resolvePortType(instance, port);
+	}
+
+	// ---------------------------------------------------------------- instantiation
+	// A built-in instance carries UNRESOLVED ports: the IR references them as EMF
+	// proxies whose name is null, because the design never had the built-in's own IR
+	// in scope. Anything that prints an instantiation therefore has to go back to the
+	// classpath IR to recover the names -- and the generic values, because the IR
+	// Arguments are proxies too and the real values live in the instance properties.
+	//
+	// This lives HERE, not in a backend, because it is a property of the IR and not of
+	// any output language. It was written for Verilog in S149 and the VHDL backend
+	// never got it, which is why every RAM/FIFO/synchronizer network emitted port maps
+	// with EMPTY formals (`=> readerWriter_ram_address`) and would not analyse at all.
+
+	private static final Pattern PORT_FRAGMENT = Pattern.compile("@(inputs|outputs)\\.(\\d+)");
+
+	/** RAM/FIFO built-ins take an address width derived from `size`, never passed. */
+	private static final Set<String> SIZED_BUILTINS = Set.of("SinglePortRAM", "DualPortRAM",
+			"PseudoDualPortRAM", "SynchronousFIFO", "AsynchronousFIFO");
+
+	/**
+	 * Resolves a proxy port of a built-in entity to the real port, which carries the
+	 * name and interface. Returns {@code null} when {@code port} is not such a proxy,
+	 * so callers can keep the port they already have.
+	 */
+	public static Port resolveBuiltinPort(Port port) {
+		if (port == null || !port.eIsProxy()) {
+			return null;
+		}
+		URI proxyUri = ((InternalEObject) port).eProxyURI();
+		if (proxyUri == null || proxyUri.fragment() == null) {
+			return null;
+		}
+		Matcher matcher = PORT_FRAGMENT.matcher(proxyUri.fragment());
+		if (!matcher.find()) {
+			return null;
+		}
+		String entityType = resolveEntityTypeFromUri(proxyUri.toString());
+		if (entityType == null) {
+			return null;
+		}
+		Entity entity = BuiltinPortTypeResolver.loadBuiltinEntity(entityType);
+		if (entity == null) {
+			return null;
+		}
+		java.util.List<Port> ports = "inputs".equals(matcher.group(1)) ? entity.getInputs()
+				: entity.getOutputs();
+		int index = Integer.parseInt(matcher.group(2));
+		return index < ports.size() ? ports.get(index) : null;
+	}
+
+	/**
+	 * Entity type name from a classpath proxy URI, e.g.
+	 * {@code classpath:/builtin-ir/std/mem/SinglePortRAM.ir#//@outputs.0} ->
+	 * {@code std.mem.SinglePortRAM}.
+	 */
+	public static String resolveEntityTypeFromUri(String uri) {
+		if (uri == null) {
+			return null;
+		}
+		int idx = uri.indexOf("builtin-ir/");
+		if (idx < 0) {
+			return null;
+		}
+		String suffix = uri.substring(idx + "builtin-ir/".length());
+		int irIdx = suffix.indexOf(".ir");
+		return irIdx < 0 ? null : suffix.substring(0, irIdx).replace('/', '.');
+	}
+
+	/**
+	 * The generic/parameter values for a built-in instance, in declaration order.
+	 * <p>
+	 * Read from the instance PROPERTIES, not from its IR Arguments: those hold proxy
+	 * variables with null names, which is exactly how both backends ended up emitting
+	 * a nameless formal. Every scalar numeric/boolean property is a parameter (size,
+	 * width, stages, writeShiftMode, ...); clocks, resets and implementation are
+	 * objects and drop out of the primitive test, and entityType is a string.
+	 * <p>
+	 * Callers format the values themselves, since a boolean is {@code 1}/{@code 0} in
+	 * Verilog and {@code true}/{@code false} in VHDL.
+	 *
+	 * @return an ordered name -> value map, empty when there is nothing to pass
+	 */
+	public static Map<String, JsonPrimitive> getBuiltinParameters(Instance instance) {
+		Map<String, JsonPrimitive> params = new LinkedHashMap<>();
+		JsonObject props = instance.getProperties();
+		if (props == null) {
+			return params;
+		}
+		for (String key : props.keySet()) {
+			JsonElement value = props.get(key);
+			if (value.isJsonPrimitive()) {
+				JsonPrimitive prim = value.getAsJsonPrimitive();
+				if (prim.isNumber() || prim.isBoolean()) {
+					params.put(key, prim);
+				}
+			}
+		}
+		String simpleName = getSimpleName(getEntityType(instance));
+		if (SIZED_BUILTINS.contains(simpleName) && props.has("size") && !props.has("depth")) {
+			int depth = BuiltinPortTypeResolver.ceilLog2(props.get("size").getAsInt());
+			params.put("depth", new JsonPrimitive(depth));
+		}
+		return params;
+	}
+
+	/**
+	 * The endpoints driven by {@code instance}'s output port named {@code portName},
+	 * matched BY NAME rather than by object identity.
+	 * <p>
+	 * The usual {@code network.getOutgoing(new Endpoint(instance, port))} lookup
+	 * compares port objects, and for a built-in the connection's source port is a
+	 * proxy while the port being asked about came from the classpath IR -- two
+	 * different objects for the same port, so the lookup finds nothing and the output
+	 * is mapped to {@code open}. That is worse than a syntax error: the file analyses
+	 * and elaborates, and the consumer silently reads an undriven signal.
+	 */
+	public static List<Endpoint> findOutgoingByPortName(Instance instance, String portName) {
+		List<Endpoint> endpoints = new ArrayList<>();
+		if (portName == null) {
+			return endpoints;
+		}
+		for (Object edge : instance.getOutgoing()) {
+			Connection connection = (Connection) edge;
+			Port sourcePort = connection.getSourcePort();
+			if (sourcePort == null) {
+				continue;
+			}
+			String sourceName = sourcePort.getName();
+			if (sourceName == null) {
+				Port resolved = resolveBuiltinPort(sourcePort);
+				sourceName = resolved == null ? null : resolved.getName();
+			}
+			if (portName.equals(sourceName)) {
+				endpoints.add(connection.getTargetEndpoint());
+			}
+		}
+		return endpoints;
 	}
 }

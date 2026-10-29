@@ -9,29 +9,18 @@
 
 package com.neosyn.neosynide;
 
-import org.eclipse.core.runtime.Platform;
 import org.eclipse.xtend2.lib.StringConcatenation;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.name.Names;
 import com.neosyn.core.ICodeGenerator;
-import com.neosyn.core.IExporter;
 import com.neosyn.core.IFileWriter;
-import com.neosyn.neosynide.internal.EclipseFileWriter;
 import com.neosyn.neosynide.internal.NativeFileWriter;
-import com.neosyn.neosynide.internal.exporters.DiamondExporter;
-import com.neosyn.neosynide.internal.exporters.QuartusExporter;
-import com.neosyn.neosynide.internal.exporters.VerilatorExporter;
-import com.neosyn.neosynide.internal.exporters.VivadoExporter;
-import com.neosyn.neosynide.internal.exporters.VsimExporter;
-import com.neosyn.neosynide.internal.exporters.YosysExporter;
 import com.neosyn.neosynide.internal.generators.verilog.VerilogCodeGenerator;
 
 /**
  * This class defines the module for Neosyn IDE.
  * 
-
- *
  */
 public class NeosynIdeModule extends AbstractModule {
 
@@ -57,22 +46,8 @@ public class NeosynIdeModule extends AbstractModule {
 
 	@Override
 	protected void configure() {
-		// file writers
-		if (Platform.isRunning()) {
-			bind(IFileWriter.class).to(EclipseFileWriter.class);
-		} else {
-			bind(IFileWriter.class).to(NativeFileWriter.class);
-		}
-
-		// exporters - Commercial tools
-		bind(IExporter.class).annotatedWith(Names.named("Altera")).to(QuartusExporter.class);
-		bind(IExporter.class).annotatedWith(Names.named("Lattice")).to(DiamondExporter.class);
-		bind(IExporter.class).annotatedWith(Names.named("Xilinx")).to(VivadoExporter.class);
-		bind(IExporter.class).annotatedWith(Names.named("Modelsim")).to(VsimExporter.class);
-
-		// exporters - Open-source tools
-		bind(IExporter.class).annotatedWith(Names.named("Yosys")).to(YosysExporter.class);
-		bind(IExporter.class).annotatedWith(Names.named("Verilator")).to(VerilatorExporter.class);
+		// file writer: plain files (the Eclipse-workspace writer went with REFACTOR 4a.3c)
+		bind(IFileWriter.class).to(NativeFileWriter.class);
 
 		// Verilog code generator (the open-source backend)
 		bind(ICodeGenerator.class).annotatedWith(Names.named(VERILOG))

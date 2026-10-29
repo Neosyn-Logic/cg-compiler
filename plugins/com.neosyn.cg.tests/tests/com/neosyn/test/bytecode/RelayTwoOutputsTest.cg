@@ -1,0 +1,47 @@
+package com.neosyn.test.bytecode;
+
+/*
+ * TRAPS T115, the input-ready half. A relay with TWO stream outputs writes `flag` once, then
+ * copies `d` to `q`; the reader takes three `q`s, waits, then takes `flag`. While `flag` waits
+ * the copy action still fires (it only needs `q`'s slot), so `d` must be acknowledged exactly
+ * when it fires. Its ready was ANDed over BOTH outputs' slots: low while the copy fired, the
+ * producer kept presenting 10, and the reader got 10, 10, 10.
+ */
+network RelayTwoOutputsTest {
+	properties { test: { terminate: "sink.finished" } }
+
+	src = new task {
+		out stream u8 d;
+		void setup() {
+			d.write(10);
+			d.write(11);
+			d.write(12);
+		}
+	};
+
+	mid = new task {
+		in stream u8 d;
+		out stream u8 flag, stream u8 q;
+		void setup() {
+			flag.write(99);
+		}
+		void loop() {
+			q.write(d.read());
+		}
+	};
+	mid.reads(src.d);
+
+	sink = new task {
+		in stream u8 flag, stream u8 q;
+		bool finished;
+		void setup() {
+			assert(q.read() == 10);
+			assert(q.read() == 11);
+			assert(q.read() == 12);
+			idle(4);
+			assert(flag.read() == 99);
+			finished = true;
+		}
+	};
+	sink.reads(mid.flag, mid.q);
+}

@@ -16,8 +16,6 @@ import org.eclipse.emf.ecore.resource.impl.ResourceFactoryImpl;
 /**
  * This class defines an XMI-based resource factory.
  * 
-
- * 
  */
 public class IrResourceFactoryImpl extends ResourceFactoryImpl {
 	

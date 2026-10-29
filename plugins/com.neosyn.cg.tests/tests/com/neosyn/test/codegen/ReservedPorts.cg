@@ -1,0 +1,28 @@
+package com.neosyn.test.codegen;
+
+/*
+ * Regression fixture, TRAPS T118: a task whose own stream input is named with a Verilog keyword.
+ *
+ * A task at the top level keeps its port names (a task INSIDE a network gets `<Network>_<port>`),
+ * so `reg` reaches the Verilog backend as a port name. It was declared as the escaped `\reg ` and
+ * the skid buffer the backend writes by hand then read it RAW:
+ *
+ *     internal_reg <= reg;        -- error: Type names are not valid expressions here
+ *
+ * which iverilog rejects outright -- the module did not compile at all. `type` is a keyword in
+ * both languages and `type_v` is declared beside it, so the rename has to step over it.
+ * See GeneratedNoiseTest.
+ */
+task ReservedPorts {
+	in stream u8 reg;
+	out stream u8 body;
+	u8 type;
+	u8 type_v;
+
+	void loop() {
+		u8 v = reg.read();
+		type = (u8)(v + 1);
+		type_v = (u8)(v + 2);
+		body.write((u8)(type + type_v));
+	}
+}

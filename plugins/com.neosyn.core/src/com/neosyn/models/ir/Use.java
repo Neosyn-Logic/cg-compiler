@@ -14,7 +14,6 @@ import org.eclipse.emf.ecore.EObject;
 /**
  * This interface defines a use of a variable.
  * 
-
  * @model
  */
 public interface Use extends EObject {

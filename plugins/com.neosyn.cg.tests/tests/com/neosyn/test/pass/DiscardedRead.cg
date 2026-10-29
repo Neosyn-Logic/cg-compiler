@@ -1,0 +1,24 @@
+/*
+ * A stream read whose value is discarded: `tok.read();` takes a token and drops it. With a stream
+ * OUTPUT the inputs are skid-buffered, and both HDL printers captured `internal_tok` -- a register
+ * declared only when something used the value -- so neither the Verilog nor the VHDL compiled
+ * (TRAPS T162, found in the Ethernet MAC's store-and-forward fix, T161).
+ *
+ * Vectors, so the harness checks the VALUES on every backend: each `din` comes out once, in order.
+ */
+package com.neosyn.test.pass.discardedread;
+
+task DiscardedRead {
+	properties {
+		test: {
+			tok:  [ true, true, true, true ],
+			din:  [ 0x11, 0x22, 0x33, 0x44 ],
+			dout: [ 0x11, 0x22, 0x33, 0x44 ]
+		}
+	}
+	stream { in bool tok; in u8 din; out u8 dout; }
+	void loop() {
+		tok.read();
+		dout.write(din.read());
+	}
+}

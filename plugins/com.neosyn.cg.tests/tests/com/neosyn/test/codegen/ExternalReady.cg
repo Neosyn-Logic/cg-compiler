@@ -1,0 +1,18 @@
+package com.neosyn.test.codegen;
+
+/*
+ * Regression fixture, TRAPS T117: a task's stream output that LEAVES the design, so an external
+ * consumer drives its ready. The task counts 0, 1, 2, ... See StreamOutputHoldTest, whose
+ * testbench plays an AXI-Stream consumer that lowers ready on an irregular pattern.
+ */
+network ExternalReady {
+	out stream u8 dout;
+
+	src = new task {
+		u8 n;
+		void loop() {
+			dout.write(n);
+			n++;
+		}
+	};
+}

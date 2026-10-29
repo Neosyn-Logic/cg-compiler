@@ -42,7 +42,11 @@ network PushStructPortTest {
                 p.hi = 0x123;
                 processor.in_pair.write(p);
 
-                idle(2);
+                // One cycle, as for any push port: the processor forwards the pulse one cycle later and
+                // a push value lasts ONE cycle. idle(2) "worked" only while a struct read ignored the
+                // valid and sampled a stale register (TRAPS T169); a plain `u8` push port with
+                // idle(2) misses the pulse and hangs, in the simulator and in Verilog alike.
+                idle(1);
 
                 Pair r = processor.out_pair.read();
                 assert(r.lo == 7);

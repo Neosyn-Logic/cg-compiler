@@ -12,8 +12,6 @@ package com.neosyn.cg.internal.scheduler;
 /**
  * This class defines a cycle listener. It has a single method, called when a new cycle has started.
  * 
-
- * 
  */
 public interface ICycleListener {
 

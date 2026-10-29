@@ -35,12 +35,16 @@ import com.neosyn.cg.internal.compiler.FunctionTransformer;
 import com.neosyn.cg.internal.scheduler.CombinationalScheduler;
 import com.neosyn.cg.internal.scheduler.CycleScheduler;
 import com.neosyn.cg.internal.scheduler.IfScheduler;
+import com.neosyn.cg.internal.scheduler.Schedule;
 import com.neosyn.core.transformations.ProcedureTransformation;
 import com.neosyn.core.transformations.SchedulerTransformation;
+import com.neosyn.models.dpn.Action;
 import com.neosyn.models.dpn.Actor;
 import com.neosyn.models.dpn.DPN;
+import com.neosyn.models.dpn.Endpoint;
 import com.neosyn.models.dpn.Entity;
 import com.neosyn.models.dpn.Instance;
+import com.neosyn.models.dpn.Port;
 import com.neosyn.models.dpn.Unit;
 import com.neosyn.models.ir.transform.StoreOnceTransformation;
 
@@ -64,12 +68,66 @@ public class TransformationHandler {
     // can surface them instead of losing them to stderr — see IrGenerationHandler.
     private final List<String> transformErrors = new ArrayList<>();
 
+    /**
+     * Names of the entities whose transform threw, so a later pass can SKIP them rather
+     * than emit them. A failed transform leaves the actor half-built: the HDL backend
+     * happily prints it as a module with the right ports and a body that drives nothing,
+     * which elaborates and synthesises and computes nothing (TRAPS T70, and the same shape
+     * as the SHA256 steps found in S173). Carried as names, not parsed back out of the
+     * message strings.
+     */
+    private final Set<String> failedEntityNames = new HashSet<>();
+
     public List<String> getTransformErrors() {
         return transformErrors;
     }
 
+    /** Entities whose transform threw this run. See {@link #failedEntityNames}. */
+    public Set<String> getFailedEntityNames() {
+        return failedEntityNames;
+    }
+
     public void clearTransformErrors() {
         transformErrors.clear();
+        failedEntityNames.clear();
+    }
+
+    /**
+     * Non-null while generate holds the transform CRASH lines back until its blocking check has
+     * run. Generate must build IR BEFORE that check (validating first breaks cross-file
+     * resolution: 16 census failures, TRAPS T180), so a crash on code the front end then refuses
+     * (a bool added into a u4) used to be printed FIRST, ahead of the real errors. The deadlock
+     * error is a finding of its own, not a crash, and is still printed at once.
+     */
+    private List<String> heldPrints;
+
+    /** Hold the transform crash lines instead of printing them; see {@link #heldPrints}. */
+    public void holdPrints() {
+        heldPrints = new ArrayList<>();
+    }
+
+    /** Stop holding: print the held lines, or drop them (the run is refused for blocking errors). */
+    public void releasePrints(boolean print) {
+        List<String> held = heldPrints;
+        heldPrints = null;
+        if (held == null) {
+            return;
+        }
+        for (String line : held) {
+            if (print) {
+                System.err.println(line);
+            } else {
+                ServerUtils.debugLog("[Transform] not printed (blocking errors refused the run): " + line);
+            }
+        }
+    }
+
+    private void printError(String line) {
+        if (heldPrints != null) {
+            heldPrints.add(line);
+        } else {
+            System.err.println(line);
+        }
     }
 
     public TransformationHandler(IInstantiator instantiator) {
@@ -109,29 +167,45 @@ public class TransformationHandler {
         for (CgEntity cxEntity : module.getEntities()) {
             ServerUtils.debugLog("[Transform] Processing entity: " + cxEntity.getName());
 
-            instantiator.forEachMapping(cxEntity, entity -> {
-                if (entity == null) {
-                    ServerUtils.debugLog("[Transform] Entity mapping is null, skipping");
-                    return;
-                }
-
-                switch (cxEntity.eClass().getClassifierID()) {
-                case CgPackage.BUNDLE:
-                    transformBundle((Bundle) cxEntity, (Unit) entity);
-                    break;
-
-                case CgPackage.NETWORK:
-                    transformNetwork((Network) cxEntity, (DPN) entity);
-                    break;
-
-                case CgPackage.TASK:
-                    transformTask((Task) cxEntity, (Actor) entity);
-                    break;
-                }
-            });
+            instantiator.forEachMapping(cxEntity, entity -> transformEntity(cxEntity, entity));
         }
 
+        // Also transform every specialization created during this transform. A
+        // specialization is filed under its TEMPLATE cx entity, so a cross-file
+        // specialization (e.g. LoadKey specialized from a parameterized Expander in
+        // another file) is keyed under a template NOT in this module, and the loop above
+        // never reaches it -- leaving the specialized actor with ports but NO compiled
+        // BODY, so at simulation it never fires and the design deadlocks. Dispatch on the
+        // TEMPLATE's kind, exactly as the module loop does; transformTask's
+        // already-transformed guard makes this idempotent for same-module specializations.
+        // Mirrors the specialization serialization pass in IrGenerationHandler.
+        instantiator.forEachSpecialization(this::transformEntity);
+
         ServerUtils.debugLog("[Transform] transformModule() completed");
+    }
+
+    /**
+     * Transforms one IR entity using its source Cx entity to pick the pipeline.
+     */
+    private void transformEntity(CgEntity cxEntity, Entity entity) {
+        if (entity == null) {
+            ServerUtils.debugLog("[Transform] Entity mapping is null, skipping");
+            return;
+        }
+
+        switch (cxEntity.eClass().getClassifierID()) {
+        case CgPackage.BUNDLE:
+            transformBundle((Bundle) cxEntity, (Unit) entity);
+            break;
+
+        case CgPackage.NETWORK:
+            transformNetwork((Network) cxEntity, (DPN) entity);
+            break;
+
+        case CgPackage.TASK:
+            transformTask((Task) cxEntity, (Actor) entity);
+            break;
+        }
     }
 
     /**
@@ -159,6 +233,7 @@ public class TransformationHandler {
      */
     public void transformNetwork(Network network, DPN dpn) {
         ServerUtils.debugLog("[Transform] transformNetwork: " + network.getName());
+        List<Instance> inner = new ArrayList<>();
         for (Inst inst : network.getInstances()) {
             Task task = inst.getTask();
             if (task != null) {
@@ -166,9 +241,91 @@ public class TransformationHandler {
                 if (instance != null && instance.getEntity() instanceof Actor) {
                     Actor actor = (Actor) instance.getEntity();
                     transformTask(task, actor);
+                    inner.add(instance);
                 }
             }
         }
+        // after ALL inner tasks are scheduled: the check needs the peer's actions too
+        for (Instance instance : inner) {
+            checkRequestReplyInOneCycle(dpn, instance, (Actor) instance.getEntity());
+        }
+    }
+
+    /**
+     * TRAPS T31: {@code c.write(x); v = r.read();} in one scheduled action, where {@code c} goes
+     * to instance X and {@code r} comes back from the same X. The action's guard waits for
+     * {@code r} before it may send {@code c}, and X answers only after it receives {@code c}, so it
+     * never fires: {@code simulate} printed nothing until a 10-million-cycle timeout, and the HDL
+     * was equally dead, while {@code generate} said "Success!". Flagged only when all three hold:
+     * the source wrote first (recorded by Schedule.read), the FINAL action still holds both
+     * ports, and the request's consumer is the reply's producer. `fence;` splits the action.
+     */
+    private void checkRequestReplyInOneCycle(DPN dpn, Instance instance, Actor actor) {
+        for (Schedule.ReadAfterWrite raw : Schedule.readsAfterWrite(actor)) {
+            Endpoint replyFrom = dpn.getIncoming(new Endpoint(instance, raw.read));
+            if (replyFrom == null || replyFrom.getInstance() == null) {
+                continue;
+            }
+            Instance peer = replyFrom.getInstance();
+            if (!(peer.getEntity() instanceof Actor)) {
+                continue;
+            }
+            for (Port out : raw.writtenBefore) {
+                if (!out.isSynchronous() || !sameAction(actor, out, raw.read)) {
+                    continue;
+                }
+                for (Endpoint to : dpn.getOutgoing(new Endpoint(instance, out))) {
+                    if (to.getInstance() != peer
+                            || !replyNeedsRequest((Actor) peer.getEntity(), replyFrom.getPort(), to.getPort())) {
+                        continue;
+                    }
+                    String file = raw.ref.eResource() != null && raw.ref.eResource().getURI() != null
+                            ? raw.ref.eResource().getURI().lastSegment() : "?";
+                    org.eclipse.xtext.nodemodel.INode node =
+                            org.eclipse.xtext.nodemodel.util.NodeModelUtils.findActualNodeFor(raw.ref);
+                    String message = file + ":" + (node == null ? "?" : String.valueOf(node.getStartLine()))
+                            + ": `" + raw.read.getName() + ".read()` waits in the same cycle for the answer"
+                            + " to `" + out.getName() + ".write(...)`, and both go through `"
+                            + peer.getName() + "`, which only sees the request after this cycle -- this"
+                            + " never completes (deadlock). Put `fence;` between the write and the read.";
+                    transformErrors.add(message);
+                    failedEntityNames.add(actor.getName());
+                    // printed like the other transform errors: the result's error list alone reached
+                    // the user only as "skipped -- its transform failed"
+                    System.err.println("[neosyn] error: " + message);
+                    return;
+                }
+            }
+        }
+    }
+
+    /**
+     * Whether the peer can only produce {@code reply} by consuming {@code request}: EVERY action
+     * that writes the reply also reads the request. SoC's bus slave writes its rdata in setup()
+     * and on every cycle whatever its select does, so the decoder that selects it and reads it
+     * back in one cycle is fine -- flagging it (the first version did) blocked a working design.
+     */
+    private static boolean replyNeedsRequest(Actor peer, Port reply, Port request) {
+        boolean writesReply = false;
+        for (Action action : peer.getActions()) {
+            if (action.getOutputPattern() != null && action.getOutputPattern().contains(reply)) {
+                writesReply = true;
+                if (action.getInputPattern() == null || !action.getInputPattern().contains(request)) {
+                    return false;
+                }
+            }
+        }
+        return writesReply;
+    }
+
+    private static boolean sameAction(Actor actor, Port out, Port in) {
+        for (Action action : actor.getActions()) {
+            if (action.getOutputPattern() != null && action.getInputPattern() != null
+                    && action.getOutputPattern().contains(out) && action.getInputPattern().contains(in)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -191,6 +348,7 @@ public class TransformationHandler {
             // Clear existing actions and reset FSM
             actor.getActions().clear();
             actor.setFsm(null);
+            Schedule.forgetReadsAfterWrite(actor);
 
             // Transform constant functions
             transformConstantFunctions(actor, CgUtil.getVariables(task));
@@ -234,6 +392,17 @@ public class TransformationHandler {
 
             // Transform AST to IR
             new ActorTransformer(instantiator, actor).visit();
+            // TRAPS T58: `din.last` outside the cycle of a read of `din` reads a stale wire
+            for (String warning : com.neosyn.cg.internal.compiler.FramedLastCheck.lastOutsideRead(actor)) {
+                System.err.println("[neosyn] warning: " + warning);
+            }
+            // TRAPS T160: a combinational task's actions fire every cycle -- an unguarded forward of a
+            // handshaked input presents its output as valid every cycle (what killed the MAC receive path, T158)
+            if (isCombinational) {
+                for (String warning : com.neosyn.cg.internal.compiler.CombinationalForwardCheck.unguardedForwards(actor)) {
+                    System.err.println("[neosyn] warning: " + warning);
+                }
+            }
             ServerUtils.debugLog("[Transform]   Post-ActorTransformer: " + countInstructions(actor) + " instructions for " + actorName);
 
             if (isCombinational) {
@@ -263,7 +432,8 @@ public class TransformationHandler {
             // and the downstream HDL pass drops the entity without telling anyone.
             transformErrors.add("Transform error in " + actorName + ": "
                     + e.getClass().getSimpleName() + " — " + e.getMessage());
-            System.err.println("[neosyn] Transform error in " + actorName + ": "
+            failedEntityNames.add(actorName);
+            printError("[neosyn] Transform error in " + actorName + ": "
                     + e.getClass().getSimpleName() + " — " + e.getMessage()
                     + " (re-run with -Dneosyn.debug.ir=true for stack trace)");
         }

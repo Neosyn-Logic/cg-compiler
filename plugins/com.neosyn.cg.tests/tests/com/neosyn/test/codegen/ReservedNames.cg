@@ -1,0 +1,38 @@
+package com.neosyn.test.codegen;
+
+/*
+ * Regression fixture, TRAPS T116: names that are keywords of a back end.
+ *
+ * `body` and `mod` are VHDL keywords, `reg` and `packed` are Verilog's, `type` is both, and the
+ * instance `bus` is a VHDL keyword in label position. `type_v` is declared as well, so the rename
+ * of `type` has to step over a name the entity already has. `CHECKS` beside `checks` collides only
+ * because VHDL folds case -- no keyword is involved there, and escaping is what keeps the two
+ * apart, so those two must stay escaped.
+ *
+ * `reg` is a STREAM input of a task with a stream output, so it gets a skid buffer: the Verilog
+ * backend writes `internal_reg <= reg` by hand, and it has to read the port by the name the module
+ * declares it under. See GeneratedNoiseTest.
+ */
+network ReservedNames {
+	in stream u8 reg;
+	out stream u8 body;
+	out push u8 mod;
+
+	bus = new task {
+		const u8 CHECKS = 3;
+		u8 checks;
+		u8 type;
+		u8 type_v;
+		u8 packed;
+
+		void loop() {
+			u8 v = reg.read();
+			type = v;
+			type_v = (u8)(v + 1);
+			packed = (u8)(v + 3);
+			checks = (u8)(checks + CHECKS);
+			body.write((u8)(type + type_v));
+			mod.write((u8)(packed + checks));
+		}
+	};
+}

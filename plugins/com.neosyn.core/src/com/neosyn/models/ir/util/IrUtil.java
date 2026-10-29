@@ -32,7 +32,6 @@ import com.neosyn.models.util.EcoreHelper;
 /**
  * This class contains several methods to help the manipulation of EMF models.
  * 
-
  * @author Herve Yviquel
  * 
  */

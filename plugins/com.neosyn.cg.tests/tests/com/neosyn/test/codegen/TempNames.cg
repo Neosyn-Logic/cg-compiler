@@ -1,0 +1,43 @@
+package com.neosyn.test.codegen;
+
+/*
+ * Regression fixture, TRAPS T116: a temporary the Verilog back end introduces is named after the
+ * value it holds -- `i + 1` is `i_plus_1` -- not after a constellation. See VerilogTempNamesTest.
+ */
+task TempNames {
+	out push u8 y;
+	u4 i;
+
+	void loop() {
+		i++;
+		y.write((u8) (i + 20));
+	}
+}
+
+/*
+ * The shape that SHADOWED a port in Divide (a reduction of the Divider core's loop): after the loop
+ * is unrolled, the widened `(u64) b` is held in a temporary that was spelled `b` -- declared in a
+ * named block, it hid the port `b` from the whole block and even read itself.
+ */
+task TempNoShadow {
+	in push int<32> a;
+	in push int<32> b;
+	out push int<32> q;
+
+	void loop() {
+		u64 num = ((u64) a.read()) << 16;
+		u64 dd = (u64) b.read();
+		u64 rem = 0;
+		u64 quo = 0;
+		for (u3 s = 0; s < 4; s++) {
+			rem = (rem << 1) | ((num >> 47) & 1);
+			num = num << 1;
+			quo = quo << 1;
+			if (rem >= dd) {
+				rem = rem - dd;
+				quo = quo | 1;
+			}
+		}
+		q.write((int<32>) quo);
+	}
+}

@@ -28,8 +28,6 @@ import com.neosyn.models.graph.Vertex;
 /**
  * This class defines a simple edge-coloring BFS implementation.
  * 
-
- * 
  */
 public class EdgeColoring {
 

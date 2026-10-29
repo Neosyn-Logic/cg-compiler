@@ -35,8 +35,6 @@ import com.neosyn.models.util.Void;
 /**
  * This class defines how to schedule a idle statement.
  * 
-
- *
  */
 public class IdleScheduler {
 

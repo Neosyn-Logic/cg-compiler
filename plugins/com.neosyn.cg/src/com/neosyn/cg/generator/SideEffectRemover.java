@@ -19,16 +19,20 @@ import com.neosyn.models.ir.transform.AbstractIrVisitor;
 import com.neosyn.models.util.Void;
 
 /**
- * This class defines an IR transformation that removes stores and prints in scheduler.
+ * This class defines an IR transformation that removes stores, prints and asserts in scheduler.
  * 
-
- * 
+ * <p>In the generated HDL a scheduler procedure is evaluated EVERY cycle, to decide whether its
+ * action fires, and a developed {@code if} copies the whole branch into it -- statements included, not only the
+ * condition. A side effect left there runs whether or not the guard holds. For an assert that
+ * means checking a port nobody has written yet: {@code if (x.available()) { assert(x.read() == 7); }}
+ * failed on the first cycle in both HDLs while the bytecode simulator passed. The action body
+ * keeps its own copy, so the check still runs exactly when the action fires.
  */
 public class SideEffectRemover extends AbstractIrVisitor {
 
 	@Override
 	public Void caseInstCall(InstCall call) {
-		if (call.isPrint()) {
+		if (call.isPrint() || call.isAssert()) {
 			delete(call);
 		}
 

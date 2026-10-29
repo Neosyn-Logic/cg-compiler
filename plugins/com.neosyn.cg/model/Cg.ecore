@@ -88,13 +88,12 @@
         eType="#//PortDecl" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="params" upperBound="-1"
         eType="#//Variable" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="decls" upperBound="-1"
+        eType="#//VarDecl" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="internalErrors" upperBound="-1"
         eType="#//ErrorMarker" transient="true"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="Task" eSuperTypes="#//Instantiable">
-    <eStructuralFeatures xsi:type="ecore:EReference" name="decls" upperBound="-1"
-        eType="#//VarDecl" containment="true"/>
-  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Task" eSuperTypes="#//Instantiable"/>
   <eClassifiers xsi:type="ecore:EClass" name="Network" eSuperTypes="#//Instantiable">
     <eStructuralFeatures xsi:type="ecore:EReference" name="instances" upperBound="-1"
         eType="#//Inst" containment="true"/>
@@ -140,6 +139,7 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="pushOld" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="streamOld" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="confirmOld" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="framed" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="var" eType="#//Variable"
         containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="sync" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
@@ -157,6 +157,7 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="push" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="stream" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="confirm" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="framed" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="decls" upperBound="-1"
         eType="#//SinglePortDecl" containment="true"/>
   </eClassifiers>
@@ -253,7 +254,11 @@
   <eClassifiers xsi:type="ecore:EClass" name="StatementWrite" eSuperTypes="#//Statement">
     <eStructuralFeatures xsi:type="ecore:EReference" name="port" eType="#//VarRef"
         containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="indexes" upperBound="-1"
+        eType="#//CgExpression" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="value" eType="#//CgExpression"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="last" eType="#//CgExpression"
         containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="CgExpression"/>
@@ -308,6 +313,10 @@
     </eOperations>
     <eStructuralFeatures xsi:type="ecore:EReference" name="indexes" upperBound="-1"
         eType="#//CgExpression" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="sliceHigh" eType="#//CgExpression"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="sliceLow" eType="#//CgExpression"
+        containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="parameters" upperBound="-1"
         eType="#//CgExpression" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="property" eType="#//Variable"

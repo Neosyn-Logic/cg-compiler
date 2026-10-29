@@ -473,6 +473,11 @@ public class DpnFactoryImpl extends EFactoryImpl implements DpnFactory {
 
 	@Override
 	public Port createPort(Type type, String name, InterfaceType iface, List<Port> ports) {
+		return createPort(type, name, iface, false, ports);
+	}
+
+	@Override
+	public Port createPort(Type type, String name, InterfaceType iface, boolean framed, List<Port> ports) {
 		PortImpl port = new PortImpl();
 		port.setName(name);
 		port.setType(copyIfNeeded(type));
@@ -489,6 +494,17 @@ public class DpnFactoryImpl extends EFactoryImpl implements DpnFactory {
 		for (String output : iface.getOutputs(direction)) {
 			Type bool = ir.createTypeBool();
 			port.getAdditionalOutputs().add(ir.createVar(bool, name + "_" + output, true));
+		}
+
+		// TRAPS T58: the frame boundary travels with the data, after the handshake signal, so
+		// index 0 of either list keeps its meaning (valid or ready) for every existing reader.
+		if (framed) {
+			Var last = ir.createVar(ir.createTypeBool(), name + "_" + Port.LAST, true);
+			if (direction == Direction.INPUT) {
+				port.getAdditionalInputs().add(last);
+			} else {
+				port.getAdditionalOutputs().add(last);
+			}
 		}
 
 		return port;

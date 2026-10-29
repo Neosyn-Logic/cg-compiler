@@ -21,8 +21,6 @@ import com.google.common.base.Predicate;
  * This class extends the default global scope provider with a parent scope that knows about
  * built-in components.
  * 
-
- * 
  */
 public class CgGlobalScopeProvider extends DefaultGlobalScopeProvider {
 

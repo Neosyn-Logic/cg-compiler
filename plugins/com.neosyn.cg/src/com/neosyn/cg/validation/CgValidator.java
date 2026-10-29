@@ -49,7 +49,6 @@ import com.neosyn.cg.cg.Instantiable;
 import com.neosyn.cg.cg.Module;
 import com.neosyn.cg.cg.Obj;
 import com.neosyn.cg.cg.Pair;
-import com.neosyn.cg.cg.VarDecl;
 import com.neosyn.cg.cg.Named;
 import com.neosyn.cg.cg.Network;
 import com.neosyn.cg.cg.StatementAssign;
@@ -70,10 +69,10 @@ import com.neosyn.models.dpn.Entity;
 import com.neosyn.models.util.Executable;
 
 /**
- * This class defines a validator for Cx source files.
- * 
-
- * 
+ * Top-level Xtext validator for C⏚ source: the {@code @Check} methods here run on the parsed
+ * AST (names, ports, types, structural rules), delegating the heavier semantic checks to the
+ * {@code internal/validation} checkers (Type/Structural/Expression/Network validators). Issue
+ * codes are centralised in {@link com.neosyn.cg.validation.IssueCodes}.
  */
 public class CgValidator extends AbstractCgValidator {
 
@@ -147,22 +146,14 @@ public class CgValidator extends AbstractCgValidator {
 			return; // no named arguments to check
 		}
 
-		// Index the target's entity-level variables by name. iter #2 angle-bracket
-		// formals live in getParams() (any Instantiable); body consts live in
-		// getDecls() (only Task). Both are nameable in `new Foo({K: v})`.
+		// Index the target's entity-level variables by name. Angle-bracket formals
+		// (getParams()) and body consts (getDecls()) both live on Instantiable and
+		// are both nameable in `new Foo({K: v})` — for a network as much as a task,
+		// since a network is the composition unit that most needs parameterizing.
 		Map<String, Variable> vars = new HashMap<>();
-		for (Variable v : entity.getParams()) {
+		for (Variable v : CgUtil.getVariables(entity)) {
 			if (v.getName() != null) {
 				vars.put(v.getName(), v);
-			}
-		}
-		if (entity instanceof Task) {
-			for (VarDecl decl : ((Task) entity).getDecls()) {
-				for (Variable v : decl.getVariables()) {
-					if (v.getName() != null) {
-						vars.put(v.getName(), v);
-					}
-				}
 			}
 		}
 
@@ -175,8 +166,8 @@ public class CgValidator extends AbstractCgValidator {
 			if (variable == null) {
 				error("'" + key + "' is not a parameter of '" + entity.getName()
 						+ "'. Instantiation arguments must name a const declared in the"
-						+ " task (or a reserved key: clock, clocks, reset).", pair,
-						Literals.PAIR__KEY, IssueCodes.ERR_GENERIC_ARG_UNKNOWN);
+						+ " task or network (or a reserved key: clock, clocks, reset).",
+						pair, Literals.PAIR__KEY, IssueCodes.ERR_GENERIC_ARG_UNKNOWN);
 			} else if (!CgUtil.isConstant(variable)) {
 				error("'" + key + "' is not a const and cannot be set at"
 						+ " instantiation.", pair, Literals.PAIR__KEY,
@@ -624,7 +615,9 @@ public class CgValidator extends AbstractCgValidator {
 					}
 
 					// check types
-					new TypeChecker(CgValidator.this, instantiator, entity).doSwitch(cxEntity);
+					TypeChecker typeChecker = new TypeChecker(CgValidator.this, instantiator, entity);
+					typeChecker.doSwitch(cxEntity);
+					typeChecker.checkStateVariableValues(cxEntity);
 
 					if (cxEntity instanceof Instantiable) {
 						printErrors((Instantiable) cxEntity);
@@ -652,8 +645,10 @@ public class CgValidator extends AbstractCgValidator {
 
 	private void printErrors(Instantiable entity) {
 		for (ErrorMarker error : entity.getErrors()) {
+			// Forward the marker's issue code. Passing null here made every instantiation-phase
+			// error uncodeable and therefore unable to block a CLI build, whatever it said (T24).
 			acceptError(error.getMessage(), error.getSource(), error.getFeature(), error.getIndex(),
-					null);
+					error.getCode());
 		}
 	}
 
@@ -666,11 +661,24 @@ public class CgValidator extends AbstractCgValidator {
 	 *            scope of functions
 	 */
 	private void validateCombinational(Task task, Variable setup, final Variable loop) {
+		// A state variable the task WRITES becomes a latch: assigned only on some paths of a
+		// combinational process, it holds its value (and is missing from the sensitivity list). This
+		// was an error without an issue code, so it never blocked (TRAPS T184; the T24 pattern). One it
+		// only READS is a constant table -- a ROM, e.g. Intel-8088 BIU_RF's segment registers -- and is fine.
+		java.util.Set<Variable> written = new java.util.HashSet<>();
+		for (com.neosyn.cg.cg.StatementAssign assign : org.eclipse.xtext.EcoreUtil2
+				.getAllContentsOfType(task, com.neosyn.cg.cg.StatementAssign.class)) {
+			if (assign.getTarget() != null && assign.getTarget().getSource() != null) {
+				written.add(assign.getTarget().getSource().getVariable());
+			}
+		}
 		for (Variable variable : CgUtil.getVariables(task)) {
-			if (!CgUtil.isFunction(variable) && !CgUtil.isConstant(variable)) {
-				String message = "A combinational task cannot declare state variables";
-				error(message, variable, Literals.NAMED__NAME, -1);
-				return;
+			if (!CgUtil.isFunction(variable) && !CgUtil.isConstant(variable) && written.contains(variable)) {
+				String message = "A combinational task cannot keep state: '" + variable.getName()
+						+ "' is assigned here, so it would hold its value between cycles in a latch."
+						+ " Remove the `combinational` type to make it a register, or compute it from the inputs"
+						+ " every cycle.";
+				error(message, variable, Literals.NAMED__NAME, IssueCodes.ERR_COMBINATIONAL_STATE);
 			}
 		}
 

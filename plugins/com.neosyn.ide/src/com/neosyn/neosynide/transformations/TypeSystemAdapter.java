@@ -34,9 +34,6 @@ import com.neosyn.models.ir.util.TypeUtil;
  * Why? Because the type of an IR expression implicitly grows or shrinks as needed, which is not
  * true of most languages. This class (and subclasses) adds explicit resizes and type conversions.
  * </p>
- * 
-
- *
  */
 public abstract class TypeSystemAdapter extends AbstractExpressionTransformer {
 

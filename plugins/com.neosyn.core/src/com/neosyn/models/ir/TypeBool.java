@@ -12,7 +12,6 @@ package com.neosyn.models.ir;
 /**
  * This class defines a boolean type.
  * 
-
  * @author Jerome Gorin
  * @model extends="net.sf.orcc.ir.Type"
  */

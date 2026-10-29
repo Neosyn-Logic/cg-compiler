@@ -11,7 +11,22 @@
  *******************************************************************************/
 package com.neosyn.test.app.basics;
 
+// A NETWORK carrying a vector test -- which does work, contrary to a long-standing note
+// that `test: {port: [...]}` is task-only. It had been elaborate-only because a pipelined
+// network could not DRAIN: the stimulus stopped dead after the last vector, so stage_2
+// never saw stage_1's final (registered) output and the run hung one vector short. The
+// stimulus now holds its last value with valid asserted; see TestGenerator.
 network Pipeline {
+
+	properties {
+		// res[i] = (a[i] + b[i]) * c[i]
+		test: {
+			a:   [ 1,  2,  3,  4 ],
+			b:   [ 2,  3,  4,  5 ],
+			c:   [ 3,  3,  3,  3 ],
+			res: [ 9, 15, 21, 27 ]
+		}
+	}
 
 	in sync u8 a, sync b, sync c; out sync u17 res;
 
@@ -35,6 +50,24 @@ bundle Definitions {
 	typedef u6 clipped;
 }
 
+// Left WITHOUT a vector test, deliberately, and the reason is worth recording (S166).
+//
+// The validator requires test values for EVERY output once a `test:` block exists
+// ("missing test values for port OutData"), so checking `digits` alone is not an option.
+// `digits` itself is easy and was verified working: 0x01FF while count < 100, then
+// 0x4FFF, the change landing one index late because digits lags count by a cycle. A
+// 103-entry vector across that boundary passes, and would prove the counter advances
+// rather than merely sitting at a constant.
+//
+// `OutData` is the blocker. Compare's result is `temp == clip.O`, where `temp` is the
+// count read at the end of the PREVIOUS iteration and clip.O is min(count, 63) from its
+// own stage, after a setup() that idles one cycle. The shape is derivable -- equal while
+// count <= 63, diverging once clipping starts -- but the observed sequence starts FALSE,
+// so the fill does not match that shape, and recovering the true alignment would mean
+// probing one index at a time. A vector obtained that way pins the implementation against
+// itself and proves nothing, so it is not written here.
+//
+// Deriving Compare's alignment is the prerequisite, not more scaffolding.
 network TopCounter {
 
 	out bool OutData, u15 digits;

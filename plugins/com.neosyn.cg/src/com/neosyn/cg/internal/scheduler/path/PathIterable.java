@@ -16,7 +16,6 @@ import com.neosyn.models.node.Node;
 /**
  * This class defines an iterable over paths.
  * 
-
  */
 public class PathIterable implements Iterable<Path> {
 

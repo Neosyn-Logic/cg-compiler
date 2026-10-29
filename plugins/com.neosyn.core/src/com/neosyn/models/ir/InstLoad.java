@@ -15,7 +15,6 @@ import org.eclipse.emf.common.util.EList;
  * This interface defines an instruction that Loads data from memory to a local variable. The source
  * can be a global (scalar or array), or a local array.
  * 
-
  * @model extends="net.sf.orcc.ir.Instruction"
  */
 public interface InstLoad extends Instruction {

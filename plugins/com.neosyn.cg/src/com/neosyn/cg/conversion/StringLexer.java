@@ -12,8 +12,6 @@ package com.neosyn.cg.conversion;
 /**
  * This class defines a string lexer.
  * 
-
- *
  */
 public class StringLexer {
 

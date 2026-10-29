@@ -15,7 +15,12 @@ import java.util.Map;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.xtext.EcoreUtil2;
+import org.eclipse.xtext.AbstractRule;
+import org.eclipse.xtext.GrammarUtil;
+import org.eclipse.xtext.RuleCall;
 import org.eclipse.xtext.naming.QualifiedName;
+import org.eclipse.xtext.nodemodel.ICompositeNode;
+import org.eclipse.xtext.nodemodel.util.NodeModelUtils;
 import org.eclipse.xtext.resource.EObjectDescription;
 import org.eclipse.xtext.resource.IEObjectDescription;
 import org.eclipse.xtext.resource.impl.DefaultResourceDescriptionStrategy;
@@ -37,14 +42,22 @@ import com.neosyn.models.dpn.InterfaceType;
  * This class describes a strategy that exports ports and bundle variables. It creates object
  * descriptions with user data that describes the type and value (if any) of variables.
  * 
-
- * 
  */
 public class CgResourceStrategy extends DefaultResourceDescriptionStrategy {
 
 	@Override
 	public boolean createEObjectDescriptions(EObject eObject,
 			IAcceptor<IEObjectDescription> acceptor) {
+		if (isInImplicitBundle(eObject)) {
+			// File-scope declarations are private to their file: the scope provider puts them
+			// in scope for that file only (CgImportedNamespaceScopeProvider
+			// .scopeForFileDeclarations). Exported, a member of the unnamed bundle got the name
+			// `<package>.<member>`, and the implicit same-package import made it resolve from
+			// EVERY file of the package -- depending on load order -- where the back end cannot
+			// compile it: a NullPointerException, "no compiled body" or "Unresolved reference",
+			// instead of "twice cannot be resolved" at the use (user report, 2026-09-28).
+			return false;
+		}
 		if (eObject instanceof Variable) {
 			Variable variable = (Variable) eObject;
 			if (CgUtil.isPort(variable)) {
@@ -72,6 +85,30 @@ public class CgResourceStrategy extends DefaultResourceDescriptionStrategy {
 
 		// no need to visit contents of variable or typedef
 		return false;
+	}
+
+	/**
+	 * Is this object the implicit (file-scope) bundle, or inside it? Recognised by the grammar
+	 * rule that parsed it, not by a null name: TopEntitiesLoader names the bundle
+	 * `<file>_pkg` when it instantiates it.
+	 */
+	private static boolean isInImplicitBundle(EObject eObject) {
+		return isImplicitBundle(EcoreUtil2.getContainerOfType(eObject, Bundle.class));
+	}
+
+	/** Is this the implicit (file-scope) bundle of its file? */
+	public static boolean isImplicitBundle(Bundle bundle) {
+		if (bundle == null) {
+			return false;
+		}
+		ICompositeNode node = NodeModelUtils.getNode(bundle);
+		if (node == null) {
+			return false;
+		}
+		EObject element = node.getGrammarElement();
+		AbstractRule rule = element instanceof RuleCall ? ((RuleCall) element).getRule()
+				: GrammarUtil.containingRule(element);
+		return rule != null && "ImplicitBundle".equals(rule.getName());
 	}
 
 	private void createInst(Inst inst, IAcceptor<IEObjectDescription> acceptor) {

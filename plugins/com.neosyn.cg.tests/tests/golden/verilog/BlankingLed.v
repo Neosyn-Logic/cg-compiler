@@ -1,6 +1,12 @@
+/**
+ * Title      : Generated from com.neosyn.test.golden.BlankingLed by Neosyn IDE
+ * File       : com.neosyn.test.golden.BlankingLed.v
+ * Standard   : Verilog-2001
+ */
+
 /*
  * Copyright (c) 2024 Neosyn. All rights reserved.
- *  *
+ *
  * Golden file test - Basic tasks for regression testing.
  * Tests: simple state variables, arithmetic, output ports.
  */
@@ -9,7 +15,11 @@
  * Minimal toggle task - tests boolean state and output.
  * Based on: LED/BlankingLed.cg
  */
-module BlankingLed(input clock, input reset_n, output reg  led);
+module BlankingLed(
+  input clock,
+  input reset_n,
+  output reg  led
+);
 
 
   /**
@@ -30,10 +40,9 @@ module BlankingLed(input clock, input reset_n, output reg  led);
       led <= 1'b0;
     end else begin
       
-      begin // line 19
-        led <= state;
-        state <= ! (state);
-      end
+      // line 19
+      led <= state;
+      state <= !state;
     end
   end
 

@@ -12,8 +12,6 @@ package com.neosyn.models.dpn;
 /**
  * This class defines the direction for a port (input or output).
  * 
-
- *
  */
 public enum Direction {
 

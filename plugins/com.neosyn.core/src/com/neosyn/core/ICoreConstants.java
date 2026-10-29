@@ -12,8 +12,6 @@ package com.neosyn.core;
 /**
  * This interface defines useful well-known constants.
  * 
-
- * 
  */
 public interface ICoreConstants {
 
@@ -37,6 +35,12 @@ public interface ICoreConstants {
 	 * name of the "testbench" folder
 	 */
 	String FOLDER_TESTBENCH = "testbench";
+
+	/**
+	 * id of the old Eclipse project nature (the nature class was removed with the Eclipse builder,
+	 * REFACTOR 4a.3a); still asked by the Eclipse-workspace code paths that remain
+	 */
+	String NATURE_ID = NeosynCore.PLUGIN_ID + ".nature";
 
 	/**
 	 * project property for current generator

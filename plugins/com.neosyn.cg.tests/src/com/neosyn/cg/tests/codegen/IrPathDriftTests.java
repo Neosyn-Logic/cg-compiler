@@ -12,16 +12,18 @@ package com.neosyn.cg.tests.codegen;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static com.neosyn.cg.tests.LspTestSupport.findWorkspaceRoot;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Assume;
 import org.junit.Test;
+
+import com.neosyn.cg.tests.GoldenText;
 
 /**
  * Drift-detection test for IR generation.
@@ -67,20 +69,35 @@ public class IrPathDriftTests {
 		Path testsPlugin = workspaceRoot.resolve("plugins/com.neosyn.cg.tests");
 		Path fixture = testsPlugin.resolve(FIXTURE_REL);
 		Path goldenIr = testsPlugin.resolve(GOLDEN_IR_REL);
-		Path lspIr = testsPlugin.resolve(LSP_IR_REL);
-
 		assertTrue("Fixture missing: " + fixture, Files.isRegularFile(fixture));
 		assertTrue("Eclipse-path golden missing: " + goldenIr, Files.isRegularFile(goldenIr));
 
-		Files.deleteIfExists(lspIr);
-		runLspGenerateIr(lspJar, fixture);
+		// The fixture runs in a project of its own: in place, its project is this tests plugin (it
+		// has a .project), and generate-ir on a file compiles the file's whole project (TRAPS T182) --
+		// hundreds of fixtures, some broken on purpose. Same relative path, so normalizeSourcePaths
+		// still applies.
+		Path project = Files.createTempDirectory("ir-drift-");
+		Files.writeString(project.resolve(".project"),
+				"<projectDescription><name>ir-drift</name></projectDescription>\n");
+		Path copy = project.resolve(FIXTURE_REL);
+		Files.createDirectories(copy.getParent());
+		Files.copy(fixture, copy);
+		Path lspIr = project.resolve(LSP_IR_REL);
+
+		runLspGenerateIr(lspJar, copy);
 
 		if (!Files.isRegularFile(lspIr)) {
 			fail("LSP generate-ir produced no IR file at " + lspIr);
 		}
 
-		String lspText = readUtf8(lspIr);
-		String goldenText = readUtf8(goldenIr);
+		// Both sides normalised the same way GoldenFileTests does: the IR embeds the absolute path
+		// of its source, so a verbatim compare passed only in the checkout that wrote the golden.
+		// This test failed on the nightly build machine the first time it ran there (S180).
+		String lspText = GoldenText.normalizeSourcePaths(readUtf8(lspIr));
+		try (java.util.stream.Stream<Path> walk = Files.walk(project)) {
+			walk.sorted(java.util.Comparator.reverseOrder()).forEach(p -> p.toFile().delete());
+		}
+		String goldenText = GoldenText.normalizeSourcePaths(readUtf8(goldenIr));
 
 		assertEquals(
 				"IR-path drift detected: cg-language-server.jar generate-ir produced "
@@ -90,18 +107,6 @@ public class IrPathDriftTests {
 						+ "diverged. Grep both com.neosyn.cg/generator/ and "
 						+ "com.neosyn.cg.ui/ide/server/ for the relevant transformation.",
 				goldenText, lspText);
-	}
-
-	private static Path findWorkspaceRoot() {
-		Path cwd = Paths.get("").toAbsolutePath();
-		for (Path candidate = cwd; candidate != null; candidate = candidate.getParent()) {
-			if (Files.isDirectory(candidate.resolve("plugins/com.neosyn.cg.tests"))
-					&& Files.isDirectory(candidate.resolve("releng"))) {
-				return candidate;
-			}
-		}
-		throw new IllegalStateException(
-				"Could not locate neosyn-studio workspace root from " + cwd);
 	}
 
 	private static void runLspGenerateIr(Path lspJar, Path fixture)

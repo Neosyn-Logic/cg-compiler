@@ -63,10 +63,15 @@
         <configuration>
           <useUIHarness>false</useUIHarness>
           <useUIThread>false</useUIThread>
-          <!-- Pass system properties to test JVM.
+          <!-- Pass system properties to test JVM. ONLY what is listed here reaches the
+               forked JVM: a bare -Dfoo on the mvn command line does not, so any new
+               switch a test reads must be added to this line AND defaulted in the
+               parent pom, or it silently stays at its default.
                Use -Dneosyn.skipSlowTests=true to skip slow tests
-               Use -Dneosyn.updateGoldenFiles=true to regenerate golden files -->
-          <argLine>-Xmx1024m -Dneosyn.skipSlowTests=${neosyn.skipSlowTests} -Dneosyn.updateGoldenFiles=${neosyn.updateGoldenFiles}</argLine>
+               Use -Dneosyn.updateGoldenFiles=true to regenerate golden files
+               Use -Dghdl.runXfail=true / -Diverilog.runXfail=true to force-run the
+               known-XFAIL fixtures in the HDL value gates -->
+          <argLine>-Xmx1024m -Dneosyn.skipSlowTests=${neosyn.skipSlowTests} -Dneosyn.updateGoldenFiles=${neosyn.updateGoldenFiles} -Dghdl.runXfail=${ghdl.runXfail} -Diverilog.runXfail=${iverilog.runXfail} -Dcodegen.only=${codegen.only}</argLine>
           <!-- Run tests from the plugin directory so relative paths work -->
           <testRuntime>default</testRuntime>
           <work>${project.basedir}</work>
@@ -87,16 +92,49 @@
             <include>**/InstantiatorEntityTypeTest.java</include>
             <include>**/GoldenFileTests.java</include>
             <include>**/VerilogCastSimplificationTest.java</include>
+            <include>**/VerilogAssertMessageTest.java</include>
+            <include>**/VerilogAssertInSchedulerTest.java</include>
+            <include>**/VerilogAssertOnUnknownTest.java</include>
+            <include>**/PartialBitsLocalTest.java</include>
+            <include>**/StreamOutputHoldTest.java</include>
+            <include>**/GeneratedHeaderTest.java</include>
+            <include>**/VerilogCommentPlacementTest.java</include>
+            <include>**/VerilogTempNamesTest.java</include>
+            <include>**/GeneratedNoiseTest.java</include>
+            <include>**/ArrayWritePortTest.java</include>
+            <include>**/HeldProducerHandshakeTest.java</include>
             <include>**/ConstantLoopUnrollTest.java</include>
             <include>**/LoopControlValidationTest.java</include>
             <include>**/BuiltinPortTypeResolverTest.java</include>
             <include>**/FastSimSupportTest.java</include>
+            <include>**/SimTargetSelectorTest.java</include>
             <include>**/ProjectRootResolutionTest.java</include>
             <include>**/ValidationResultDedupTest.java</include>
             <include>**/PortShadowingValidationTest.java</include>
+            <include>**/PropertiesPositionValidationTest.java</include>
+            <include>**/ReturnSkipsWorkValidationTest.java</include>
+            <include>**/FramedStreamValidationTest.java</include>
+            <include>**/RefusedConstructsTest.java</include>
+            <include>**/DeprecatedInterfaceWarningTest.java</include>
+            <!-- T172: present for months, never run until 2026-10-19 (all pass; XFailTests stays out, see T173/T174) -->
+            <include>**/CgGoToDefinitionTests.java</include>
+            <include>**/CgHoverServiceTests.java</include>
+            <include>**/CombinationalInputPatternTest.java</include>
+            <include>**/IrGeneratorEntityLoadTest.java</include>
+            <include>**/RuntimeClassLoadingTest.java</include>
+            <include>**/ScheduleNullPortTest.java</include>
+            <include>**/XFailTests.java</include>
+            <include>**/VhdlNeverWrittenOutputTest.java</include>
+            <include>**/VhdlAssertMessageTest.java</include>
+            <include>**/FramedPortIrTest.java</include>
+            <include>**/CombinationalForwardCheckTest.java</include>
+            <include>**/SumWrapsWarningTest.java</include>
+            <include>**/FirstErrorPerLineTests.java</include>
+            <include>**/WideMultiplyLintTest.java</include>
             <include>**/StructSentinelValidationTest.java</include>
             <include>**/EnumSentinelValidationTest.java</include>
             <include>**/GenericArgValidationTest.java</include>
+            <include>**/NetworkConstParamTest.java</include>
             <include>**/PortWidthMismatchValidationTest.java</include>
             <include>**/CyclicImportValidationTest.java</include>
             <include>**/CgFoldingRangeTests.java</include>
@@ -112,14 +150,51 @@
             <include>**/CrossTaskWriteTest.java</include>
             <!-- Scheduler and transformation tests -->
             <include>**/PathTest.java</include>
+            <include>**/MagicDivisionTest.java</include>
             <include>**/SchedulerIntegrationTest.java</include>
             <include>**/AddBufferedInputsTest.java</include>
             <include>**/ComprehensiveSchedulerTest.java</include>
             <include>**/FsmGenerationTest.java</include>
-            <!-- Fast Verilog syntax check (iverilog -t null) -->
+            <!-- Verilog VALUE gate (iverilog + vvp: runs the generated testbench) -->
             <include>**/IverilogPassTests.java</include>
+            <!-- VHDL VALUE gate (ghdl -a/-e/-r). Skips itself if ghdl is absent.
+                 Until S165 this class existed but was NOT listed here, so it had never run
+                 once (feedback §28) and VHDL had ZERO automated coverage — which is how the
+                 S164 VHDL constant-division bug reached a release. -->
+            <include>**/GhdlPassTests.java</include>
+            <!-- std.fifo.SynchronousFIFO module testbench, both HDLs (TRAPS T103 / T57: the FIFO holds its output) -->
+            <include>**/LibraryFifoHdlTests.java</include>
             <!-- LSP-path regression gates (skipped if releng/lsp-server jar absent) -->
             <include>**/B7CrossFileResolutionTests.java</include>
+            <include>**/UdpStackCompilerRegressionTests.java</include>
+            <!-- TRAPS T97: one driver per VHDL signal (LSP generate; skipped if the jar is absent) -->
+            <include>**/VhdlSingleDriverTests.java</include>
+            <!-- TRAPS T96: a constant print argument must analyse in GHDL (skipped without the jar or GHDL) -->
+            <include>**/VhdlPrintConstantTests.java</include>
+            <include>**/VhdlLexicalTests.java</include>
+            <include>**/CombOutputHardwareTests.java</include>
+            <include>**/SchedulerSensitivityTests.java</include>
+            <include>**/AsyncFifoBuildTests.java</include>
+            <include>**/StructPortValidationTests.java</include>
+            <include>**/UnreadStreamInputTests.java</include>
+            <include>**/RequestReplyDeadlockTests.java</include>
+            <include>**/HeldBuiltinStreamTests.java</include>
+            <include>**/ConditionalCycleBreakWriteTests.java</include>
+            <include>**/ConditionalBreakThenIfTests.java</include>
+            <include>**/FramedVerilogTests.java</include>
+            <include>**/FramedVhdlTests.java</include>
+            <include>**/FramedSimulatorTests.java</include>
+            <include>**/FramedTestVectorsTests.java</include>
+            <!-- Target vendor parameter (S181): reset release synchronizer in design roots only -->
+            <include>**/TargetVendorResetSynchronizerTests.java</include>
+            <!-- TRAPS T66: combinational temporaries get defaults, no inferred latch -->
+            <include>**/VerilogCombinationalDefaultsTests.java</include>
+            <!-- TRAPS T78: concurrent LSP requests must not corrupt a compile (skipped without the jar) -->
+            <include>**/LspConcurrentCompileTests.java</include>
+            <!-- REFACTOR 4a.2: textDocument/rename through the jar (its binding comes from a "ui" Xtext fragment) -->
+            <include>**/LspRenameTests.java</include>
+            <!-- TRAPS T186: a terminate: test runs until its terminate holder, not its first monitor -->
+            <include>**/TerminateHolderTests.java</include>
             <include>**/SimulateSafetyTest.java</include>
             <!-- Slow tests: skipped when -Dneosyn.skipSlowTests=true -->
             <include>**/VerilatorPassTests.java</include>

@@ -16,8 +16,6 @@ import com.google.inject.Provider;
 /**
  * This class defines a provider for {@link ImportedNamesAdapter} to use the Cx-specific version.
  * 
-
- *
  */
 public class CgImportedNamesAdapterProvider implements Provider<ImportedNamesAdapter> {
 

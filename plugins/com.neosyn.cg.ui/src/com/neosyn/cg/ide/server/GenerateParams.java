@@ -16,6 +16,10 @@ public class GenerateParams {
     private String uri;
     private String target; // "verilog" or "vhdl"
     private String outputDirectory;
+    // "generic" (default: today's HDL), "amd", "intel" or "lattice" -- vendor-specific generation rules
+    private String targetVendor;
+    // simple or qualified entity name: emit only it and what it uses (null = everything)
+    private String top;
 
     public GenerateParams() {
     }
@@ -47,5 +51,21 @@ public class GenerateParams {
 
     public void setOutputDirectory(String outputDirectory) {
         this.outputDirectory = outputDirectory;
+    }
+
+    public String getTargetVendor() {
+        return targetVendor;
+    }
+
+    public void setTargetVendor(String targetVendor) {
+        this.targetVendor = targetVendor;
+    }
+
+    public String getTop() {
+        return top;
+    }
+
+    public void setTop(String top) {
+        this.top = top;
     }
 }

@@ -21,8 +21,6 @@ import com.neosyn.models.ir.Procedure;
 /**
  * This class defines common extensions used by code generators.
  * 
-
- *
  */
 public class GeneratorExtensions {
 
@@ -53,13 +51,25 @@ public class GeneratorExtensions {
 	}
 
 	public static String getSignal(Namer namer, Endpoint endpoint) {
+		return namer.getSafeName(getSignalBase(endpoint));
+	}
+
+	/**
+	 * The UNESCAPED base name of an endpoint's signal.
+	 *
+	 * <p>A `_valid` / `_ready` companion must be derived from THIS and escaped once, never
+	 * from {@link #getSignal}. Escaping first and suffixing after yields {@code \body\_ready}
+	 * -- an extended identifier followed by a stray {@code _ready}, which is two tokens and
+	 * not an identifier at all ("an identifier can't start with '_'"), and which does not
+	 * match the {@code body_ready} the entity's port list declares. Suffix first, escape
+	 * once. See TRAPS T80.
+	 */
+	public static String getSignalBase(Endpoint endpoint) {
+		String portName = getPortName(endpoint.getPort());
 		if (endpoint.hasInstance()) {
-			String portName = getPortName(endpoint.getPort());
 			return endpoint.getInstance().getName() + "_" + portName;
-		} else {
-			String portName = getPortName(endpoint.getPort());
-			return namer.getSafeName(portName);
 		}
+		return portName;
 	}
 
 	/**

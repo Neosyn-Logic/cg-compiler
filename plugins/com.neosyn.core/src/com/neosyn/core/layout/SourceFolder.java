@@ -23,8 +23,6 @@ import com.neosyn.core.NeosynCore;
  * 
  * This class defines a source folder in the project tree.
  * 
-
- *
  */
 public class SourceFolder extends AbstractTreeElement {
 

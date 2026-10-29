@@ -37,8 +37,6 @@ import com.neosyn.cg.cg.VarRef;
  * updater seems to expect. Also this is how Xtend does it, so I suppose this is the "official" way
  * :-/
  * 
-
- *
  */
 public class CgSerializerScopeProvider implements IScopeProvider {
 

@@ -1,0 +1,65 @@
+/*
+ * Copyright (c) 2024-2026 Neosyn (neosyn.io). All rights reserved.
+ * SPDX-License-Identifier: LicenseRef-Neosyn-Proprietary
+ * Proprietary software of Neosyn; licensed, not sold. Provided "AS IS".
+ */
+package com.neosyn.test.bytecode;
+
+/**
+ * A DIRECT task-to-task `stream` link must not drop an element when the consumer stalls.
+ *
+ * `stall` is REGISTERED — AddReadyAssignments stores it as the last instruction of the action —
+ * so it only reflects the PREVIOUS cycle, and a non-stalled cycle fell straight through and
+ * wrote the port unconditionally. The producer therefore got one write past the point its
+ * consumer stopped being ready, and exactly ONE element was lost at the first stall:
+ *
+ *     six values in, consumer taking one every 5 cycles   ->   1 3 4 5 6 6
+ *
+ * After the initial slip the sequence tracked perfectly and only the tail repeated to fill the
+ * read count, which is what made this look like a timing quirk rather than data loss.
+ *
+ * Verilog never had the defect: S154 gave SynchronousPrinter a COMBINATIONAL hold on
+ * `dout_ready || !dout_valid`. The bytecode side had no equivalent until ActorCompiler grew one.
+ *
+ * FIFO-mediated links were always correct (the FIFO is a registered producer and its ingest
+ * back-pressure was fixed separately), so only the direct link was exposed — which is why this
+ * fixture deliberately uses NO FIFO. `idle(5)` on the consumer is well past the one-cycle
+ * threshold; the defect appears at `idle(1)` and is identical at every larger delay.
+ */
+network StreamBackpressureTest {
+	properties { test: { terminate: "checker.finished" } }
+
+	source = new task {
+		out stream u8 d;
+		void setup() {
+			d.write(1); d.write(2); d.write(3); d.write(4); d.write(5); d.write(6);
+		}
+	};
+
+	// Takes one element every ~5 cycles, so the producer must be held between reads.
+	slow = new task {
+		in stream u8 d;
+		out push u8 q;
+		void loop() {
+			u8 v = d.read();
+			q.write(v);
+			idle(5);
+		}
+	};
+	slow.reads(source.d);
+
+	checker = new task {
+		in push u8 q;
+		bool finished;
+		u8 i;
+		const u8 EXPECTED[6] = { 1, 2, 3, 4, 5, 6 };
+		void setup() {
+			for (i = 0; i < 6; i++) {
+				assert(q.read() == EXPECTED[i]);
+			}
+			print("stream back-pressure KAT 6/6 OK\n");
+			finished = true;
+		}
+	};
+	checker.reads(slow.q);
+}

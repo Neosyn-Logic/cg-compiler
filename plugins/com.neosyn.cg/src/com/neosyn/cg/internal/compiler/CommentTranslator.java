@@ -44,7 +44,9 @@ import com.neosyn.cg.cg.VarDecl;
 import com.neosyn.cg.cg.Variable;
 import com.neosyn.cg.cg.util.CgSwitch;
 import com.neosyn.cg.instantiation.IInstantiator;
+import com.neosyn.models.dpn.DPN;
 import com.neosyn.models.dpn.Entity;
+import com.neosyn.models.dpn.Instance;
 import com.neosyn.models.util.Executable;
 import com.neosyn.models.util.Void;
 
@@ -52,8 +54,6 @@ import com.neosyn.models.util.Void;
  * This class defines a comment translator that saves comments in properties. It extends CgSwitch
  * rather than VoidCxSwitch because we actually want to have most of the caseStatement* cascade back
  * to the caseStatement method.
- * 
-
  * 
  */
 public class CommentTranslator extends CgSwitch<Void> {
@@ -74,6 +74,10 @@ public class CommentTranslator extends CgSwitch<Void> {
 	private static void addLine(JsonArray lines, String line, String sequence) {
 		if (line.startsWith(sequence)) {
 			line = line.substring(sequence.length());
+		} else if (line.trim().equals(sequence.trim())) {
+			// A blank line of a `/* ... */` block is " *" with no trailing space, so the prefix
+			// test above misses it and the star was kept -- printed as " *  *" in every header.
+			line = "";
 		}
 		lines.add(new JsonPrimitive(line));
 	}
@@ -164,17 +168,82 @@ public class CommentTranslator extends CgSwitch<Void> {
 	@Override
 	public Void caseNetwork(Network network) {
 		setJavadoc(network, null);
+
+		// A task declared INSIDE a network (`x = new task { ... }`) is mapped per INSTANCE --
+		// instantiator.getMapping(dpn, inst) -- not per source task, so the forEachMapping(task)
+		// that caseTask relies on finds nothing for it. Every such task lost the file's copyright,
+		// its doc comment and its statement comments, and its generated module fell back to a
+		// header naming the build machine's login. Attach them through the instance mapping.
+		instantiator.forEachMapping(network, new Executable<Entity>() {
+			@Override
+			public void exec(Entity entity) {
+				if (!(entity instanceof DPN)) {
+					return;
+				}
+				for (Inst inst : network.getInstances()) {
+					Task task = inst.getTask();
+					Instance instance = task == null ? null : instantiator.getMapping((DPN) entity, inst);
+					if (instance != null && instance.getEntity() != null) {
+						applyComments(instance.getEntity(), NodeModelUtils.getNode(inst),
+								CgUtil.getVariables(task));
+					}
+				}
+			}
+		});
 		return visit(this, network.getInstances());
 	}
 
 	@Override
 	public Void caseStatement(Statement stmt) {
 		ICompositeNode node = NodeModelUtils.getNode(stmt);
-		JsonArray lines = getCommentLines(node);
-		if (lines.size() != 0) {
-			comments.add(String.valueOf(node.getStartLine()), lines);
+		String text = node.getRootNode().getText();
+		JsonArray leading = new JsonArray();
+		for (ILeafNode leaf : node.getLeafNodes()) {
+			if (!leaf.isHidden()) {
+				break;
+			}
+			JsonArray lines = new JsonArray();
+			visitLeaf(lines, leaf, leaf.getText());
+			if (lines.size() == 0) {
+				continue; // whitespace
+			}
+			if (hasCodeBefore(text, leaf.getTotalOffset())) {
+				// `header.write(0x1234); // identification` -- the parser hands a comment that ENDS
+				// a line to the NEXT statement, so it used to be printed above that one: IP_Send.v
+				// labelled the flags write "identification". It is about the code on its own line.
+				addComment(leaf.getStartLine(), lines);
+			} else {
+				leading.addAll(lines);
+			}
+		}
+		if (leading.size() != 0) {
+			addComment(node.getStartLine(), leading);
 		}
 		return DONE;
+	}
+
+	/** True when something other than whitespace precedes {@code offset} on its line. */
+	private static boolean hasCodeBefore(String text, int offset) {
+		for (int i = offset - 1; i >= 0; i--) {
+			char c = text.charAt(i);
+			if (c == '\n') {
+				return false;
+			}
+			if (!Character.isWhitespace(c)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private void addComment(int line, JsonArray lines) {
+		String key = String.valueOf(line);
+		JsonArray existing = comments.getAsJsonArray(key);
+		if (existing == null) {
+			comments.add(key, lines);
+		} else {
+			existing.addAll(lines);
+		}
 	}
 
 	@Override
@@ -242,24 +311,31 @@ public class CommentTranslator extends CgSwitch<Void> {
 		instantiator.forEachMapping(cxEntity, new Executable<Entity>() {
 			@Override
 			public void exec(Entity entity) {
-				JsonObject properties = entity.getProperties();
-				if (copyright != null) {
-					properties.add(PROP_COPYRIGHT, copyright);
-				}
-
-				ICompositeNode node = NodeModelUtils.getNode(cxEntity);
-				JsonArray lines = getCommentLines(node);
-				if (lines.size() > 0) {
-					properties.add(PROP_JAVADOC, lines);
-				}
-
-				if (variables != null) {
-					comments = new JsonObject();
-					visit(CommentTranslator.this, variables);
-					properties.add(PROP_COMMENTS, comments);
-				}
+				applyComments(entity, NodeModelUtils.getNode(cxEntity), variables);
 			}
 		});
+	}
+
+	/**
+	 * Gives {@code entity} the file's copyright, the comment lines that precede {@code node} as
+	 * its doc comment, and the comments of the statements in {@code variables}.
+	 */
+	private void applyComments(Entity entity, ICompositeNode node, Iterable<Variable> variables) {
+		JsonObject properties = entity.getProperties();
+		if (copyright != null) {
+			properties.add(PROP_COPYRIGHT, copyright);
+		}
+
+		JsonArray lines = getCommentLines(node);
+		if (lines.size() > 0) {
+			properties.add(PROP_JAVADOC, lines);
+		}
+
+		if (variables != null) {
+			comments = new JsonObject();
+			visit(CommentTranslator.this, variables);
+			properties.add(PROP_COMMENTS, comments);
+		}
 	}
 
 	private void translateCopyright(Module module) {

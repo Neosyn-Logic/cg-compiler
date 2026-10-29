@@ -12,7 +12,6 @@ package com.neosyn.models.ir;
 /**
  * This interface defines a Return instruction.
  * 
-
  * @model extends="net.sf.orcc.ir.Instruction"
  */
 public interface InstReturn extends Instruction {

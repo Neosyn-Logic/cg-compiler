@@ -35,7 +35,9 @@ public final class FastSimSupport {
 			"std.mem.PseudoDualPortRAM",
 			"std.fifo.SynchronousFIFO",
 			"std.lib.SynchronizerFF",
-			"std.lib.SynchronizerMux");
+			"std.lib.SynchronizerMux",
+			"std.math.Divide",
+			"std.math.Multiply");
 
 	private FastSimSupport() {
 	}

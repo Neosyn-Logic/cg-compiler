@@ -19,7 +19,6 @@ import com.neosyn.models.node.NodeIterator;
 /**
  * This class defines an iterator of paths.
  * 
-
  */
 public class PathIterator extends Node implements Iterator<Path> {
 
@@ -132,9 +131,18 @@ public class PathIterator extends Node implements Iterator<Path> {
 			path.add(childIt.next());
 		} else if (!hasNextChildren()) {
 			clearChildren();
-			updateIterators();
+			boolean installedChildIterator = updateIterators();
 
-			if (hasNext()) {
+			// updateIterators() CONSUMES a child (childIt.next()). The constructor undoes that
+			// with childIt.reset(); here there is no reset, so the child it landed on has been
+			// stepped onto and must still be accounted for. If that child has no children of its
+			// own, no sub-iterator was installed and this path IS that child — emit it. Resetting
+			// unconditionally (the old behaviour) threw it away whenever a later sibling existed,
+			// which silently DELETED one whole else-if branch from the generated hardware: the
+			// branch after a branch containing a nested `if` was never enumerated as a path, so
+			// IfDeveloper never developed it, so its body never reached the emitted FSM while the
+			// FSM still transitioned into that state. See .claude/repro-fsm-input-deadlock/.
+			if (installedChildIterator && hasNext()) {
 				throw new PathResetException();
 			}
 			path.add(childIt.current());
@@ -174,17 +182,20 @@ public class PathIterator extends Node implements Iterator<Path> {
 	 * creates a path iterator over each child with children. Only installs an iterator over the
 	 * first condition.
 	 */
-	private void updateIterators() {
+	private boolean updateIterators() {
+		boolean installed = false;
 		while (childIt.hasNext()) {
 			Node child = childIt.next();
 			if (child.hasChildren()) {
 				new PathIterator(this, child);
+				installed = true;
 			}
 
 			if (isIf(getNode())) {
 				break;
 			}
 		}
+		return installed;
 	}
 
 }

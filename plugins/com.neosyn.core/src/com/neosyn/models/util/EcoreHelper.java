@@ -33,7 +33,6 @@ import com.google.common.collect.Iterables;
 /**
  * This class contains helper methods for Ecore models.
  * 
-
  * @author Herve Yviquel
  * 
  */

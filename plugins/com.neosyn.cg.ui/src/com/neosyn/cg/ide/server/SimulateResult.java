@@ -21,6 +21,13 @@ public class SimulateResult {
     private String output;  // Console output from simulation
     private String vcdPath;  // Path to generated VCD file
     private int cyclesExecuted;
+
+    /**
+     * How many `assert`s the run EXECUTED, or -1 when the runtime did not report a count
+     * (an older jar). Zero means the simulation verified nothing, which is not the same
+     * thing as unknown -- see trap T6.
+     */
+    private long checksExecuted = -1;
     private List<String> errors = new ArrayList<>();
     private List<String> warnings = new ArrayList<>();
     // Set when the design cannot be fast-simulated at all (e.g. it instantiates a
@@ -75,6 +82,14 @@ public class SimulateResult {
 
     public void setCyclesExecuted(int cyclesExecuted) {
         this.cyclesExecuted = cyclesExecuted;
+    }
+
+    public long getChecksExecuted() {
+        return checksExecuted;
+    }
+
+    public void setChecksExecuted(long checksExecuted) {
+        this.checksExecuted = checksExecuted;
     }
 
     public List<String> getErrors() {

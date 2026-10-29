@@ -19,7 +19,21 @@ import "http://www.neosyn.io/cg/Cg"
 Module:
 	'package' package = QualifiedName ';'
 	(imports += Import)*
+	// File-scope declarations: a run of const/typedef/struct/enum after the imports
+	// parses into ONE implicit Bundle, so nothing downstream needs to know about them
+	// -- CgEntity already covers Bundle, and a bundle already holds exactly these
+	// members. They must precede the entities so a file has at most one such bundle.
+	// The name and the wildcard import that puts them in scope are filled in after
+	// parsing (see CgImplicitBundle).
+	(entities += ImplicitBundle)?
 	(entities += CgEntity)*
+;
+
+// No `bundle X { }` wrapper: `{Bundle}` constructs one from the declarations alone.
+// Unambiguous against CgEntity because those start with `bundle`/`task`/`network`,
+// none of which can begin a declaration.
+ImplicitBundle returns Bundle:
+	{Bundle} (structs += Struct | enums += Enum | types += Typedef | decls += VarDecl)+
 ;
 
 Import: 'import' imported += Imported (',' imported += Imported)* ';'
@@ -47,9 +61,16 @@ Task:
 		// monomorphization (see .claude/L3_GENERICS_DESIGN.md §iter 2).
 		('<' params += GenericParam (',' params += GenericParam)* '>')?
 		'{'
+		// `properties` sits INSIDE the member alternation, not ahead of it, so its
+		// POSITION does not matter. It used to be pinned to the first slot, which
+		// made the natural spelling -- ports first, then the test block -- a parse
+		// error reported as `mismatched input 'properties' expecting '}'`. That was
+		// the single most common failure in the 2026-08-20 model probe (6 hits, never
+		// once recovered from), and the message never mentions order, so the reader
+		// cannot learn the rule from it. Every other member is already
+		// position-free; this one was the exception.
 		(imports += Import)*
-		('properties' properties=Obj)?
-		(portDecls += PortDecl | structs += Struct | enums += Enum | types += Typedef | decls += VarDecl)*
+		(('properties' properties=Obj) | portDecls += PortDecl | structs += Struct | enums += Enum | types += Typedef | decls += VarDecl)*
 	'}'
 ;
 
@@ -64,25 +85,57 @@ GenericParam returns Variable:
 
 Bundle:
 	'bundle' name=ValidID ('extends' extends = [Bundle|QualifiedName])? '{'
+		// `properties` sits INSIDE the member alternation, not ahead of it, so its
+		// POSITION does not matter. It used to be pinned to the first slot, which
+		// made the natural spelling -- ports first, then the test block -- a parse
+		// error reported as `mismatched input 'properties' expecting '}'`. That was
+		// the single most common failure in the 2026-08-20 model probe (6 hits, never
+		// once recovered from), and the message never mentions order, so the reader
+		// cannot learn the rule from it. Every other member is already
+		// position-free; this one was the exception.
 		(imports += Import)*
-		('properties' properties=Obj)?
-		(structs += Struct | enums += Enum | types += Typedef | decls += VarDecl)*
+		(('properties' properties=Obj) | structs += Struct | enums += Enum | types += Typedef | decls += VarDecl)*
 	'}'
 ;
 
 InstAnonTask returns Task: {Task}
 	'task' '{'
+		// `properties` sits INSIDE the member alternation, not ahead of it, so its
+		// POSITION does not matter. It used to be pinned to the first slot, which
+		// made the natural spelling -- ports first, then the test block -- a parse
+		// error reported as `mismatched input 'properties' expecting '}'`. That was
+		// the single most common failure in the 2026-08-20 model probe (6 hits, never
+		// once recovered from), and the message never mentions order, so the reader
+		// cannot learn the rule from it. Every other member is already
+		// position-free; this one was the exception.
 		(imports += Import)*
-		('properties' properties=Obj)?
-		(portDecls += PortDecl | structs += Struct | enums += Enum | types += Typedef | decls += VarDecl)*
+		(('properties' properties=Obj) | portDecls += PortDecl | structs += Struct | enums += Enum | types += Typedef | decls += VarDecl)*
 	'}'
 ;
 
 Network:
-	'network' name=ValidID '{'
+	'network' name=ValidID
+		// Angle-bracket formal params, at parity with Task: `network Fifo<int W=8>`.
+		// `params` already lives on Instantiable, and GenericParam returns Variable,
+		// so this reuses the same desugaring — CgUtil.getVariables(Instantiable)
+		// exposes them to scoping and to the monomorphization engine unchanged.
+		('<' params += GenericParam (',' params += GenericParam)* '>')?
+		'{'
 		(imports += Import)*
-		('properties' properties=Obj)?
-		(instances += Inst | portDecls += PortDecl | structs += Struct | enums += Enum | types += Typedef | connects += Connect)*
+		// `properties` sits INSIDE the member alternation, not ahead of it, so its
+		// POSITION does not matter. It used to be pinned to the first slot, which
+		// made the natural spelling -- ports first, then the test block -- a parse
+		// error reported as `mismatched input 'properties' expecting '}'`. That was
+		// the single most common failure in the 2026-08-20 model probe (6 hits, never
+		// once recovered from), and the message never mentions order, so the reader
+		// cannot learn the rule from it. Every other member is already
+		// position-free; this one was the exception.
+		// `decls` carries const parameters, exactly as on Task. A network is the
+		// COMPOSITION unit: without this, only leaf tasks are parameterizable and
+		// nothing built out of them is — no parameterized pipeline or composite.
+		// Verilog parameterizes modules and VHDL entities; both are the construct
+		// you compose with. `decls` lives on Instantiable, shared with Task.
+		(('properties' properties=Obj) | instances += Inst | portDecls += PortDecl | structs += Struct | enums += Enum | types += Typedef | decls += VarDecl | connects += Connect)*
 	'}'
 ;
 
@@ -147,7 +200,10 @@ PortDef:
 	// OLD syntax (deprecated): in sync ready u8 data;
 	(syncOld?='sync' (readyOld?='ready' | ackOld?='ack')?)?
 	// NEW syntax inline: in push u8 data; / in stream u8 data; / in confirm u8 data;
-	(pushOld?='push' | streamOld?='stream' | confirmOld?='confirm')?
+	// TRAPS T58: `in framed u8 din;` -- a stream that also carries its frame boundary (`last`,
+	// AXI-Stream TLAST). `framed`, not `frame`: `frame` is a common variable name (330 uses in the
+	// IP cores and tests), and a keyword cannot also be a name.
+	(pushOld?='push' | streamOld?='stream' | confirmOld?='confirm' | framed?='framed')?
 	var=PortVariable
 	// Parentheses syntax: in u8 data(push);
 	('(' (
@@ -166,13 +222,17 @@ MultiPortDecl:
 	// OLD syntax (deprecated)
 	(sync?='sync' (ready?='ready' | ack?='ack')?)?
 	// NEW syntax
-	(push?='push' | stream?='stream' | confirm?='confirm')?
+	(push?='push' | stream?='stream' | confirm?='confirm' | framed?='framed')?
 	'{' decls += SyncPortDecl* '}'
 ;
 SyncPortDecl returns SinglePortDecl: direction=('in' | 'out') ports += SyncPortDef (',' ports += SyncPortDef)* ';';
-SyncPortDef returns PortDef: (ready?='ready' | ack?='ack' | stream?='stream' | confirm?='confirm')? var=PortVariable;
+SyncPortDef returns PortDef: (ready?='ready' | ack?='ack' | stream?='stream' | confirm?='confirm' | framed?='framed')? var=PortVariable;
 
-PortVariable returns Variable: (type = CgType)? name = ValidID;
+// An array port (`in u8 W[4]`) is SUGAR for N scalar ports: it fans out to one port per
+// element, named `W_0`..`W_3`, each keeping the declared interface and its own handshake.
+// That is exactly the shape the old "declare one port per element" diagnostic told people to
+// write by hand (TRAPS T50). `dimensions` is the feature StateVar and LocalVar already use.
+PortVariable returns Variable: (type = CgType)? name = ValidID ('[' dimensions += CgExpression ']')*;
 
 // variable/function declaration
 VarDecl:
@@ -274,7 +334,19 @@ StatementWhile returns StatementLoop:
 		body = Block;
 
 StatementWrite:
-	port=VarRef '.' 'write' '(' value=CgExpression ')' ';'
+	// The index list is what lets `y[0].write(v);` reach an array port element. It shares a
+	// prefix with the StatementAssign `y[0] = v;`, so the two are only told apart after the
+	// brackets -- a non-LL(*) decision between Statement's alts 1 and 14.
+	//
+	// It is resolved by BOUNDING the lookahead, not by predicating alternatives: the index
+	// uses the deliberately non-recursive SliceBound rule the bit-slice work introduced for
+	// exactly this reason, so the Statement rule is untouched. Predicates were tried first
+	// and each one broke something else -- predicating alt 1 made StatementLabeled and
+	// StatementWrite unreachable, and moving the predicate onto StatementWrite then made
+	// StatementLabeled unreachable on its own. A port index is a compile-time constant
+	// anyway, so a literal or a `const` name covers every real case.
+	// `dout.write(v, last)` on a `framed` port (TRAPS T58): the second argument is the frame boundary.
+	port=VarRef ('[' indexes += SliceBound ']')* '.' 'write' '(' value=CgExpression (',' last=CgExpression)? ')' ';'
 ;
 
 Statement:
@@ -339,7 +411,7 @@ ExpressionCast:
 ;
 
 ExpressionVariable:
-	source=VarRef ('[' indexes += CgExpression ']')*
+	source=VarRef ('[' (=> sliceHigh=SliceBound ':' sliceLow=SliceBound | indexes += CgExpression) ']')*
 		('.' members += [Named|ValidID])*
 		('.' ready = 'ready')?
 		('(' (parameters += CgExpression (',' parameters += CgExpression)*)? ')')?;
@@ -362,6 +434,13 @@ Literal returns CgExpression:
 ExpressionBoolean: value=BOOL;
 
 ExpressionFloat: value=FLOAT;
+
+SliceBound returns CgExpression:
+	SliceAtom ({ExpressionBinary.left=current} operator=('+' | '-') right=SliceAtom)?;
+
+SliceAtom returns CgExpression:
+	{ExpressionInteger} value=(INTEGER | CHAR)
+	| {ExpressionVariable} source=VarRef;
 
 ExpressionInteger: value=(INTEGER | CHAR);
 

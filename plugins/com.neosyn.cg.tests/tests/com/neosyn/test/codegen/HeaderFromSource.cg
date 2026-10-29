@@ -1,0 +1,22 @@
+/*
+ * Copyright (c) 2026 Example Corp. All rights reserved.
+ * Author: Jane Example
+ */
+package com.neosyn.test.codegen;
+
+/*
+ * Regression fixture, TRAPS T116: the generated header takes its author and copyright from THIS
+ * file, including for the task declared inside the network -- which used to get neither and fell
+ * back to the OS login, a year with no holder and "Project : home". See GeneratedHeaderTest.
+ */
+network HeaderFromSource {
+	out push u8 y;
+
+	src = new task {
+		u8 n;
+		void loop() {
+			y.write(n);
+			n++;
+		}
+	};
+}

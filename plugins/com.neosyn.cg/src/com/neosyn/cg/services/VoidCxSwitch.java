@@ -45,8 +45,6 @@ import com.neosyn.models.util.Void;
 /**
  * This class defines a full void switch.
  * 
-
- * 
  */
 public abstract class VoidCxSwitch extends CgSwitch<Void> {
 
@@ -157,7 +155,9 @@ public abstract class VoidCxSwitch extends CgSwitch<Void> {
 
 	@Override
 	public Void caseStatementWrite(StatementWrite write) {
-		return visit(this, write.getValue());
+		// both arguments of `write(v, last)`: TRAPS T151 -- a port read in the `last` argument
+		// was never visited, so it was never wired and the transform could not find it
+		return visit(this, write.getValue(), write.getLast());
 	}
 
 	@Override

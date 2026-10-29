@@ -10,7 +10,9 @@
  * Deliberately NOT exercised:
  *   - explicit underlying type `: u4`         (iter #2)
  *   - explicit literal values `LIT = N`        (iter #2)
- *   - enum-typed ports                         (gated by ERR_ENUM_AS_PORT_TYPE)
+ *   - enum-typed ports                         (SUPPORTED — see EnumPortTest.cg;
+ *                                               the planned ERR_ENUM_AS_PORT_TYPE
+ *                                               check was never enforced)
  */
 package com.neosyn.test.bytecode;
 

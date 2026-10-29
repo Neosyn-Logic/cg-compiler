@@ -12,8 +12,6 @@ package com.neosyn.models.util;
 /**
  * This defines a Void class that can be instantiated.
  * 
-
- * 
  */
 public class Void {
 

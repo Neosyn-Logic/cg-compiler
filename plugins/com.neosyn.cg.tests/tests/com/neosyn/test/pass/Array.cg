@@ -189,3 +189,49 @@ task ArrayTest8 {
 		outp.write(tab[inp.read]);
 	}
 }
+
+/*
+ * TRAPS T185: a multi-dimensional array whose inner dimension is not a power of two. The HDL back
+ * ends indexed a[i][j] by concatenating the index bits ({i, j} = i*8 + j for a [3][5] array) over
+ * storage laid out row-major (i*5 + j): row 1 landed on the wrong elements and row 2 fell outside
+ * the array (Verilog read x, GHDL stopped: index out of bounds). The bytecode simulator was right.
+ */
+task ArrayTest9 {
+	properties {
+		test: {i: [ 0, 1, 2, 2 ], j: [ 0, 4, 0, 4 ], outp: [ 0, 14, 20, 24 ] }
+	}
+
+	sync {
+		in u2 i; in u3 j; out u8 outp;
+	}
+
+	const u8 tab[3][5] = {
+		{ 0,  1,  2,  3,  4 },
+		{ 10, 11, 12, 13, 14 },
+		{ 20, 21, 22, 23, 24 }
+	};
+
+	void loop() {
+		outp.write(tab[i.read][j.read]);
+	}
+}
+
+/* T185, a state array: each cycle emits the old a[i][j], then stores v there. */
+task ArrayTest10 {
+	properties {
+		test: {i: [ 2, 2, 1, 1 ], j: [ 4, 4, 3, 3 ], v: [ 7, 0, 9, 0 ], outp: [ 0, 7, 0, 9 ] }
+	}
+
+	sync {
+		in u2 i; in u3 j; in u8 v; out u8 outp;
+	}
+
+	u8 a[3][5];
+
+	void loop() {
+		u2 r = i.read;
+		u3 c = j.read;
+		outp.write(a[r][c]);
+		a[r][c] = v.read;
+	}
+}

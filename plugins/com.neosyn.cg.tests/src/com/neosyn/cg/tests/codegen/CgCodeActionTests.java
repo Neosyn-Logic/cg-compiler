@@ -9,6 +9,7 @@
 package com.neosyn.cg.tests.codegen;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -75,10 +76,11 @@ public class CgCodeActionTests extends AbstractCxTest {
 	public void offersMigrationForEachDeprecatedKeyword() throws Exception {
 		List<CodeAction> actions = actionsOverWholeFile();
 		List<String> titles = actions.stream().map(CodeAction::getTitle).collect(Collectors.toList());
-		assertEquals("expected one action per deprecated port, got: " + titles, 3, actions.size());
+		// `sync ack` gets none: its modern spelling `confirm` is refused (TRAPS T11).
+		assertEquals("expected one action per migratable deprecated port, got: " + titles, 2, actions.size());
 		assertTrue(titles.toString().contains("'sync' with 'push'"));
 		assertTrue(titles.toString().contains("'sync ready' with 'stream'"));
-		assertTrue(titles.toString().contains("'sync ack' with 'confirm'"));
+		assertFalse(titles.toString().contains("confirm"));
 	}
 
 	@Test
@@ -89,7 +91,7 @@ public class CgCodeActionTests extends AbstractCxTest {
 			assertEquals("one edit per action", 1, edits.size());
 			String nt = edits.get(0).getNewText();
 			assertTrue("replacement should be a modern keyword, got: " + nt,
-				nt.equals("push") || nt.equals("stream") || nt.equals("confirm"));
+				nt.equals("push") || nt.equals("stream"));
 		}
 	}
 

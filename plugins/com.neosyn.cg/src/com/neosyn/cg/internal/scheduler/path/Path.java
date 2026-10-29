@@ -24,8 +24,6 @@ import com.neosyn.models.node.Node;
 /**
  * This class defines a code path as an iterable over StatementCond.
  * 
-
- * 
  */
 public class Path {
 

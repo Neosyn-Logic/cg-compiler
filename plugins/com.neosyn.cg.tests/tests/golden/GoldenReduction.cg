@@ -1,0 +1,37 @@
+/*******************************************************************************
+ * Copyright (c) 2024-2026 Neosyn. All rights reserved.
+ *
+ * Golden file test - a streaming reduction that reads a per-group side input
+ * (bias) CONDITIONALLY. Guards the no-FSM ready-assignment fix: a conditional
+ * stream read must assert the port's `ready` (and clear its skid buffer) ONLY
+ * in the actions that actually read it. Before the fix, the no-FSM path
+ * asserted `bias_ready` in every action, so the cnt==1 actions advanced the
+ * producer and dropped the buffered value — the next group read a STALE bias.
+ * The golden Verilog pins the correct per-branch ready structure.
+ *******************************************************************************/
+package com.neosyn.test.golden;
+
+/**
+ * Grouped reduction (group length 2): acc = bias + a0 + a1, emitted once per
+ * group. `a` is read every cycle; `bias` is read only at the start of a group.
+ */
+task CondReadReduction {
+	in sync ready int<32> a;
+	in sync ready int<32> bias;
+	out sync ready int<32> y;
+
+	int<32> cnt = 0;
+	int<32> acc = 0;
+
+	void loop() {
+		if (cnt == 0) { acc = bias.read(); }
+		acc = acc + a.read();
+		if (cnt == 1) {
+			y.write(acc);
+			cnt = 0;
+			acc = 0;
+		} else {
+			cnt = cnt + 1;
+		}
+	}
+}

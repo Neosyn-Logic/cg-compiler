@@ -37,7 +37,9 @@ else
   echo "FAIL Test_Plus1: expected 2 [check] lines and no failure, got $n:"; head -5 <<< "$out" | sed 's/^/    /'; fail=1
 fi
 out=$(run Test_Plus1Bad)
-if grep -q '^Assertion failed: (y == 8'"'"'hb)' <<< "$out" && grep -q '^\[check\] (y == 8'"'"'h4)' <<< "$out"; then
+# The message is the source text, where it is, and the value of each side of a comparison.
+if grep -q '^Assertion failed: Test_Plus1Bad\.cg:[0-9]* in .*: y == 11 -- y = 10, ' <<< "$out" \
+    && grep -q '^\[check\] Test_Plus1Bad\.cg:[0-9]* in .*: y == 4 first passed at ' <<< "$out"; then
   echo "ok   Test_Plus1Bad: the wrong value fails, the right one before it is reported passing"
 else
   echo "FAIL Test_Plus1Bad: expected a [check] then \"Assertion failed\":"; head -5 <<< "$out" | sed 's/^/    /'; fail=1

@@ -1,6 +1,12 @@
+/**
+ * Title      : Generated from com.neosyn.test.golden.Counter by Neosyn IDE
+ * File       : com.neosyn.test.golden.Counter.v
+ * Standard   : Verilog-2001
+ */
+
 /*
  * Copyright (c) 2024 Neosyn. All rights reserved.
- *  *
+ *
  * Golden file test - simple task for regression testing.
  * This file is used to verify that IR and HDL generation produce consistent output.
  */
@@ -9,7 +15,11 @@
  * Simple counter task for golden file testing.
  * Increments a counter on each cycle and outputs it.
  */
-module Counter(input clock, input reset_n, output reg [7 : 0] count);
+module Counter(
+  input clock,
+  input reset_n,
+  output reg [7 : 0] count
+);
 
 
   /**
@@ -30,13 +40,9 @@ module Counter(input clock, input reset_n, output reg [7 : 0] count);
       count <= 8'b0;
     end else begin
       
-      begin : FSM_Counter_a // line 19
-        reg [8 : 0] orion;
-      
-        count <= counter;
-        orion = (counter + 8'h1);
-        counter <= orion[7 : 0];
-      end
+      // line 19
+      count <= counter;
+      counter <= (counter + 8'h1);
     end
   end
 

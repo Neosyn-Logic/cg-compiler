@@ -26,8 +26,6 @@ import com.neosyn.core.NeosynCore;
 /**
  * This class defines a package in the project tree.
  * 
-
- *
  */
 public class Package extends AbstractTreeElement {
 

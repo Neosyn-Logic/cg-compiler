@@ -17,8 +17,6 @@ import com.neosyn.cg.cg.CgEntity;
  * This class holds information about a Cx entity, its specialized name and URI of the corresponding
  * IR resource.
  * 
-
- *
  */
 public class EntityInfo {
 

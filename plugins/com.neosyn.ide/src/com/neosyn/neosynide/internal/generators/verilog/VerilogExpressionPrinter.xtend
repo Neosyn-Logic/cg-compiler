@@ -50,13 +50,23 @@ class VerilogExpressionPrinter extends ExpressionPrinter {
 		val op = expr.op
 		val type = TypeUtil.getType(expr)
 
+		// A one-bit value tested against zero is that bit: `data[0]`, not `(data[0 : 0] != 1'h0)`
+		// (TRAPS T116, 147 sites) -- the same one-bit unsigned value for every input, X included.
+		if (op == OpBinary.NE && e2 instanceof ExprInt && (e2 as ExprInt).value.signum == 0
+				&& TypeUtil.getType(e1).int && (TypeUtil.getType(e1) as TypeInt).size == 1) {
+			return doSwitch(e1)
+		}
+		// A constant shift amount is written as the number it is: `{x, 1'b0}` rather than
+		// `{x, {(1'h1){1'b0}}}` (7497 sites), `x >> 1` rather than `x >> 8'h1` (2423) -- a shift
+		// amount is self-determined in Verilog, so its width never mattered (TRAPS T116).
+		val amount = if (e2 instanceof ExprInt && (e2 as ExprInt).value.signum > 0) (e2 as ExprInt).value else null
 		if (op == OpBinary.SHIFT_LEFT) {
-			'''{«doSwitch(e1)», {(«doSwitch(e2)»){1'b0}}}'''
+			if (amount !== null) '''{«doSwitch(e1)», «amount»'b0}''' else '''{«doSwitch(e1)», {(«doSwitch(e2)»){1'b0}}}'''
 		} else if (op == OpBinary.SHIFT_RIGHT) {
 			// in Verilog, >>> is arithmetic shift, and >> is logical shift
 			// this test is because arithmetic is only needed when shifting a signed expression
 			// (arithmetic shift of an unsigned number is <=> to logical shift)
-			'''(«doSwitch(e1)» «IF type.int && (type as TypeInt).signed»>>>«ELSE»>>«ENDIF» «doSwitch(e2)»)'''
+			'''(«doSwitch(e1)» «IF type.int && (type as TypeInt).signed»>>>«ELSE»>>«ENDIF» «IF amount !== null»«amount»«ELSE»«doSwitch(e2)»«ENDIF»)'''
 		} else {
 			'''(«doSwitch(e1)» «op.text» «doSwitch(e2)»)'''
 		}
@@ -104,39 +114,75 @@ class VerilogExpressionPrinter extends ExpressionPrinter {
 			return '''$«typeName»(«doSwitch(stripSignConv(typeConv.expr))»)'''
 		}
 
-		val expr = doSwitch(typeConv.expr)
 		val index = typeName.indexOf('.')
 		val targetSize = Integer.parseInt(typeName.substring(index + 1))
 		val sourceSize = typeConv.expr.type.size
+		val kind = typeName.substring(0, index)
 
 		// Guard against invalid sizes (can happen with unresolved built-in entity port types)
 		if (targetSize <= 0 || sourceSize <= 0) {
 			// Skip conversion if sizes are invalid
-			return expr
+			return doSwitch(typeConv.expr)
 		}
 
-		switch (typeName.substring(0, index)) {
-			case "trunc": '''«expr»[«targetSize - 1» : 0]'''
-			// A Verilog CONCATENATION IS ALWAYS UNSIGNED (IEEE 1364 / 1800), even when every
-			// operand is signed. A bare `{{k{x[msb]}}, x}` therefore produced a sign-extended
-			// BIT PATTERN inside an UNSIGNED expression, and Verilog's rule that one unsigned
-			// operand makes the whole expression unsigned then silently degraded the enclosing
-			// operators: `*` became an unsigned multiply and `>>>` an ordinary logical shift.
-			// That miscompiled every signed value with its high bit set — the reciprocal-multiply
-			// lowering of `x / 7` returned 930884682 instead of -142857142 for x = -1000000000,
-			// in the HARDWARE. $signed() restores the declared signedness without changing a
-			// single bit, so the multiply stays full-width and `>>>` stays arithmetic.
-			case "sext": '''$signed({{«targetSize - sourceSize»{«expr»[«sourceSize - 1»]}}, «expr»})'''
-			case "zext": '''{«targetSize - sourceSize»'b0, «expr»}'''
+		// zext concatenates a zero prefix — never bit-selects its operand — so it
+		// is valid for any expression.
+		if (kind == "zext") {
+			return '''{«targetSize - sourceSize»'b0, «doSwitch(typeConv.expr)»}'''
+		}
+		// trunc/sext BIT-SELECT their operand, but Verilog cannot bit-select a
+		// parenthesized expression. When AddBufferedInputs substitutes a stream
+		// input port with a `valid ? internal : port` ternary, an inline
+		// sext/trunc of that port would emit invalid `(ternary)[MSB]`. Distribute
+		// the conversion into the ternary's arms — which ARE simple selectable
+		// operands — so sext(c ? a : b) becomes (c ? sext(a) : sext(b)):
+		// value-identical, valid on every arm. A simple (non-ternary) operand
+		// takes the byte-identical direct form, so gated designs are unaffected.
+		emitTruncOrSext(kind, typeConv.expr, targetSize)
+	}
+
+	/**
+	 * Emits a {@code trunc}/{@code sext} type conversion, distributing over a
+	 * ternary operand so a bit-select is never applied to a parenthesized
+	 * expression (invalid Verilog). Recurses for nested ternaries; a simple
+	 * operand takes the direct bit-select form (byte-identical to the old path).
+	 */
+	def private CharSequence emitTruncOrSext(String kind, Expression operand, int targetSize) {
+		if (operand instanceof ExprTernary) {
+			return '''(«doSwitch(operand.cond)» ? «emitTruncOrSext(kind, operand.e1, targetSize)» : «emitTruncOrSext(kind, operand.e2, targetSize)»)'''
+		}
+		val e = doSwitch(operand)
+		val srcSize = operand.type.size
+		if (kind == "trunc") {
+			// one bit is `x[0]`, not the one-bit range `x[0 : 0]` (TRAPS T116, 962 sites)
+			if (targetSize == 1) '''«e»[0]''' else '''«e»[«targetSize - 1» : 0]'''
+		} else {
+			// A Verilog CONCATENATION IS ALWAYS UNSIGNED (IEEE 1364 / 1800), even when
+			// every operand is signed. Emitting a bare `{{k{x[msb]}}, x}` therefore
+			// produced a sign-extended BIT PATTERN inside an UNSIGNED expression, and
+			// Verilog's rule that one unsigned operand makes the whole expression
+			// unsigned then silently degraded the enclosing operators: `*` became an
+			// unsigned multiply and `>>>` an ordinary logical shift. That miscompiled
+			// every signed value whose high bit was set — e.g. the reciprocal-multiply
+			// lowering of `x / 7` returned 930884682 instead of -142857142 for
+			// x = -1000000000, in the HARDWARE, while the bytecode simulator was right.
+			// $signed() restores the declared signedness without changing a single bit,
+			// so the multiply stays full-width and `>>>` stays arithmetic.
+			'''$signed({{«targetSize - srcSize»{«e»[«srcSize - 1»]}}, «e»})'''
 		}
 	}
 
 	override caseExprUnary(ExprUnary expr) {
 		val subExpr = doSwitch(expr.expr)
+		// A binary or ternary operand already prints its own parentheses (or braces), and a name or
+		// a boolean needs none: `!(i < 4'h8)`, `!busy`, not `! ((i < 4'h8))` (TRAPS T116, 4202 sites).
+		val sub = expr.expr
+		val operand = if (sub instanceof ExprBinary || sub instanceof ExprTernary || sub instanceof ExprVar
+				|| sub instanceof ExprBool) subExpr else '''(«subExpr»)'''
 
 		switch (expr.op) {
-		case OpUnary.BITNOT: '''~ («subExpr»)'''
-		case OpUnary.LOGIC_NOT: '''! («subExpr»)'''
+		case OpUnary.BITNOT: '''~«operand»'''
+		case OpUnary.LOGIC_NOT: '''!«operand»'''
 		default: throw new UnsupportedOperationException
 		}
 	}

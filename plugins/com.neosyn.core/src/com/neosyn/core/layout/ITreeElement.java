@@ -15,8 +15,6 @@ import org.eclipse.core.runtime.IAdaptable;
 /**
  * This interface defines an element of a project tree.
  * 
-
- *
  */
 public interface ITreeElement extends IAdaptable {
 

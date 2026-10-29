@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 
 import com.neosyn.models.dpn.Port;
+import com.neosyn.models.ir.Def;
 import com.neosyn.models.ir.InstAssign;
 import com.neosyn.models.ir.InstLoad;
 import com.neosyn.models.ir.InstStore;
@@ -28,8 +29,6 @@ import com.neosyn.models.util.Void;
 /**
  * Replaces loads of local variables and ports by direct references (use), and replaces stores to
  * scalar local variables by assignments.
- * 
-
  * 
  */
 public class LoadStoreReplacer extends AbstractIrVisitor {
@@ -50,6 +49,21 @@ public class LoadStoreReplacer extends AbstractIrVisitor {
 			// broken codegen, bug #12). Keep the load + local in that case.
 			Var target = load.getTarget().getVariable();
 			if (target.getDefs().size() > 1) {
+				if (!source.isLocal() || !isCopyOf(target, source)) {
+					return DONE;
+				}
+				// Every def of the target is a load of this same local, so the target is only
+				// ever a copy of it: the while lowering loads the loop variable into the
+				// condition's temporary before the loop AND again at the end of the body.
+				// Kept, both loads reached StoreOnceTransformation, which deletes every scalar
+				// load as if it read a state variable -- the in-loop reload went, and the HDL
+				// condition folded to the loop variable's START value: `while ((0 < N))`, a
+				// loop that never ends (TRAPS T124). Forward the uses to the local and drop
+				// this load; the target goes with its last load.
+				for (Use use : new ArrayList<>(target.getUses())) {
+					use.setVariable(source);
+				}
+				delete(load);
 				return DONE;
 			}
 
@@ -65,6 +79,20 @@ public class LoadStoreReplacer extends AbstractIrVisitor {
 		}
 
 		return DONE;
+	}
+
+	/** Is every def of {@code target} a scalar load of {@code source}? */
+	private static boolean isCopyOf(Var target, Var source) {
+		for (Def def : target.getDefs()) {
+			if (!(def.eContainer() instanceof InstLoad)) {
+				return false;
+			}
+			InstLoad load = (InstLoad) def.eContainer();
+			if (load.getSource().getVariable() != source || !load.getIndexes().isEmpty()) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	@Override

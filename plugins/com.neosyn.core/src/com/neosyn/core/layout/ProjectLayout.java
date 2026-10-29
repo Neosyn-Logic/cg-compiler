@@ -18,14 +18,12 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 
+import com.neosyn.core.ICoreConstants;
 import com.neosyn.core.NeosynCore;
-import com.neosyn.core.NeosynNature;
 
 /**
  * This class defines helper methods to get the layout of a project.
  * 
-
- *
  */
 public class ProjectLayout {
 
@@ -68,7 +66,7 @@ public class ProjectLayout {
 	 */
 	public static SourceFolder getSourceFolder(IProject project) {
 		try {
-			if (project.isAccessible() && project.hasNature(NeosynNature.NATURE_ID)) {
+			if (project.isAccessible() && project.hasNature(ICoreConstants.NATURE_ID)) {
 				IFolder folder = project.getFolder(FOLDER_SRC);
 				if (folder.exists()) {
 					return new SourceFolder(folder);

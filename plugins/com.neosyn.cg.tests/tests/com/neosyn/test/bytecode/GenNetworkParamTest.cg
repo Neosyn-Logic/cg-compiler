@@ -1,0 +1,52 @@
+package com.neosyn.test.bytecode;
+
+/*
+ * L3 Generics — a NETWORK const parameter forwards to a child instance.
+ *
+ * A network is the composition unit, so task-only generics leave nothing built
+ * out of tasks parameterizable. Mid declares W and passes it down to Leaf; the
+ * top instantiates Mid twice with DIFFERENT values. That per-instance part is
+ * the whole claim: a bundle constant would also let Leaf read a W, but only one
+ * global W — it could not give you a 9 and a 5 in the same design.
+ *
+ * Both defaults are 4, so the assert catches a drop at either level: if the
+ * top-level literal fails to reach Mid, or Mid's const fails to reach Leaf,
+ * the value read back is 4 and this fixture fails. Assert the VALUE — a parse
+ * test passes happily while forwarding NPEs underneath.
+ */
+task Leaf {
+    const int W = 4;
+    out push u8 v;
+    void setup() { v.write((u8) W); }
+}
+
+network Mid {
+    const int W = 4;
+    out push u8 v;
+    leaf = new Leaf({W: W});
+    this.reads(leaf.v);
+}
+
+network GenNetworkParamTest {
+    properties { test: { terminate: "checker.finished" } }
+
+    mid9 = new Mid({W: 9});
+    mid5 = new Mid({W: 5});
+
+    checker = new task {
+        in push u8 a;
+        in push u8 b;
+        bool finished;
+
+        void setup() {
+            u8 got9 = a.read;
+            u8 got5 = b.read;
+            assert(got9 == 9);
+            assert(got5 == 5);
+            print("network const forwarded: mid9->", got9, " mid5->", got5, "\n");
+            finished = true;
+        }
+    };
+
+    checker.reads(mid9.v, mid5.v);
+}

@@ -43,13 +43,38 @@ import com.neosyn.neosynide.internal.generators.common.EntityLoader;
 /**
  * This class defines an abstract generator that uses Xtend for templates.
  * 
-
- * 
  */
 public abstract class AbstractGenerator implements ICodeGenerator, IPathResolver {
 
 	@Inject
 	protected IFileWriter writer;
+
+	/** The target vendor of this run -- see {@link ICodeGenerator#setTarget}. */
+	private String targetVendor = TARGET_GENERIC;
+
+	/** The design roots of this run: the only networks a vendor rule may change. */
+	private Set<String> designRoots = new LinkedHashSet<>();
+
+	@Override
+	public void setTarget(String vendor, Set<String> roots) {
+		targetVendor = vendor == null ? TARGET_GENERIC : vendor;
+		designRoots = roots == null ? new LinkedHashSet<>() : new LinkedHashSet<>(roots);
+	}
+
+	@Override
+	public String getTargetVendor() {
+		return targetVendor;
+	}
+
+	/**
+	 * A reset release synchronizer goes into a DESIGN ROOT whenever a vendor is targeted -- amd, intel and
+	 * lattice alike (decision S181): asynchronous assertion, synchronous release per clock domain.
+	 * {@code generic} keeps today's HDL, and sub-networks and testbenches never get one.
+	 */
+	@Override
+	public boolean synchronizesResets(Entity entity) {
+		return !TARGET_GENERIC.equals(targetVendor) && entity != null && designRoots.contains(entity.getName());
+	}
 
 	/**
 	 * Returns the path to the given file name in the library.
@@ -155,13 +180,24 @@ public abstract class AbstractGenerator implements ICodeGenerator, IPathResolver
 	@Override
 	public void copyBuiltinEntityFile(String entityTypeName) {
 		if (entityTypeName != null) {
-			copyBuiltinFile(entityTypeName, false);
+			// With its `implementation.dependencies`: std.fifo.AsynchronousFIFO instantiates four
+			// controller modules, and copying its own file alone gave Verilog that never built (TRAPS
+			// T133). copyBuiltinEntity copies the dependencies first, then the entity itself.
+			Entity builtin = com.neosyn.neosynide.internal.generators.common.EntityLoader
+					.loadBuiltinEntity(entityTypeName);
+			if (builtin != null) {
+				copyBuiltinEntity(builtin);
+			} else {
+				copyBuiltinFile(entityTypeName, false);
+			}
 			debugLog("[copyBuiltinEntityFile] Copied built-in entity: " + entityTypeName);
 		}
 	}
 
 	protected final DPN createTestDpn(Entity entity) {
 		DPN dpn = new TestGenerator().createDpn(entity);
+		// TRAPS T156: the checker's handshake with a DUT that holds its outputs
+		com.neosyn.neosynide.transformations.StreamLinkMarker.markTestbenchChecker(dpn);
 		for (Instance instance : dpn.getInstances()) {
 			if (instance.getEntity() != entity) {
 				transform(instance.getEntity());
@@ -190,6 +226,7 @@ public abstract class AbstractGenerator implements ICodeGenerator, IPathResolver
 	@Override
 	public void fullBuild(Entity entity) {
 		copyLibraries();
+		prepare(entity);
 		for (Entity ent : DpnFactory.eINSTANCE.collectEntities(entity)) {
 			transform(ent);
 			print(ent);

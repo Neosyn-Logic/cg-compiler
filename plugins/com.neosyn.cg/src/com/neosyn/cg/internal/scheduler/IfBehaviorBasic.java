@@ -16,8 +16,6 @@ import com.neosyn.models.node.Node;
 /**
  * This class defines a basic if behavior for use in CycleDetector based on Schedule.
  * 
-
- *
  */
 public class IfBehaviorBasic implements IfBehavior {
 

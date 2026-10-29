@@ -23,7 +23,7 @@
  * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE
  */
-module PseudoDualPortRAM # ( parameter size = 0 , width = 0 , depth = 0 ) ( input rd_clock , input wr_clock , input [ depth - 1 : 0 ] rd_address , input [ depth - 1 : 0 ] wr_address , input [ width - 1 : 0 ] data , input data_valid , output reg [ width - 1 : 0 ] q ) ;
+module PseudoDualPortRAM # ( parameter size = 1 , width = 1 , depth = 1 ) ( input rd_clock , input wr_clock , input [ depth - 1 : 0 ] rd_address , input [ depth - 1 : 0 ] wr_address , input [ width - 1 : 0 ] data , input data_valid , output reg [ width - 1 : 0 ] q ) ;
 reg [ width - 1 : 0 ] w1 [ 0 : size - 1 ] ;
 always @ ( posedge rd_clock ) q <= w1 [ rd_address ] ;
 always @ ( posedge wr_clock ) if ( data_valid ) w1 [ wr_address ] <= data ;

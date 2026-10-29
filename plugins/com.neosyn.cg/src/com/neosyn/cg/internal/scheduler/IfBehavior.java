@@ -19,8 +19,6 @@ import com.neosyn.models.node.Node;
  * <li>startBranch</li>
  * </ul>
  * 
-
- *
  */
 public interface IfBehavior {
 

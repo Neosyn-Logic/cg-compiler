@@ -9,8 +9,10 @@
 
 package com.neosyn.neosynide.internal.generators.verilog.dpn
 
+import com.google.gson.JsonObject
 import com.neosyn.core.IPathResolver
 import com.neosyn.models.dpn.DPN
+import com.neosyn.models.ir.util.TypeUtil
 import com.neosyn.models.dpn.Endpoint
 import com.neosyn.models.dpn.Instance
 import com.neosyn.models.dpn.Port
@@ -18,6 +20,7 @@ import com.neosyn.neosynide.internal.generators.BuiltinEntityHelper
 import com.neosyn.neosynide.internal.generators.Namer
 import com.neosyn.neosynide.internal.generators.verilog.VerilogIrPrinter
 import java.util.ArrayList
+import java.util.LinkedHashSet
 import java.util.List
 import com.neosyn.models.ir.Type
 import com.neosyn.models.ir.TypeInt
@@ -25,8 +28,13 @@ import com.neosyn.models.util.BuiltinPortTypeResolver
 import com.neosyn.neosynide.internal.generators.common.ArgumentPrinter
 import com.neosyn.neosynide.internal.generators.common.ArgumentPrinter.BoolFormat
 
+import static com.neosyn.core.IProperties.ACTIVE_LOW
+import static com.neosyn.core.IProperties.PROP_ACTIVE
 import static com.neosyn.core.IProperties.PROP_CLOCKS
+import static com.neosyn.core.IProperties.PROP_NAME
 import static com.neosyn.core.IProperties.PROP_RESETS
+import static com.neosyn.core.IProperties.PROP_TYPE
+import static com.neosyn.core.IProperties.RESET_ASYNCHRONOUS
 import static com.neosyn.neosynide.internal.generators.GeneratorExtensions.getSignal
 import static com.neosyn.neosynide.internal.generators.GeneratorExtensions.isSignalNeeded
 
@@ -39,20 +47,36 @@ class DpnPrinter {
 	val Namer namer
 	val VerilogIrPrinter irPrinter
 	val BuiltinEntityHelper builtinHelper
+	val IPathResolver pathResolver
+
+	/** The (reset, clock) pairs of this network's reset release synchronizers -- see resetSynchronizers. */
+	var List<Pair<JsonObject, String>> synchronizers = new ArrayList
 
 	new(Namer namer, IPathResolver pathResolver) {
 		this.namer = namer
+		this.pathResolver = pathResolver
 		this.irPrinter = new VerilogIrPrinter(namer, pathResolver)
 		this.builtinHelper = new BuiltinEntityHelper(pathResolver)
 	}
 
 	def printDPN(DPN network) {
 		builtinHelper.clear()
+		synchronizers = resetSynchronizers(network)
+		if (!synchronizers.empty) {
+			pathResolver.copyBuiltinEntityFile("std.lib.SynchronizerFF")
+		}
 
 		'''
 		/**
 		 * Wires
 		 */
+		«IF !synchronizers.empty»
+		// Reset release synchronizers (target vendor «pathResolver.targetVendor»): each reset still
+		// asserts asynchronously, and is released synchronously with one clock of this network.
+		«FOR s : synchronizers»
+		«printSynchronizerWires(s.key, s.value)»
+		«ENDFOR»
+		«ENDIF»
 		«FOR instance : network.instances»
 		«printWires(network, instance)»
 		«ENDFOR»
@@ -60,6 +84,9 @@ class DpnPrinter {
 		/**
 		 * Instances
 		 */
+		«FOR s : synchronizers SEPARATOR "\n"»
+		«printSynchronizer(s.key, s.value)»
+		«ENDFOR»
 		«FOR instance : network.instances SEPARATOR "\n"»
 		«printInstance(network, instance)»
 		«ENDFOR»
@@ -105,7 +132,16 @@ class DpnPrinter {
 						BuiltinEntityHelper.cacheResolvedPortType(entityName, port.name, portType)
 					}
 
-					for (signal : port.interface.signals) {
+					// TRAPS T107 (S183): declare the union of THIS port's companions and every
+					// CONSUMER's. The port map spells companions from the TARGET port's
+					// interface, not the source's, so a `push` output feeding a FIFO -- whose
+					// `din` is ready/valid -- produced `din_ready => <base>_ready` for a signal
+					// nothing had declared. VHDL refused the file outright; Verilog's implicit
+					// nets absorbed it, which is worse, because the two back ends then disagree
+					// about whether the design builds. Buffering a source that cannot be
+					// back-pressured is a reasonable thing to want, so support it rather than
+					// rejecting it.
+					for (signal : companionFlags(port, outgoing)) {
 						wires.add('''wire «namer.getSafeName(rawWireName + "_" + signal)»;''')
 					}
 				}
@@ -125,7 +161,9 @@ class DpnPrinter {
 	 */
 	def private printInstance(DPN network, Instance instance) {
 		val mappings = new ArrayList<CharSequence>
-		val moduleName = builtinHelper.getModuleName(instance)
+		// through the namer: a module whose name is a keyword is declared escaped, and an
+		// instantiation that printed it raw would not parse
+		val moduleName = namer.getEntityName(builtinHelper.getModuleName(instance))
 
 		// Clock mappings
 		val clocks = instance.properties.getAsJsonObject(PROP_CLOCKS)
@@ -136,7 +174,7 @@ class DpnPrinter {
 		// Reset mappings
 		val resets = instance.properties.getAsJsonObject(PROP_RESETS)
 		if (resets !== null) {
-			mappings += resets.entrySet.map[pair|'''.«pair.key»(«pair.value.asString»)''']
+			mappings += resets.entrySet.map[pair|'''.«pair.key»(«resetActual(instance, pair.value.asString)»)''']
 		}
 
 		// Port mappings
@@ -157,6 +195,94 @@ class DpnPrinter {
 	}
 
 	/**
+	 * The (reset, clock) pairs a reset release synchronizer is printed for: every ASYNCHRONOUS reset of this network,
+	 * once per clock of the network, when the target vendor asks for it in this network -- a design root, and a vendor
+	 * other than generic (decision S181; see IPathResolver.synchronizesResets). Empty otherwise, which keeps
+	 * the generic output byte-identical.
+	 */
+	def private List<Pair<JsonObject, String>> resetSynchronizers(DPN network) {
+		val result = new ArrayList<Pair<JsonObject, String>>
+		if (pathResolver === null || !pathResolver.synchronizesResets(network)) {
+			return result
+		}
+		val resets = network.properties.getAsJsonArray(PROP_RESETS)
+		val clocks = network.properties.getAsJsonArray(PROP_CLOCKS)
+		if (resets === null || clocks === null) {
+			return result
+		}
+		for (reset : resets) {
+			val obj = reset.asJsonObject
+			if (RESET_ASYNCHRONOUS.equals(obj.get(PROP_TYPE))) {
+				for (clock : clocks) {
+					result += obj -> clock.asString
+				}
+			}
+		}
+		result
+	}
+
+	/** The raw name of the copy of `reset` released on `clock`. */
+	def private static String syncedReset(JsonObject reset, String clock) {
+		reset.get(PROP_NAME).asString + "_sync_" + clock
+	}
+
+	def private printSynchronizerWires(JsonObject reset, String clock) {
+		val activeLow = ACTIVE_LOW.equals(reset.get(PROP_ACTIVE))
+		val name = syncedReset(reset, clock)
+		'''
+		wire «namer.getSafeName(name)»;
+		«IF !activeLow»
+		wire «namer.getSafeName(name + "_n")»;
+		«ENDIF»
+		'''
+	}
+
+	/**
+	 * A std.lib.SynchronizerFF clocked by `clock` with `din` tied to 1: its output follows the reset's ASSERTION at once
+	 * (the flip-flops reset asynchronously) and its RELEASE two `clock` edges later. It is active low, so an active-high
+	 * reset is inverted on the way in and on the way out.
+	 */
+	def private printSynchronizer(JsonObject reset, String clock) {
+		val activeLow = ACTIVE_LOW.equals(reset.get(PROP_ACTIVE))
+		val resetName = reset.get(PROP_NAME).asString
+		val name = syncedReset(reset, clock)
+		'''
+		SynchronizerFF #(
+		  .stages(2)
+		)
+		«namer.getSafeName(resetName + "_synchronizer_" + clock)» (
+		  .reset_n(«IF activeLow»«resetName»«ELSE»~«resetName»«ENDIF»),
+		  .din_clock(«clock»),
+		  .dout_clock(«clock»),
+		  .din(1'b1),
+		  .dout(«namer.getSafeName(if (activeLow) name else name + "_n")»)
+		);
+		«IF !activeLow»
+		assign «namer.getSafeName(name)» = ~«namer.getSafeName(name + "_n")»;
+		«ENDIF»
+		'''
+	}
+
+	/**
+	 * The actual that a reset input of `instance` is mapped to: the network's reset or, when this network synchronizes
+	 * it, the copy released on the instance's clock. An instance with several clocks (a synchronizer, an asynchronous
+	 * FIFO) keeps the raw reset: no single domain is right for all of its flip-flops.
+	 */
+	def private String resetActual(Instance instance, String networkReset) {
+		val clocks = instance.properties.getAsJsonObject(PROP_CLOCKS)
+		if (synchronizers.empty || clocks === null) {
+			return networkReset
+		}
+		val domains = clocks.entrySet.map[value.asString].toSet
+		if (domains.size != 1) {
+			return networkReset
+		}
+		val domain = domains.head
+		val match = synchronizers.findFirst[key.get(PROP_NAME).asString == networkReset && value == domain]
+		if (match === null) networkReset else namer.getSafeName(syncedReset(match.key, match.value))
+	}
+
+	/**
 	 * Builds the parameter list for a module instantiation.
 	 * For built-in entities, adds computed parameters like 'depth'.
 	 */
@@ -165,31 +291,36 @@ class DpnPrinter {
 		val entityType = BuiltinEntityHelper.getEntityType(instance)
 
 		if (BuiltinEntityHelper.isBuiltinType(entityType)) {
-			// For built-in entities, read parameters from instance properties
-			// (IR Arguments have proxy variables with null names)
+			// For built-in entities, read parameters directly from the instance
+			// properties (IR Arguments have proxy variables with null names). Every
+			// scalar numeric/boolean property is a module parameter (size, width,
+			// stages, writeShiftMode, …); the non-parameter properties (clocks and
+			// resets are objects, implementation is an object, entityType is a
+			// string) are naturally excluded by the primitive-number/boolean test.
+			// NB most built-in IRs do NOT declare <variables>, so we must NOT gate
+			// on entity.variables here or the #(...) list comes out empty and the
+			// instance silently uses the module defaults (width 0 => broken).
 			val props = instance.properties
 			if (props !== null) {
-				// Load the entity from classpath to get variable names
-				val entity = builtinHelper.getEntity(instance)
-				if (entity !== null) {
-					for (v : entity.variables) {
-						if (v.name !== null && props.has(v.name)) {
-							val value = props.get(v.name)
-							if (value.jsonPrimitive) {
-								val prim = value.asJsonPrimitive
-								val verilogValue = if (prim.isBoolean) {
-									if (prim.asBoolean) "1" else "0"
-								} else {
-									prim.asString
-								}
-								params.add('''.«v.name»(«verilogValue»)''')
+				for (key : props.keySet) {
+					val value = props.get(key)
+					if (value.jsonPrimitive) {
+						val prim = value.asJsonPrimitive
+						if (prim.isNumber || prim.isBoolean) {
+							val verilogValue = if (prim.isBoolean) {
+								if (prim.asBoolean) "1" else "0"
+							} else {
+								prim.asString
 							}
+							params.add('''.«key»(«verilogValue»)''')
 						}
 					}
 				}
-				// For RAMs, compute depth from size if not present
+				// RAMs and FIFOs take a `depth` (address width) that is derived from
+				// `size` rather than passed explicitly; compute it when absent.
 				val simpleName = BuiltinEntityHelper.getSimpleName(entityType)
-				if (#["SinglePortRAM", "DualPortRAM", "PseudoDualPortRAM"].contains(simpleName)) {
+				if (#["SinglePortRAM", "DualPortRAM", "PseudoDualPortRAM",
+						"SynchronousFIFO", "AsynchronousFIFO"].contains(simpleName)) {
 					if (props.has("size") && !props.has("depth")) {
 						val size = props.get("size").asInt
 						val depth = BuiltinPortTypeResolver.ceilLog2(size)
@@ -213,6 +344,8 @@ class DpnPrinter {
 	 * Adds port mappings for an instance to the mappings list.
 	 */
 	def private addPortMappings(List<CharSequence> mappings, DPN network, Instance instance) {
+		val bound = <String>newHashSet
+
 		// Input port mappings
 		for (connection : network.getIncoming(instance)) {
 			val sourceEndpoint = connection.sourceEndpoint
@@ -233,6 +366,28 @@ class DpnPrinter {
 				}
 			}
 			addPortMapping(mappings, targetPort, wire, rawWireName)
+			// Record what was ACTUALLY mapped, after the builtin proxy was resolved. Collecting
+			// `connection.targetPort.name` instead misses a builtin's ports -- the proxy's name
+			// is null until it is resolved -- so the FIFO's `din` looked unconnected, got a
+			// second mapping, and iverilog said `port 'din' already bound`.
+			if (targetPort !== null && targetPort.name !== null) {
+				bound.add(targetPort.name)
+			}
+		}
+
+		// An input nothing drives, DRIVEN TO ZERO -- the mapping is not simply left out.
+		// Verilog does not require every input to be connected: it floats the pin, reads it as
+		// X, and says so only as a lint warning ("Cell has missing pin"), so this was invisible
+		// until the generated Verilog was linted -- 115 pins over 50 files, in Intel-8088,
+		// RISC-V, RiscvSoC, SoC and UART. The VHDL backend has always tied these to '0' (VHDL
+		// refuses to elaborate otherwise), so the same design was deterministic in one language
+		// and X-propagating in the other. Zero is also what the hardware does: an undriven FPGA
+		// input powers up low. The front end already warns, with a file:line this printer has
+		// not got, so nothing is said here.
+		for (port : builtinHelper.getEntity(instance).inputs) {
+			if (port !== null && port.name !== null && !bound.contains(port.name)) {
+				addUnconnectedInput(mappings, port)
+			}
 		}
 
 		// Output port mappings
@@ -271,6 +426,22 @@ class DpnPrinter {
 	}
 
 	/**
+	 * Drives an input port nothing is connected to, and its IN companions, to zero. An OUT
+	 * companion (a `_ready` this instance drives back) is left unconnected, which is what an
+	 * empty association means and is legal for an output.
+	 */
+	def private addUnconnectedInput(List<CharSequence> mappings, Port port) {
+		val width = TypeUtil.getSize(port.type)
+		mappings.add('''.«namer.getName(port)»(«width»'b0)''')
+
+		for (signal : port.signals) {
+			val name = port.name + "_" + signal
+			val driven = port.additionalInputs.exists[v | name == v.name]
+			mappings.add('''.«namer.getSafeName(name)»(«IF driven»1'b0«ENDIF»)''')
+		}
+	}
+
+	/**
 	 * Adds a single port mapping to the list.
 	 * @param rawWireName the raw (unescaped) wire name for constructing signal suffixes, or null
 	 */
@@ -280,7 +451,7 @@ class DpnPrinter {
 		}
 		mappings.add('''.«namer.getName(port)»(«wire»)''')
 
-		for (signal : port.interface.signals) {
+		for (signal : port.signals) {
 			val portSignalName = namer.getSafeName(port.name + "_" + signal)
 			val wireSignalName = if (rawWireName !== null) namer.getSafeName(rawWireName + "_" + signal) else null
 			mappings.add('''.«portSignalName»(«IF wireSignalName !== null»«wireSignalName»«ENDIF»)''')
@@ -319,11 +490,33 @@ class DpnPrinter {
 	}
 
 	/**
+	 * The readers of an output port's driver. For a built-in instance the by-name lookup is used
+	 * whenever it finds more than the identity lookup -- printWires and addPortMappings find them
+	 * by name, and the connection's source port is a proxy (TRAPS T94).
+	 */
+	def private List<Endpoint> readersOfDriver(DPN network, Endpoint endpoint) {
+		val outgoing = network.getOutgoing(endpoint)
+		if (endpoint !== null && endpoint.hasInstance
+				&& BuiltinEntityHelper.isBuiltinType(BuiltinEntityHelper.getEntityType(endpoint.instance))) {
+			val byName = BuiltinEntityHelper.findOutgoingByPortName(endpoint.instance, resolvePortName(endpoint.port))
+			if (byName.size > outgoing.size) {
+				return byName
+			}
+		}
+		return outgoing
+	}
+
+	/**
 	 * Prints assigns to output ports when necessary.
+	 *
+	 * <p>A built-in driver's readers are counted BY NAME, as printWires and addPortMappings count
+	 * them. The identity lookup can miss the sibling reader, see only this output port and decide
+	 * no wire is needed -- while printWires has already routed the instance output into a wire.
+	 * The port was left undriven: `speed` in NetworkStack and NetTop (TRAPS T94).
 	 */
 	def private printAssigns(DPN network, Port port) {
 		val endpoint = network.getIncoming(port)
-		val outgoing = network.getOutgoing(endpoint)
+		val outgoing = readersOfDriver(network, endpoint)
 
 		if (isSignalNeeded(outgoing)) {
 			val wire = getSignal(namer, endpoint)
@@ -331,7 +524,7 @@ class DpnPrinter {
 
 			'''
 			assign «namer.getName(port)» = «wire»;
-			«FOR signal : port.interface.signals»
+			«FOR signal : port.signals»
 			assign «namer.getSafeName(port.name + "_" + signal)» = «namer.getSafeName(rawWireName + "_" + signal)»;
 			«ENDFOR»
 			'''
@@ -342,6 +535,33 @@ class DpnPrinter {
 	 * Finds outgoing connections from an instance by port name.
 	 * Used as fallback when port object identity doesn't match (built-in entities).
 	 */
+	/**
+	 * The companion wires (`_valid`, `_ready`, ...) that must be DECLARED for an output port.
+	 *
+	 * Not simply the port's own interface: a consumer's port map spells companions from the
+	 * CONSUMER's interface, so a connection whose target expects more signals than the source
+	 * provides would reference an undeclared name (TRAPS T107). Verilog would quietly make that
+	 * an implicit net; VHDL rejects the file. Returns the union, source first, so ordering stays
+	 * stable for anyone diffing generated HDL.
+	 */
+	def private companionFlags(Port port, Iterable<Endpoint> outgoing) {
+		val flags = new LinkedHashSet<String>
+		flags.addAll(port.signals)
+		for (e : outgoing) {
+			var tp = e.port
+			if (tp === null || tp.name === null) {
+				val resolved = BuiltinEntityHelper.resolveBuiltinPort(tp)
+				if (resolved !== null) {
+					tp = resolved
+				}
+			}
+			if (tp !== null && tp.interface !== null) {
+				flags.addAll(tp.signals)
+			}
+		}
+		flags
+	}
+
 	def private findOutgoingByPortName(Instance instance, String portName) {
 		val endpoints = new ArrayList<Endpoint>
 		for (edge : instance.outgoing) {

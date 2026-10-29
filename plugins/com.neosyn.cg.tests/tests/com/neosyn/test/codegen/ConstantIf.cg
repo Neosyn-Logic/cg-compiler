@@ -1,0 +1,33 @@
+package com.neosyn.test.codegen;
+
+/*
+ * Regression fixture, TRAPS T116: an `if` whose condition the compiler folds to a constant.
+ * `stall` is false and `go` is true on every path -- the RISC-V core's `if (!mmio_stall)` shape.
+ * The generated task used to keep each test, and the branch that can never run under it. See
+ * GeneratedNoiseTest; tools/qa/repro/T116_ConstantIf.cg checks the values on all back ends.
+ */
+network ConstantIf {
+	in push u8 x;
+	out push u8 r, push u8 s, push u8 q, push u8 z, push u8 cnt;
+
+	dut = new task {
+		u8 counter;
+		void loop() {
+			u8 v = x.read();
+			bool stall = false;
+			bool go = true;
+
+			u8 rv = v;
+			if (!stall) { rv = v + 1; }
+			u8 sv;
+			if (!go) { sv = v + 100; } else { sv = v + 2; }
+			u8 qv = v;
+			if (stall) { qv = 0; }
+			u8 zv;
+			if (stall) { zv = 5; }
+			if (!stall) { counter++; } else { counter = 99; }
+
+			r.write(rv); s.write(sv); q.write(qv); z.write(zv); cnt.write(counter);
+		}
+	};
+}

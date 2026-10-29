@@ -40,8 +40,6 @@ import com.neosyn.models.dpn.State;
 /**
  * This class defines methods to manipulate the AST.
  * 
-
- * 
  */
 public class AstUtil {
 

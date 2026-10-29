@@ -16,8 +16,6 @@ import org.eclipse.xtext.scoping.impl.ImportNormalizer;
  * This class describes an import normalizer that allows import of x.y.Bundle and properly resolves
  * references to Bundle.A, Bundle.B etc.
  * 
-
- * 
  */
 public class CgImportNormalizer extends ImportNormalizer {
 

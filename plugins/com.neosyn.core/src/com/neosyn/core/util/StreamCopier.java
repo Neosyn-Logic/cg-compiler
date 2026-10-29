@@ -19,8 +19,6 @@ import com.neosyn.core.NeosynCore;
  * This class defines a thread that copies an input stream to an output stream. This is intended to
  * be used when running commands in tests.
  * 
-
- * 
  */
 public class StreamCopier extends Thread {
 

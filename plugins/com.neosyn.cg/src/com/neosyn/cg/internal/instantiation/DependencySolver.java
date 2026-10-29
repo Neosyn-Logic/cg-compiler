@@ -42,8 +42,6 @@ import com.neosyn.models.util.Void;
 /**
  * This class defines a solver of dependency between variables.
  * 
-
- *
  */
 public class DependencySolver extends VoidCxSwitch {
 

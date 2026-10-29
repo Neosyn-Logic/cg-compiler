@@ -35,11 +35,13 @@ import com.neosyn.models.ir.Var;
 import com.neosyn.models.util.Void;
 
 /**
- * This class transforms an actor to add combinational assignments to "ready" signals, and updates
- * port references for
- * 
- * @author Synflow team (now Neosyn)
- *
+ * Adds the combinational {@code ready}-signal assignments for an actor's stream input
+ * ports: in each state, a port's {@code ready} is asserted for the action(s) that consume
+ * it (gated by {@code !stall}), and a default action deasserts it otherwise so a stalled
+ * consumer never advances its producer. For a registered producer read that transitions
+ * away from the port, {@code ready} is pulsed only while waiting (valid == 0) so exactly
+ * one element is taken. Runs before {@link AddBufferedInputs}, which relies on these
+ * assignments to know which ports each action consumes.
  */
 public class AddReadyAssignments extends Transformation {
 
@@ -49,8 +51,89 @@ public class AddReadyAssignments extends Transformation {
 
 	private Var stall;
 
+	/**
+	 * When true (Verilog backend only), a consumer input port that {@link StreamLinkMarker} tagged
+	 * as fed by a direct held-task producer gets the standard {@code ready = !stall} handshake
+	 * instead of the registered-producer {@code ready = !stall && !valid} pulse. Verilog and VHDL
+	 * pass true; the bytecode backend passes false and keeps the historical behaviour (its DPN
+	 * scheduler abstracts handshake timing).
+	 */
+	private final boolean heldStreamHandshake;
+
+	/** Actor currently being transformed (for reading its {@link StreamLinkMarker} marks). */
+	private Actor currentActor;
+
 	public AddReadyAssignments() {
+		this(false);
+	}
+
+	public AddReadyAssignments(boolean heldStreamHandshake) {
 		super(null);
+		this.heldStreamHandshake = heldStreamHandshake;
+	}
+
+	/**
+	 * True if {@code port} is a consumer input on a direct held-producer stream link (and the
+	 * held handshake is enabled), meaning its {@code ready} must NOT be gated by {@code !valid}.
+	 */
+	private boolean isDirectHeldInput(Port port) {
+		return heldStreamHandshake && StreamLinkMarker.isMarked(currentActor,
+				StreamLinkMarker.PROP_DIRECT_HELD_INPUTS, port.getName());
+	}
+
+	/**
+	 * For a direct held-task RELAY, the "output slot free" condition — {@code AND} over its direct
+	 * held output ports of {@code (out_ready || !out_valid)}. Returned as the input-port ready of a
+	 * relay so it only accepts upstream data when it can forward it. Returns {@code null} if the
+	 * actor has no direct held output (a pure consumer keeps its normal ready logic).
+	 */
+	private Expression directHeldOutputSlotFree() {
+		Expression cond = null;
+		for (Port out : dpn.getReadyPorts(currentActor.getOutputs())) {
+			if (!StreamLinkMarker.isMarked(currentActor,
+					StreamLinkMarker.PROP_DIRECT_HELD_OUTPUTS, out.getName())) {
+				continue;
+			}
+			Var outReady = out.getAdditionalInputs().get(0);
+			Var outValid = out.getAdditionalOutputs().get(0);
+			Expression slotFree = ir.or(ir.createExprVar(outReady), ir.not(outValid));
+			cond = cond == null ? slotFree : ir.and(cond, slotFree);
+		}
+		return cond;
+	}
+
+	/**
+	 * The ready of a direct held input that {@code action} consumes. A held producer counts the
+	 * value as taken on {@code valid && ready}, so ready must be high EXACTLY when the action can
+	 * fire -- high while it cannot, and the producer moves on from a value nobody read; low while
+	 * it does, and the producer keeps presenting a value that was read, which is read again.
+	 *
+	 * <p>A held-path producer (one ready output, itself a direct held link) gates its WHOLE
+	 * scheduler on that output's slot, so every action waits on it: {@link
+	 * #directHeldOutputSlotFree()}. A stall-path actor gates each action only on the slots of the
+	 * stream outputs IT writes (the printers' per-action guard, TRAPS T57), so its ready is that
+	 * same per-action set -- ANDing every output instead let the action fire with ready low while
+	 * another output waited, and the relay read one value three times (TRAPS T115). No ready
+	 * output, or none written by this action: nothing to wait for.
+	 */
+	private Expression directHeldInputReady(Action action) {
+		List<Port> readyOuts = new java.util.ArrayList<>();
+		dpn.getReadyPorts(currentActor.getOutputs()).forEach(readyOuts::add);
+		if (readyOuts.size() == 1 && StreamLinkMarker.isMarked(currentActor,
+				StreamLinkMarker.PROP_DIRECT_HELD_OUTPUTS, readyOuts.get(0).getName())) {
+			return directHeldOutputSlotFree();
+		}
+		Expression cond = null;
+		for (Port out : readyOuts) {
+			if (!action.getOutputPattern().getPorts().contains(out)) {
+				continue;
+			}
+			Var outReady = out.getAdditionalInputs().get(0);
+			Var outValid = out.getAdditionalOutputs().get(0);
+			Expression slotFree = ir.or(ir.createExprVar(outReady), ir.not(outValid));
+			cond = cond == null ? slotFree : ir.and(cond, slotFree);
+		}
+		return cond != null ? cond : ir.createExprBool(true);
 	}
 
 	/**
@@ -100,6 +183,17 @@ public class AddReadyAssignments extends Transformation {
 				for (Port port : ports) {
 					if (actionPorts.contains(port)) {
 						Var ready = port.getAdditionalOutputs().get(0);
+
+						// Direct held-task RELAY: this actor consumes `port` (a direct held link)
+						// AND produces one. Its input ready must reflect its own downstream
+						// backpressure — assert only when the output slot is free — so backpressure
+						// propagates combinationally through a ready chain. Overrides the stall form.
+						Expression relayReady = isDirectHeldInput(port) ? directHeldInputReady(action) : null;
+						if (relayReady != null) {
+							block.add(ir.createInstStore(ready, relayReady));
+							continue;
+						}
+
 						Expression readyValue = stall != null ? ir.not(stall) : ir.createExprBool(true);
 						// Registered-producer drain: if this read transitions AWAY from
 						// reading `port` (the target state does not read it again), the
@@ -112,8 +206,13 @@ public class AddReadyAssignments extends Transformation {
 						// what dropped every UART byte after the first). When the target
 						// state keeps reading the same port (a continuous/burst drain),
 						// keep ready asserted for full throughput.
+						//
+						// EXCEPTION: a direct held-task producer (StreamLinkMarker) is NOT
+						// registered — it presents valid WITH the data and holds it, so the
+						// consumer must assert ready on the transfer cycle. Gating it by !valid
+						// would deadlock (valid&&ready never coincide) and drop the value.
 						State target = transition.getTarget();
-						if (target != null && !stateReadsPort(target, port)) {
+						if (target != null && !stateReadsPort(target, port) && !isDirectHeldInput(port)) {
 							Var valid = port.getAdditionalInputs().get(0);
 							readyValue = ir.and(readyValue, ir.not(valid));
 						}
@@ -141,10 +240,28 @@ public class AddReadyAssignments extends Transformation {
 		for (Action action : actions) {
 			BlockBasic block = action.getCombinational().getLast();
 
+			// Only assert ready for the ports THIS action actually consumes (its
+			// inputPattern) — mirrors the FSM path above. Without this guard a
+			// CONDITIONAL stream read (`if (cnt == 0) x.read();`) asserted ready in
+			// every action, so the actions that don't read the port still advanced
+			// its producer and AddBufferedInputs (which keys off the ready-asserted
+			// ports) cleared its skid buffer — the port's value was dropped and the
+			// next conditional read got a STALE one. A port not in this action's
+			// pattern falls through to the default action's ready (assert-while-
+			// waiting), so a held value is captured but never double-consumed.
+			Set<Port> actionPorts = new LinkedHashSet<>(action.getInputPattern().getPorts());
 			for (Port port : ports) {
+				if (!actionPorts.contains(port)) {
+					continue;
+				}
 				Var ready = port.getAdditionalOutputs().get(0);
+				// Direct held-task RELAY (see the FSM path): a no-FSM loop relay (a single-action
+				// loop { out.write(f(in.read())) }) must gate its input ready on its own output slot
+				// being free, so backpressure propagates through the chain.
+				Expression relayReady = isDirectHeldInput(port) ? directHeldInputReady(action) : null;
 				// When stall is null (no stream outputs), always assert ready
-				Expression readyValue = stall != null ? ir.not(stall) : ir.createExprBool(true);
+				Expression readyValue = relayReady != null ? relayReady
+						: (stall != null ? ir.not(stall) : ir.createExprBool(true));
 				block.add(ir.createInstStore(ready, readyValue));
 			}
 		}
@@ -177,6 +294,7 @@ public class AddReadyAssignments extends Transformation {
 
 	@Override
 	public Void caseActor(Actor actor) {
+		currentActor = actor;
 		Iterable<Port> readyInputs = dpn.getReadyPorts(actor.getInputs());
 		Iterable<Port> readyOutputs = dpn.getReadyPorts(actor.getOutputs());
 		if (isEmpty(readyInputs) && isEmpty(readyOutputs)) {

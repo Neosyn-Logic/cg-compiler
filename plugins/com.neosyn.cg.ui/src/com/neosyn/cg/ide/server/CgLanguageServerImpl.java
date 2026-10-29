@@ -43,6 +43,7 @@ import com.neosyn.cg.cg.Inst;
 import com.neosyn.cg.cg.Module;
 import com.neosyn.cg.cg.Network;
 import com.neosyn.cg.cg.Task;
+import com.neosyn.cg.instantiation.CompilerLock;
 import com.neosyn.cg.instantiation.IInstantiator;
 import com.neosyn.core.ICodeGenerator;
 import com.neosyn.models.dpn.DpnPackage;
@@ -227,10 +228,14 @@ public class CgLanguageServerImpl extends LanguageServerImpl implements CgLangua
     }
 
     // ========== FSM View ==========
+    //
+    // TRAPS T78. Every custom request below compiles through the SHARED instantiator, resource set and
+    // generators, and each runs on its own pool thread: an FSM or Graph view refresh used to wipe the
+    // mappings of an IR generation in progress. Each takes CompilerLock for its compiler work.
 
     @Override
     public CompletableFuture<FsmData> getFsm(GetFsmParams params) {
-        return CompletableFuture.supplyAsync(() -> {
+        return CompletableFuture.supplyAsync(() -> CompilerLock.call(() -> {
             FsmData result = new FsmData();
 
             try {
@@ -276,14 +281,14 @@ public class CgLanguageServerImpl extends LanguageServerImpl implements CgLangua
             }
 
             return result;
-        });
+        }));
     }
 
     // ========== Graph View ==========
 
     @Override
     public CompletableFuture<GraphData> getGraph(GetGraphParams params) {
-        return CompletableFuture.supplyAsync(() -> {
+        return CompletableFuture.supplyAsync(() -> CompilerLock.call(() -> {
             GraphData result = new GraphData();
 
             try {
@@ -327,14 +332,14 @@ public class CgLanguageServerImpl extends LanguageServerImpl implements CgLangua
             }
 
             return result;
-        });
+        }));
     }
 
     // ========== HDL Generation ==========
 
     @Override
     public CompletableFuture<GenerateResult> generate(GenerateParams params) {
-        return CompletableFuture.supplyAsync(() -> getHdlHandler().generate(params));
+        return CompletableFuture.supplyAsync(() -> CompilerLock.call(() -> getHdlHandler().generate(params)));
     }
 
     // ========== IR Generation ==========
@@ -450,7 +455,11 @@ public class CgLanguageServerImpl extends LanguageServerImpl implements CgLangua
                  .filter(p -> p.toString().endsWith(".ir"))
                  .forEach(p -> {
                      try {
-                         URI uri = URI.createFileURI(p.toString());
+                         // TRAPS T155: normalized, so a file is ONE resource. `generate .` walked
+                         // `./.ir` and loaded `<cwd>/./.ir/X.ir`, while a network's href to X.ir
+                         // resolved to `<cwd>/.ir/X.ir`: two resources, two entities, the held-link
+                         // marks on one copy and the other printed last -- wrong hardware.
+                         URI uri = URI.createFileURI(p.toAbsolutePath().normalize().toString());
                          resourceSet.getResource(uri, true);
                      } catch (Exception e) {
                          ServerUtils.debugLog("[IR] Failed to load: " + p);

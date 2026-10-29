@@ -30,8 +30,6 @@ import com.neosyn.models.util.Void;
 /**
  * This class defines the default expression printer.
  * 
-
- * 
  */
 public class ExpressionPrinter extends IrSwitch<Void> {
 
@@ -95,10 +93,22 @@ public class ExpressionPrinter extends IrSwitch<Void> {
 
 	@Override
 	public Void caseExprInt(ExprInt expr) {
-		if (radix == 16) {
-			builder.append("0x");
+		// A WIDE literal is rendered in hex even in the default decimal mode. A 256-bit
+		// constant printed as 78 decimal digits is not readable, and — the practical
+		// problem — it cannot be grepped against a specification, which writes hashes and
+		// keys in hex. That is how a failing SHA assert read:
+		//
+		//   AssertionError: h1 == resize(1653312220747706934166809975212563752504327437…, 256)
+		//
+		// The threshold is deliberately high enough that ordinary widths (counters, opcodes,
+		// vector indices) keep reading in decimal, where decimal is the clearer form.
+		java.math.BigInteger value = expr.getValue();
+		if (radix == 16 || value.bitLength() > 32) {
+			builder.append(value.signum() < 0 ? "-0x" : "0x");
+			builder.append(value.abs().toString(16));
+			return DONE;
 		}
-		builder.append(expr.getValue().toString(radix));
+		builder.append(value.toString(radix));
 		return DONE;
 	}
 

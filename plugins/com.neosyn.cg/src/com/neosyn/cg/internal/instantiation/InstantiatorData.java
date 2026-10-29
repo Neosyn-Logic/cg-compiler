@@ -35,8 +35,6 @@ import static com.neosyn.core.util.DebugLogger.Category.IR;
 /**
  * This class contains data used by the instantiator and defines methods to access it.
  * 
-
- * 
  */
 public class InstantiatorData {
 
@@ -69,6 +67,15 @@ public class InstantiatorData {
 	private Map<Entity, Map<Variable, Map<String, com.neosyn.models.dpn.Port>>> structPortMap;
 
 	/**
+	 * Element ports of each ARRAY port, per entity (port variable -> element
+	 * ports in index order). Mirrors {@link #structPortMap}, deliberately as a
+	 * SEPARATE map: {@code ImplicitConnector} keys struct fan-out behaviour off
+	 * a non-null struct lookup, and an array port must not be mistaken for a
+	 * struct (their handshake rules differ -- see IInstantiator#putArrayPort).
+	 */
+	private Map<Entity, Map<Variable, java.util.List<com.neosyn.models.dpn.Port>>> arrayPortMap;
+
+	/**
 	 * Struct-typed STATE variables flattened to N scalar field state Vars
 	 * (bug #11). Key: IR entity, Value: (struct state Variable -> ordered
 	 * field-name -> IR Var). Mirrors {@link #structPortMap} for ports;
@@ -84,6 +91,7 @@ public class InstantiatorData {
 		uriMap = new HashMap<>();
 		builtinPortMappings = new HashMap<>();
 		structPortMap = new HashMap<>();
+		arrayPortMap = new HashMap<>();
 		structStateMap = new HashMap<>();
 	}
 
@@ -228,6 +236,44 @@ public class InstantiatorData {
 	}
 
 	/**
+	 * Returns every specialized IR entity created during this transform, across all
+	 * templates. mapSpecialized is keyed by the TEMPLATE cx entity, so a specialization
+	 * of a cross-file template (e.g. LoadKey used from Expander) is filed under a
+	 * template that lives in another module; iterating only the current module's
+	 * entities therefore misses it. Callers that must serialize/emit the full closure
+	 * of what was instantiated use this to reach those cross-file specializations.
+	 *
+	 * @return all specialized IR entities (may contain duplicates across contexts only
+	 *         if the same context object recurs, which it does not)
+	 */
+	public Iterable<Entity> getAllSpecializedEntities() {
+		java.util.List<Entity> all = new java.util.ArrayList<>();
+		for (Map<InstantiationContext, Entity> byCtx : mapSpecialized.values()) {
+			all.addAll(byCtx.values());
+		}
+		return all;
+	}
+
+	/**
+	 * Calls {@code consumer.accept(templateCxEntity, specializedEntity)} for every
+	 * specialization, pairing each specialized IR entity with the TEMPLATE cx entity it
+	 * was specialized from. The template is needed to drive body compilation the same way
+	 * the module loop does (dispatch on the template's TASK/NETWORK/BUNDLE kind and pass it
+	 * as the source). Reaches cross-file specializations whose template is in another
+	 * module. See {@link #getAllSpecializedEntities()} for the entity-only variant.
+	 *
+	 * @param consumer
+	 *            receives (template cx entity, specialized IR entity)
+	 */
+	public void forEachSpecialization(java.util.function.BiConsumer<CgEntity, Entity> consumer) {
+		for (Map.Entry<CgEntity, Map<InstantiationContext, Entity>> e : mapSpecialized.entrySet()) {
+			for (Entity entity : e.getValue().values()) {
+				consumer.accept(e.getKey(), entity);
+			}
+		}
+	}
+
+	/**
 	 * Checks whether the object at the given URI is specialized.
 	 * 
 	 * @param uri
@@ -281,6 +327,32 @@ public class InstantiatorData {
 	public Map<String, com.neosyn.models.dpn.Port> getStructPortFields(Entity entity,
 			Variable portVar) {
 		Map<Variable, Map<String, com.neosyn.models.dpn.Port>> byVar = structPortMap.get(entity);
+		return byVar == null ? null : byVar.get(portVar);
+	}
+
+	/**
+	 * Registers one element port of an array port. Elements must be registered
+	 * in ascending index order so the list index IS the port index.
+	 */
+	public void putArrayPort(Entity entity, Variable portVar, int index,
+			com.neosyn.models.dpn.Port port) {
+		Map<Variable, java.util.List<com.neosyn.models.dpn.Port>> byVar =
+				arrayPortMap.computeIfAbsent(entity, e -> new HashMap<>());
+		java.util.List<com.neosyn.models.dpn.Port> elements =
+				byVar.computeIfAbsent(portVar, v -> new java.util.ArrayList<>());
+		while (elements.size() <= index) {
+			elements.add(null);
+		}
+		elements.set(index, port);
+	}
+
+	/**
+	 * Returns the index-ordered element ports of an array port, or null if
+	 * {@code portVar} is not an array port on {@code entity}.
+	 */
+	public java.util.List<com.neosyn.models.dpn.Port> getArrayPortElements(Entity entity,
+			Variable portVar) {
+		Map<Variable, java.util.List<com.neosyn.models.dpn.Port>> byVar = arrayPortMap.get(entity);
 		return byVar == null ? null : byVar.get(portVar);
 	}
 

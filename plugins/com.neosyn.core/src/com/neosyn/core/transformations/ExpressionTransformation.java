@@ -41,16 +41,12 @@ import com.neosyn.models.util.Void;
 /**
  * This class defines a module transformation that visits all expressions in an actor/unit.
  * 
-
- * 
  */
 public class ExpressionTransformation extends ProcedureTransformation {
 
 	/**
 	 * This class defines a visitor that visits all expressions in blocks, instructions, and initial
 	 * values of variables.
-	 * 
-	
 	 * 
 	 */
 	private static class ExpressionVisitor extends AbstractIrVisitor {

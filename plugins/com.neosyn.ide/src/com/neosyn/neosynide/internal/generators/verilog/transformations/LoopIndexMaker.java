@@ -27,11 +27,11 @@ import com.neosyn.models.util.EcoreHelper;
 import com.neosyn.models.util.Void;
 
 /**
- * This class defines an IR visitor that adds synthetic variables to use in "for" loops to copy
- * arrays in procedures.
- * 
-
- *
+ * For each local array in a procedure, synthesises a shared {@code loop_idx} index variable
+ * and appends it to the array's load and store, so a whole-array copy can be emitted as an
+ * indexed {@code for} loop in Verilog. (NB: that loop is what a large array makes big enough
+ * to exceed Verilator's default {@code --unroll-count} — a downstream sim caveat, not a bug
+ * in this pass.)
  */
 public class LoopIndexMaker extends AbstractIrVisitor {
 

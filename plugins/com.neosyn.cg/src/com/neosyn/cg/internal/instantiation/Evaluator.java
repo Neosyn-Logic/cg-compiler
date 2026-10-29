@@ -45,8 +45,6 @@ import com.neosyn.models.ir.util.ValueUtil;
 /**
  * This class defines an expression evaluator.
  * 
-
- * 
  */
 public class Evaluator extends CgSwitch<Object> {
 
@@ -205,10 +203,32 @@ public class Evaluator extends CgSwitch<Object> {
 				return null;
 			}
 
+			// An entity-scoped const must be read from the IR Var the instantiator
+			// already mapped, NOT from the AST. EntityMapper.setValues specializes an
+			// entity by mutating the AST value only for the duration of createSkeleton
+			// and then RESTORING it, so the AST holds the default again afterwards.
+			// The mapped Var is the durable record of the specialized value.
+			//
+			// A `const` in a VarDecl is global and always took this path. An
+			// angle-bracket formal (INSTANTIABLE__PARAMS) is NOT global, so it fell
+			// through to the AST below: fine for a task, whose body compiles inside
+			// the setValues window, but wrong for a network, whose child instance
+			// args are evaluated outside it — `new Mid<6>()` then silently handed the
+			// child the DEFAULT instead of 6.
 			if (CgUtil.isGlobal(variable)) {
-				// global constant variables have already been mapped by the instantiator
+				// Deliberately NOT null-guarded: a global is mapped up front, so a
+				// null mapping here means the instantiator skipped an entity's decls
+				// and the loud NPE is how that gets found (it is what surfaced the
+				// network-const forwarding gap). Do not soften this.
 				Var var = instantiator.getMapping(entity, variable);
 				value = ValueUtil.getValue(var.getInitialValue());
+			} else if (CgUtil.isEntityParam(variable)) {
+				Var var = instantiator.getMapping(entity, variable);
+				value = var == null
+						// Not skeletonized yet — the AST still holds either the
+						// setValues-specialized value or the declared default.
+						? doSwitch(variable.getValue())
+						: ValueUtil.getValue(var.getInitialValue());
 			} else {
 				value = doSwitch(variable.getValue());
 			}

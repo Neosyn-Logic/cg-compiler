@@ -23,7 +23,7 @@
  * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE
  */
-module DemuxDDR # ( parameter width = 0 ) ( input reset_n , input clock , input din_valid , input [ width - 1 : 0 ] din , output reg rising_valid , output reg [ width - 1 : 0 ] rising , output reg falling_valid , output reg [ width - 1 : 0 ] falling ) ;
+module DemuxDDR # ( parameter width = 1 ) ( input reset_n , input clock , input din_valid , input [ width - 1 : 0 ] din , output reg rising_valid , output reg [ width - 1 : 0 ] rising , output reg falling_valid , output reg [ width - 1 : 0 ] falling ) ;
 reg w1 ;
 reg [ width - 1 : 0 ] w2 ;
 always @ ( negedge reset_n or posedge clock ) begin

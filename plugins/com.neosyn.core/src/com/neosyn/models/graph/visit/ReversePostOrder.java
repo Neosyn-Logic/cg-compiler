@@ -26,8 +26,6 @@ import com.neosyn.models.graph.Vertex;
 /**
  * This class defines a reverse post order based on a post-order DFS.
  * 
-
- * 
  */
 public class ReversePostOrder extends DFS {
 

@@ -18,8 +18,6 @@ import com.neosyn.models.ir.Expression;
  * This interface defines a method for a class that can transform a Cx expression into an IR
  * expression.
  * 
-
- * 
  */
 public interface Transformer {
 

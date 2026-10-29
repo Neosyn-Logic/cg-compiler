@@ -32,8 +32,6 @@ import com.neosyn.cg.instantiation.IInstantiator;
 /**
  * This class describes a resource description manager.
  * 
-
- * 
  */
 public class CgResourceDescriptionManager extends DefaultResourceDescriptionManager implements
 		AllChangeAware {

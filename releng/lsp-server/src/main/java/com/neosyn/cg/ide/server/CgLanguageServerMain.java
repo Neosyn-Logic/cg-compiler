@@ -74,7 +74,7 @@ import com.neosyn.cg.ide.CgIdeModule;
  */
 public class CgLanguageServerMain {
 
-    private static final String VERSION = "2.6.9";
+    private static final String VERSION = "3.5.1";
 
     public static void main(String[] args) {
         // The open-source Verilog compiler runs with no license gate.
@@ -180,6 +180,7 @@ public class CgLanguageServerMain {
         System.out.println();
         System.out.println("Options for 'generate':");
         System.out.println("  --output <dir>      Output directory (default: same as project)");
+        System.out.println("  --top <entity>      Emit only this entity and what it uses (simple or qualified name)");
         System.out.println();
         System.out.println("Examples:");
         System.out.println("  java -jar cg-language-server.jar generate /path/to/project");
@@ -226,13 +227,16 @@ public class CgLanguageServerMain {
     private static void runGenerate(String[] args) {
         if (args.length < 2) {
             System.err.println("Error: Missing path argument");
-            System.err.println("Usage: java -jar cg-language-server.jar generate <path> [--target verilog|vhdl]");
+            System.err.println("Usage: java -jar cg-language-server.jar generate <path> [--target verilog|vhdl]"
+                    + " [--target-vendor generic|amd|intel|lattice] [--output <dir>] [--top <entity>]");
             System.exit(1);
         }
 
         String path = args[1];
         String target = "verilog";
         String outputDir = null;
+        String targetVendor = null;
+        String top = null;
 
         // Parse optional arguments
         for (int i = 2; i < args.length; i++) {
@@ -240,6 +244,10 @@ public class CgLanguageServerMain {
                 target = args[++i];
             } else if ("--output".equals(args[i]) && i + 1 < args.length) {
                 outputDir = args[++i];
+            } else if ("--target-vendor".equals(args[i]) && i + 1 < args.length) {
+                targetVendor = args[++i];
+            } else if ("--top".equals(args[i]) && i + 1 < args.length) {
+                top = args[++i];
             }
         }
 
@@ -261,6 +269,8 @@ public class CgLanguageServerMain {
             GenerateParams params = new GenerateParams();
             params.setUri(uri);
             params.setTarget(target);
+            params.setTargetVendor(targetVendor);
+            params.setTop(top);
             if (outputDir != null) {
                 params.setOutputDirectory(outputDir);
             }

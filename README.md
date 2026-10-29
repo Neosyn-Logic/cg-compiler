@@ -8,6 +8,9 @@ syntax that compiles to clean, standard **Verilog**. This repository is the
 open-source compiler: the language frontend (parser, type system, validation)
 and the Verilog backend, under the **Mozilla Public License 2.0**.
 
+The current version is **3.5.1**, the same compiler as the Neosyn C⏚ 3.5.1
+release. See [CHANGELOG.md](CHANGELOG.md) for what changed.
+
 ```c
 // A 4-tap moving-average filter in C⏚
 task MovingAvg {
@@ -51,16 +54,21 @@ permission to compile.
 | C⏚ language frontend (parse, type-check, validate) | The supported, prebuilt VS Code extension |
 | Verilog code generator | The fast (bytecode) cycle-accurate simulator |
 | The language server (LSP): diagnostics, hover, navigation | VHDL backend |
-| The bundled Verilog runtime library | Production IP cores (Ethernet, AES, RISC-V, …) |
+| | Production IP cores (Ethernet, AES, RISC-V, …) |
 | | Priority support / SLA |
+
+**The standard library** (FIFOs, RAMs, synchronizers, DDR mux/demux, `Divide`,
+`Multiply`) is © Neosyn, not MPL-2.0. This repository ships it in a non-readable
+form that keeps every module's name, parameters and ports, so designs that use it
+generate, elaborate and simulate exactly as with the commercial distribution.
 
 Read more about the open-core model at **https://neosyn.io/open**.
 
 ## Get it
 
 **Prebuilt jar (no build needed):** download `cg-language-server.jar` from the
-[latest release](https://github.com/Neosyn-Logic/cg-compiler/releases/latest)
-and run it with JDK 17+ — see [Use it](#use-it). Or build from source below.
+[releases page](https://github.com/Neosyn-Logic/cg-compiler/releases) and run it
+with JDK 17+ — see [Use it](#use-it). Or build from source below.
 
 ## Build from source
 
@@ -69,7 +77,7 @@ Requirements: **JDK 17+** and **Maven 3.9+** (Tycho 4 needs 3.9, not 3.8).
 ```bash
 # 1. Build + install the language plugins (Tycho reactor)
 cd releng
-mvn clean install -DskipTests
+mvn clean install -DskipTests     # drop -DskipTests to run the unit tests too
 
 # 2. Build the standalone language-server / CLI jar
 cd lsp-server
@@ -82,6 +90,9 @@ mvn clean package
 ```bash
 # Generate Verilog from a C⏚ file or project
 java -jar cg-language-server.jar generate path/to/Design.cg
+
+# Only one entity, what it uses, and its testbench
+java -jar cg-language-server.jar generate path/to/project --top MovingAvg
 
 # Generate the intermediate representation
 java -jar cg-language-server.jar generate-ir path/to/Design.cg
@@ -111,6 +122,6 @@ welcome; MPL-2.0 means changes to covered files are shared back.
 
 ## License
 
-Mozilla Public License 2.0 - see [LICENSE](LICENSE) and [NOTICE](NOTICE).
-C⏚ began as the Synflow Cx toolchain; this compiler is its open-source
-continuation.
+Mozilla Public License 2.0 - see [LICENSE](LICENSE) and [NOTICE](NOTICE),
+except the standard-library Verilog described above. C⏚ began as the Synflow
+Cx toolchain; this compiler is its open-source continuation.

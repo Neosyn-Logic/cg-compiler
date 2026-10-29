@@ -19,7 +19,6 @@ import org.eclipse.xtext.util.Strings;
 /**
  * This class defines a value converter for integer numbers.
  * 
-
  */
 public class BigIntegerValueConverter extends AbstractLexerBasedConverter<BigInteger> {
 

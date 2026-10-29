@@ -1,0 +1,34 @@
+/*
+ * Range bit-slice v[high:low]. Guards the feature added 2026-09-08.
+ *
+ * 0xABCD -> [7:0]=0xCD  [15:8]=0xAB  [11:4]=0xBC  [3:0]=0xD  [15:0]=0xABCD
+ * 0x1234 -> [7:0]=0x34  [15:8]=0x12  [11:4]=0x23  [3:0]=0x4  [15:0]=0x1234
+ *
+ * Vectors, not a self-checking monitor, so the harness verifies the VALUES on every
+ * backend rather than only that it elaborates (feedback_compiler §35).
+ */
+package com.neosyn.test.pass.slice;
+
+task Slice {
+	properties {
+		test: {
+			w:    [ 0xABCD, 0x1234 ],
+			lo8:  [ 0x00CD, 0x0034 ],
+			hi8:  [ 0x00AB, 0x0012 ],
+			mid:  [ 0x00BC, 0x0023 ],
+			nib:  [ 0x000D, 0x0004 ],
+			all:  [ 0xABCD, 0x1234 ]
+		}
+	}
+
+	in u16 w; out u16 lo8, hi8, mid, nib, all;
+
+	void loop() {
+		u16 v = w.read();
+		lo8.write(v[7:0]);
+		hi8.write(v[15:8]);
+		mid.write(v[11:4]);
+		nib.write(v[3:0]);
+		all.write(v[15:0]);
+	}
+}

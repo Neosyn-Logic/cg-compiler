@@ -33,8 +33,6 @@ import com.neosyn.models.ir.util.ValueUtil;
 /**
  * This class transforms our Javascript-like syntax to pure JSON.
  * 
-
- * 
  */
 public class JsonMaker extends CgSwitch<JsonElement> {
 

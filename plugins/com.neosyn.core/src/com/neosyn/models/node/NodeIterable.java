@@ -14,8 +14,6 @@ import java.util.Iterator;
 /**
  * This class defines an iterable over nodes.
  * 
-
- * 
  */
 public class NodeIterable implements Iterable<Node> {
 

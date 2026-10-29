@@ -21,8 +21,6 @@ import com.neosyn.cg.cg.ExpressionVariable;
 /**
  * This class extends the lazy linker to clear the property variables in ExpressionVariable.
  * 
-
- *
  */
 public class CgLinker extends LazyLinker {
 

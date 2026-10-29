@@ -22,8 +22,6 @@ import com.neosyn.cg.cg.Variable;
  * This class defines a qualified name provider for Cx that computes the qualified name of a module
  * as its simple name (file name without extension).
  * 
-
- * 
  */
 public class CgQualifiedNameProvider extends DefaultDeclarativeQualifiedNameProvider {
 

@@ -38,8 +38,6 @@ import com.neosyn.models.util.Void;
 /**
  * This class defines a cycle detector.
  * 
-
- * 
  */
 public class CycleDetector extends VoidCxSwitch implements ICycleListener {
 

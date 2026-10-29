@@ -29,8 +29,6 @@ import com.neosyn.models.ir.Expression;
 /**
  * This class defines utility functions for transformation of Cx.
  * 
-
- * 
  */
 public class TransformerUtil {
 

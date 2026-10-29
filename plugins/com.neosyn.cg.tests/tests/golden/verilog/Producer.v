@@ -1,6 +1,12 @@
+/**
+ * Title      : Generated from com.neosyn.test.golden.Producer by Neosyn IDE
+ * File       : com.neosyn.test.golden.Producer.v
+ * Standard   : Verilog-2001
+ */
+
 /*
  * Copyright (c) 2024 Neosyn. All rights reserved.
- *  *
+ *
  * Golden file test - Network compositions for regression testing.
  * Tests: task instantiation, port connections, inline tasks.
  */
@@ -8,7 +14,11 @@
 /**
  * Simple producer task - generates incrementing values.
  */
-module Producer(input clock, input reset_n, output reg [7 : 0] data);
+module Producer(
+  input clock,
+  input reset_n,
+  output reg [7 : 0] data
+);
 
 
   /**
@@ -29,13 +39,9 @@ module Producer(input clock, input reset_n, output reg [7 : 0] data);
       data <= 8'b0;
     end else begin
       
-      begin : FSM_Producer_a // line 18
-        reg [8 : 0] orion;
-      
-        data <= value;
-        orion = (value + 8'h1);
-        value <= orion[7 : 0];
-      end
+      // line 18
+      data <= value;
+      value <= (value + 8'h1);
     end
   end
 

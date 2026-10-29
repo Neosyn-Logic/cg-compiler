@@ -30,6 +30,7 @@ import com.neosyn.cg.cg.Network;
 import com.neosyn.cg.cg.VarRef;
 import com.neosyn.cg.instantiation.IInstantiator;
 import com.neosyn.cg.internal.ErrorMarker;
+import com.neosyn.cg.validation.IssueCodes;
 import com.neosyn.models.dpn.DPN;
 import com.neosyn.models.dpn.Endpoint;
 import com.neosyn.models.dpn.Instance;
@@ -39,8 +40,6 @@ import com.neosyn.models.ir.util.TypePrinter;
 
 /**
  * This class defines an helper class that creates Connections.
- * 
-
  * 
  */
 public class ExplicitConnector {
@@ -100,9 +99,26 @@ public class ExplicitConnector {
 
 		// check ports have the same interface type
 		if (sourcePort.getInterface() != targetPort.getInterface()) {
+			// Carries an issue code so it can BLOCK. Without one it was demoted to a
+			// non-blocking `warning:` and the simulator went on to run the broken graph and
+			// report success -- the consumer reading a constant 0 for the whole run (T24).
 			addError(new ErrorMarker("Port mismatch: incompatible interface type between "
 					+ srcName + " and '" + targetPort.getName() + "'", connect,
-					Literals.CONNECT__PORTS, index));
+					Literals.CONNECT__PORTS, index, IssueCodes.ERR_PORT_INTERFACE_MISMATCH));
+		}
+
+		// TRAPS T58: a framed input must be fed by a framed output. From an unframed stream its
+		// `last` would be a wire nothing drives -- floating in the HDL. The other way round is
+		// fine: the reader simply ignores the boundary. `reads`: the target port is the reader;
+		// `writes`: the source is.
+		boolean reads = TYPE_READS.equals(connect.getType());
+		Port reader = reads ? targetPort : sourcePort;
+		Port writer = reads ? sourcePort : targetPort;
+		if (reader.isFramed() && !writer.isFramed()) {
+			addError(new ErrorMarker("Port mismatch: '" + reader.getName() + "' is framed but "
+					+ (reads ? srcName : "'" + writer.getName() + "'") + " is not: a framed input needs"
+					+ " a framed output, which writes the frame boundary (`write(v, last)`)", connect,
+					Literals.CONNECT__PORTS, index, IssueCodes.ERR_FRAMED_MISUSE));
 		}
 	}
 

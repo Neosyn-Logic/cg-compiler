@@ -20,6 +20,18 @@ activation tooling, and the production IP cores are part of the commercial
 Neosyn distribution and are not included here. See https://neosyn.io/open.
 
 ------------------------------------------------------------------------
+Standard library
+------------------------------------------------------------------------
+The standard-library Verilog under
+fragments/com.neosyn.ide.libraries/lib/verilog/src (FIFOs, RAMs,
+synchronizers, DDR mux/demux, Divide, Multiply) and its C⏚ declarations
+(the .cg files in plugins/com.neosyn.cg/model) are (c) Neosyn and are not
+covered by the Mozilla Public License; each file's header states its terms.
+The Verilog is provided in a non-readable form that keeps every module's
+name, parameters and ports, so that designs using it can be generated and
+simulated with this compiler.
+
+------------------------------------------------------------------------
 Third-party components
 ------------------------------------------------------------------------
 This software builds on the Eclipse Xtext / Xtend / EMF frameworks and the

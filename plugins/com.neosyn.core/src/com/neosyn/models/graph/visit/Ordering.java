@@ -20,8 +20,6 @@ import com.neosyn.models.graph.Vertex;
 /**
  * This class defines an ordering.
  * 
-
- * 
  */
 public abstract class Ordering implements Iterable<Vertex> {
 

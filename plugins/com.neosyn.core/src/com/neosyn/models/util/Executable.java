@@ -12,8 +12,6 @@ package com.neosyn.models.util;
 /**
  * This interface defines an executable piece of code that takes an argument.
  * 
-
- *
  * @param <T>
  */
 public interface Executable<T> {

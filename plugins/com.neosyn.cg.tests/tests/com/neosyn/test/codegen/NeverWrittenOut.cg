@@ -1,0 +1,12 @@
+package com.neosyn.test.codegen;
+
+// TRAPS T66 (VHDL half): `flag` is declared and never written. The VHDL assigned it only in the reset
+// branch of the clocked process, which GHDL's synthesis reads as a latch (UART's `start`).
+task NeverWrittenOut {
+	in push u8 x;
+	out push u8 z;
+	out bool flag;
+	void loop() {
+		z.write((u8) (x.read() + 1));
+	}
+}

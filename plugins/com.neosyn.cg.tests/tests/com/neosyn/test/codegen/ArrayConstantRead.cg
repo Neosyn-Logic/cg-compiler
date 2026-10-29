@@ -1,0 +1,21 @@
+package com.neosyn.test.codegen;
+
+// Regression fixture, TRAPS T45 (see ArrayWritePortTest): an array read at a CONSTANT index --
+// AES's `win[Nk - 1]` shape. Verilog gives it a write port (Yosys maps it to RAM all the same);
+// VHDL must not, because GHDL's synthesis keeps no memory with a constant-address read and the
+// port would only add registers (measured on AES: 1791 -> 1883 LUT).
+network ArrayConstantRead {
+	out push u8 t;
+
+	tab = new task {
+		const int LAST = 3;
+		u8 cells[4];
+		u2 n;
+		void loop() {
+			u8 v = cells[LAST - 1];
+			cells[n] = (u8) (v + 1);
+			n++;
+			t.write(v);
+		}
+	};
+}

@@ -15,7 +15,6 @@ import org.eclipse.emf.common.util.EList;
  * This interface defines an assignment of the result of a <code>phi</code> function to a target
  * local variable.
  * 
-
  * @model extends="net.sf.orcc.ir.Instruction"
  */
 public interface InstPhi extends Instruction {

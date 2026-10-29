@@ -33,8 +33,6 @@ import com.neosyn.models.util.Void;
  * This class defines a beautifier that renames actions/states of the actor's
  * FSM that it visits. It also sorts by topological order.
  * 
-
- * 
  */
 public class FsmBeautifier {
 
@@ -68,31 +66,6 @@ public class FsmBeautifier {
 		} while (work >= 0);
 
 		return builder.reverse().toString();
-	}
-
-	public static void main(String[] args) {
-		System.out.println(newIdentifier(0));
-		System.out.println(newIdentifier(1));
-		System.out.println(newIdentifier(25));
-		System.out.println();
-		System.out.println(newIdentifier(26));
-		System.out.println(newIdentifier(27));
-		System.out.println(newIdentifier(51));
-		System.out.println();
-		System.out.println(newIdentifier(52));
-		System.out.println(newIdentifier(77));
-		System.out.println();
-		System.out.println(newIdentifier(78));
-		System.out.println(newIdentifier(103));
-		System.out.println();
-		System.out.println(newIdentifier(676));
-		System.out.println(newIdentifier(701));
-		System.out.println();
-		System.out.println(newIdentifier(702));
-		System.out.println(newIdentifier(727));
-		System.out.println();
-		System.out.println(newIdentifier(728));
-		System.out.println(newIdentifier(753));
 	}
 
 	private FSM fsm;

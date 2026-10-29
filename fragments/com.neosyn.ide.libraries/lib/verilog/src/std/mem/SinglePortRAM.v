@@ -23,7 +23,7 @@
  * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE
  */
-module SinglePortRAM # ( parameter size = 0 , width = 0 , depth = 0 , writeShiftMode = 0 , addOutputRegister = 0 ) ( input clock , input [ depth - 1 : 0 ] address , input [ width - 1 : 0 ] data , input data_valid , output [ width - 1 : 0 ] q ) ;
+module SinglePortRAM # ( parameter size = 1 , width = 1 , depth = 1 , writeShiftMode = 0 , addOutputRegister = 0 ) ( input clock , input [ depth - 1 : 0 ] address , input [ width - 1 : 0 ] data , input data_valid , output [ width - 1 : 0 ] q ) ;
 reg [ width - 1 : 0 ] w1 [ 0 : size - 1 ] ;
 reg [ width - 1 : 0 ] w2 ;
 generate if ( addOutputRegister ) begin

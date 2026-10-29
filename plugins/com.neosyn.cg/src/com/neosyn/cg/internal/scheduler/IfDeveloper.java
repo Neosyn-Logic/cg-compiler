@@ -39,8 +39,6 @@ import com.neosyn.models.util.Void;
  * the source) created by the CycleScheduler in the first pass. When the IfDeveloper develops a
  * transition, these objects must be associated with the current transition.
  * 
-
- * 
  */
 public class IfDeveloper extends AbstractCycleScheduler {
 

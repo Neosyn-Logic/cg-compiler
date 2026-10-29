@@ -16,8 +16,6 @@ import com.neosyn.models.node.Node;
 /**
  * This class defines a if behavior to handle multi-cycle if statements.
  * 
-
- *
  */
 public class IfBehaviorMulti implements IfBehavior {
 

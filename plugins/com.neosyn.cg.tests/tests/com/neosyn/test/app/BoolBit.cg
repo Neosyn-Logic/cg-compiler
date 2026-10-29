@@ -1,0 +1,33 @@
+/*
+ * A `bool` output wired to an `unsigned<1>` input (a FIFO of width 1), and that 1-bit output wired
+ * back to a `bool` input. VHDL maps a bool to std_logic and a 1-bit integer to a vector, so the port
+ * map did not analyse until TRAPS T165 (Verilog and the simulator never minded). Vectors, so the
+ * values are checked on every backend.
+ */
+package com.neosyn.test.app.boolbit;
+
+network TestBoolBit {
+	properties {
+		test: {
+			din:  [ true, false, true, true, false ],
+			dout: [ true, false, true, true, false ]
+		}
+	}
+	in push bool din; out push bool dout;
+
+	relay = new task {
+		stream { out bool b; }
+		void loop() { b.write(din.read()); }
+	};
+
+	fifo = new std.fifo.SynchronousFIFO({ size: 4, width: 1 });
+	fifo.reads(relay.b);
+
+	back = new task {
+		stream { in bool v; }
+		out push bool o;
+		void loop() { o.write(v.read()); }
+	};
+	back.reads(fifo.dout);
+	back.writes(dout);
+}

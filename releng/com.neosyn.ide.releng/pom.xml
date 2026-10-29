@@ -25,6 +25,24 @@
 		<maven.compiler.target>17</maven.compiler.target>
 		<!-- Skip slow external tool tests (Verilator, Yosys, cocotb) when true -->
 		<neosyn.skipSlowTests>false</neosyn.skipSlowTests>
+		<!-- Rewrite the golden .v/.vhd files instead of comparing against them. Declared here
+		     so the tests argLine forwards a real value: it referenced ${neosyn.updateGoldenFiles}
+		     with nothing defining it, so a run without an explicit -D handed the forked JVM the
+		     literal property expression. Harmless in effect, but the same shape as the switches
+		     that silently did nothing (see feedback §47). -->
+		<neosyn.updateGoldenFiles>false</neosyn.updateGoldenFiles>
+		<!-- Force-run the known-XFAIL fixtures in the HDL value gates. Declared here
+		     so tycho-surefire's argLine can forward them; a -D on the mvn command line
+		     alone never reached the forked test JVM, so the switch the gates' javadoc
+		     advertises silently did nothing: the run looked green because every XFAIL
+		     was still being skipped. -->
+		<ghdl.runXfail>false</ghdl.runXfail>
+		<iverilog.runXfail>false</iverilog.runXfail>
+		<!-- Narrow the HDL codegen gates to entities whose simple name matches this regex,
+		     e.g. -Dcodegen.only=Test_Sha.* — see AbstractCodegenPassTests. Empty runs
+		     everything. Declared here for the same reason as the two above: the argLine has
+		     to forward it or it never reaches the forked test JVM. -->
+		<codegen.only></codegen.only>
 	</properties>
 
 	<repositories>

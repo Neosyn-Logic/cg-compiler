@@ -25,8 +25,6 @@ import com.neosyn.cg.cg.Variable;
  * statement it contains) may be a schedule modifier like fence and idle, and any action on a port
  * (available, read, write).
  * 
-
- * 
  */
 public class ScheduleModifierSwitch extends BoolCxSwitch {
 

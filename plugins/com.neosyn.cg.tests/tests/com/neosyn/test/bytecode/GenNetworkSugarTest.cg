@@ -1,0 +1,53 @@
+package com.neosyn.test.bytecode;
+
+/*
+ * L3 Generics — `<...>` formal params on a NETWORK, at parity with Task.
+ *
+ * SugarMid declares <int W = 4> and forwards it to a leaf task; the top
+ * instantiates it twice, once positionally (<6>) and once with the default
+ * omitted. Every default in the chain is 4, so a value that fails to forward
+ * shows up as 4 and trips an assert rather than passing quietly.
+ *
+ * This is NOT redundant with GenNetworkParamTest: that one covers a body
+ * `const` (which lives in a VarDecl and is therefore global), while a `<...>`
+ * formal is NOT global. The two take different paths through the Evaluator,
+ * and the sugar path silently handed the child its DEFAULT until the Evaluator
+ * learned to read an entity param from its mapped IR Var. A network exposed
+ * this and a task never could: a task's body compiles inside the window where
+ * EntityMapper.setValues has the specialized value patched into the AST, but a
+ * network's child-instance args are evaluated after it has been restored.
+ */
+task SugarLeaf<int W = 4> {
+    out push u8 v;
+    void setup() { v.write((u8) W); }
+}
+
+network SugarMid<int W = 4> {
+    out push u8 v;
+    leaf = new SugarLeaf<W>();
+    this.reads(leaf.v);
+}
+
+network GenNetworkSugarTest {
+    properties { test: { terminate: "checker.finished" } }
+
+    m6 = new SugarMid<6>();   // positional sugar, forwarded two levels
+    mDef = new SugarMid();    // omitted -> default 4 must survive
+
+    checker = new task {
+        in push u8 a;
+        in push u8 b;
+        bool finished;
+
+        void setup() {
+            u8 got6 = a.read;
+            u8 gotDef = b.read;
+            assert(got6 == 6);
+            assert(gotDef == 4);
+            print("network sugar: m6->", got6, " mDef->", gotDef, "\n");
+            finished = true;
+        }
+    };
+
+    checker.reads(m6.v, mDef.v);
+}

@@ -24,8 +24,6 @@ import com.neosyn.models.ir.util.TypeUtil;
  * This class defines an abstract checker, that provides "error" protected methods similar to
  * Validator.
  * 
-
- * 
  */
 public abstract class Checker extends VoidCxSwitch {
 
@@ -78,6 +76,26 @@ public abstract class Checker extends VoidCxSwitch {
 		}
 
 		if (!TypeUtil.canAssignBool(typeSrc, typeTgt)) {
+			error("Type mismatch: cannot convert from " + new TypePrinter().toString(typeSrc)
+					+ " to " + new TypePrinter().toString(typeTgt), source, feature, index,
+					ERR_TYPE_MISMATCH);
+		}
+	}
+
+	/**
+	 * Like {@link #checkAssignImplicitBool} but tolerates integer narrowing (silent
+	 * truncation to the target width). Use for assignments to a LOCAL variable of
+	 * an explicitly declared width — the width is the intent. Genuinely
+	 * incompatible assignments (e.g. array-to-scalar, non-size-1-int-to-bool) still
+	 * error. Interface boundaries keep the strict check.
+	 */
+	protected void checkAssignAllowTruncation(Type typeTgt, Type typeSrc, EObject source,
+			EStructuralFeature feature, int index) {
+		if (typeTgt == null || typeSrc == null) {
+			return;
+		}
+
+		if (!TypeUtil.canAssignBoolTruncating(typeSrc, typeTgt)) {
 			error("Type mismatch: cannot convert from " + new TypePrinter().toString(typeSrc)
 					+ " to " + new TypePrinter().toString(typeTgt), source, feature, index,
 					ERR_TYPE_MISMATCH);

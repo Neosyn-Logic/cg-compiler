@@ -26,8 +26,6 @@ import com.neosyn.models.ir.Var;
  * This class defines an adapter that maintains a map of variables from a list
  * of variables.
  * 
-
- * 
  */
 public class MapAdapter extends AdapterImpl {
 

@@ -14,7 +14,6 @@ import org.eclipse.emf.ecore.EObject;
 /**
  * This interface defines a type.
  * 
-
  * @author Jerome Gorin
  * @model abstract="true"
  * 

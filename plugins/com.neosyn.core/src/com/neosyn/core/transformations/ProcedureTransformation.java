@@ -23,8 +23,6 @@ import com.neosyn.models.util.Void;
 /**
  * This class defines a transformation that transforms all procedures in an actor/unit.
  * 
-
- * 
  */
 public class ProcedureTransformation extends Transformation {
 

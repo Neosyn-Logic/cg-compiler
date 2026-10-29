@@ -1,0 +1,41 @@
+/*
+ * TRAPS T68 (fixed S186). A producer writes 1,2,3,4 with idle(2) between; a relay copies
+ * `dout.write(din.read)`; a checker expects each value once. The bytecode simulator DUPLICATED a
+ * value when the producer paused: its buffered input copied the port on every cycle `valid` was
+ * up and never took it. Verilog and VHDL were right. Guarded on all three back ends.
+ */
+package com.neosyn.test.bytecode;
+network StreamRelayGapTest {
+	properties { test: { terminate: "checker.finished" } }
+	src = new task {
+		out stream u8 dout;
+		const u8 P[4] = { 1, 2, 3, 4 };
+		u4 i; bool sent = false;
+		void loop() {
+			if (!sent) { for (i = 0; i < 4; i++) { dout.write(P[i]); idle(2); } sent = true; }
+		}
+	};
+	relay = new task {
+		in stream u8 din;
+		out stream u8 dout;
+		void loop() {
+			dout.write(din.read);
+		}
+	};
+	relay.reads(src.dout);
+	checker = new task {
+		in stream u8 din;
+		const u8 E[4] = { 1, 2, 3, 4 };
+		u4 n = 0; bool finished = false;
+		void loop() {
+			u8 got = din.read;
+			if (!finished) {
+				print("R n=", n, " exp ", E[n], " got ", got, "\n");
+				assert(got == E[n]);
+				n = (u4)(n + 1);
+				if (n == 4) { print("RELAY OK 4/4\n"); finished = true; }
+			}
+		}
+	};
+	checker.reads(relay.dout);
+}

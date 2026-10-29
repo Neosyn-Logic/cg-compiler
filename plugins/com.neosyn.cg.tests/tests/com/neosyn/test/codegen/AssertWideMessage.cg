@@ -1,0 +1,13 @@
+package com.neosyn.test.codegen;
+
+// TRAPS T175: a VHDL assert prints the value of each side -- here a 40-bit one (too wide for VHDL's
+// `integer`, printed in hex) and a literal (printed as written).
+task AssertWideMessage {
+	bool finished;
+	uint<40> w;
+	void loop() {
+		w = (uint<40>) (w + 1);
+		assert(w != 1099511627775);
+		if (w == 3) { finished = true; }
+	}
+}

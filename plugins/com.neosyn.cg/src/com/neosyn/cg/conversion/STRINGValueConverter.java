@@ -17,7 +17,6 @@ import org.eclipse.xtext.util.Strings;
 /**
  * This class defines a value converter for strings.
  * 
-
  */
 public class STRINGValueConverter extends AbstractLexerBasedConverter<String> {
 

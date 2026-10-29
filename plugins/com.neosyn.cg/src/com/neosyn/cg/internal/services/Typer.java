@@ -11,6 +11,7 @@ package com.neosyn.cg.internal.services;
 
 import static com.neosyn.cg.CgConstants.NAME_SIZEOF;
 import static com.neosyn.cg.CgConstants.PROP_AVAILABLE;
+import static com.neosyn.cg.CgConstants.PROP_LAST;
 import static com.neosyn.cg.CgConstants.PROP_LENGTH;
 import static com.neosyn.cg.CgConstants.PROP_READ;
 import static com.neosyn.cg.CgConstants.PROP_READY;
@@ -19,15 +20,9 @@ import java.math.BigInteger;
 import java.util.Iterator;
 import java.util.List;
 
-import org.eclipse.core.resources.IMarker;
-import org.eclipse.core.resources.IResource;
-import org.eclipse.core.resources.IWorkspaceRoot;
-import org.eclipse.core.resources.ResourcesPlugin;
-import org.eclipse.core.runtime.CoreException;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 
-import com.neosyn.core.NeosynCore;
 import com.neosyn.cg.CgUtil;
 import com.neosyn.cg.cg.CgExpression;
 import com.neosyn.cg.cg.CgType;
@@ -62,8 +57,6 @@ import com.neosyn.models.ir.util.ValueUtil;
 /**
  * This class defines a typer for Cx AST. Note that types must have been
  * transformed to IR types first.
- * 
-
  * 
  */
 public class Typer extends CgSwitch<Type> {
@@ -173,7 +166,7 @@ public class Typer extends CgSwitch<Type> {
 
 		String prop = expression.getPropertyName();
 		boolean isPort = CgUtil.isPort(ref.getVariable());
-		if (PROP_AVAILABLE.equals(prop) || PROP_READY.equals(prop)) {
+		if (PROP_AVAILABLE.equals(prop) || PROP_READY.equals(prop) || PROP_LAST.equals(prop)) {
 			return isPort ? ir.createTypeBool() : null;
 		} else if (PROP_READ.equals(prop)) {
 			return isPort ? doSwitch(ref) : null;
@@ -189,6 +182,26 @@ public class Typer extends CgSwitch<Type> {
 
 		int numDims = getNumDimensions(type);
 		List<CgExpression> indexes = expression.getIndexes();
+
+		// A RANGE SLICE v[hi:lo] is an unsigned integer of width hi-lo+1. A single-bit
+		// select v[n] stays `bool` (below) — the two are different types on purpose, so
+		// `v[3]` keeps behaving as it always has and only the new form is widened.
+		// Bounds are compile-time constants (the grammar's SliceBound admits only literals,
+		// names and one +/-), so the width is known here.
+		if (expression.getSliceHigh() != null && expression.getSliceLow() != null) {
+			Object hi = instantiator.evaluate(entity, expression.getSliceHigh());
+			Object lo = instantiator.evaluate(entity, expression.getSliceLow());
+			if (!ValueUtil.isInt(hi) || !ValueUtil.isInt(lo)) {
+				return null;
+			}
+			int high = ((BigInteger) hi).intValue();
+			int low = ((BigInteger) lo).intValue();
+			if (high < low) {
+				return null;
+			}
+			return ir.createTypeInt(high - low + 1, false);
+		}
+
 		if (indexes.isEmpty()) {
 			return type;
 		} else if (indexes.size() > numDims + 1) {
@@ -336,6 +349,15 @@ public class Typer extends CgSwitch<Type> {
 		if (CgUtil.isPort(variable)) {
 			Port port = instantiator.getPort(entity, ref);
 			if (port == null) {
+				// An ARRAY port has no single IR port -- it fanned out to one per element
+				// -- so getPort is null for it by design. Every element carries the same
+				// type, so the first one answers the question. Without this the reference
+				// fell into printError, whose Eclipse marker API is absent from the CLI:
+				// `(u8) W[0].read()` died with NoClassDefFoundError rather than typing.
+				java.util.List<Port> elements = instantiator.getArrayPortElements(entity, ref);
+				if (elements != null && !elements.isEmpty() && elements.get(0) != null) {
+					return elements.get(0).getType();
+				}
 				printError(variable);
 				return null;
 			}
@@ -344,19 +366,21 @@ public class Typer extends CgSwitch<Type> {
 		return doSwitch(ref.getVariable());
 	}
 
-	public void printError (Variable variable) {
-		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
-		try {
-			root.deleteMarkers(IMarker.PROBLEM, false, IResource.DEPTH_ZERO);
-			IMarker marker = root.createMarker(IMarker.PROBLEM);
-			marker.setAttribute(IMarker.SEVERITY, IMarker.SEVERITY_ERROR);
-			marker.setAttribute(IMarker.MESSAGE,
-					"There is a problem with " + entity.getName() + ". The port " + variable.getName() + " is unconnected, undifined or unknown");
-		} catch (CoreException e) {
-			NeosynCore.log(e);
-		}			
+	/**
+	 * A port reference that has no IR port. In the Eclipse IDE that raises a workspace marker; in
+	 * the standalone jar there is no workspace, and the marker call threw NoClassDefFoundError out
+	 * of the validator, which printed only "Error executing EValidator" and skipped every check
+	 * after it for that object (TRAPS T130: a STRUCT port, which flattens to one IR port per field
+	 * like an array port does, reached here on every write). The type stays null, which every
+	 * caller already treats as "not checkable".
+	 */
+	public void printError(Variable variable) {
+		if (variable.eResource() != null && variable.eResource().getURI() != null
+				&& variable.eResource().getURI().isPlatform()) {
+			WorkspaceMarkers.portProblem(entity.getName(), variable.getName());
+		}
 	}
-	
+
 	@Override
 	public Type doSwitch(EObject eObject) {
 		if (eObject == null) {

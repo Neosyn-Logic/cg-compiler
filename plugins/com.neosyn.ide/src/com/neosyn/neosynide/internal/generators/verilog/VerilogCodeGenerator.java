@@ -10,14 +10,12 @@
 package com.neosyn.neosynide.internal.generators.verilog;
 
 import static com.neosyn.neosynide.NeosynIdeModule.VERILOG;
-import static com.neosyn.neosynide.internal.generators.GeneratorExtensions.getNumberOfHexadecimalDigits;
 
 import java.util.List;
 import java.util.Set;
 
 import org.eclipse.emf.ecore.EObject;
 
-import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
 import com.neosyn.core.util.CoreUtil;
 import com.neosyn.models.dpn.Entity;
@@ -28,12 +26,13 @@ import com.neosyn.models.ir.util.IrUtil;
 import com.neosyn.models.ir.util.TypeUtil;
 import com.neosyn.neosynide.internal.generators.AbstractGenerator;
 import com.neosyn.neosynide.internal.generators.Namer;
+import com.neosyn.neosynide.transformations.StreamLinkMarker;
 
 /**
- * This class implements a generator for Verilog.
- * 
-
- * 
+ * Entry point of the Verilog backend: runs {@link VerilogTransformer} over an entity's IR
+ * and drives {@link VerilogPrinter} to emit the module. Also owns the Verilog-2001 reserved
+ * word set ({@link #RESERVED}) that the Namer uses to escape identifiers colliding with
+ * keywords (e.g. a signal named {@code reg} becomes {@code \reg }).
  */
 public class VerilogCodeGenerator extends AbstractGenerator {
 
@@ -74,7 +73,7 @@ public class VerilogCodeGenerator extends AbstractGenerator {
 	private Namer namer;
 
 	public VerilogCodeGenerator() {
-		namer = new Namer(RESERVED, "\\", " ");
+		namer = new Namer(RESERVED, "\\", " ", false);
 	}
 	
 	@Override
@@ -83,6 +82,8 @@ public class VerilogCodeGenerator extends AbstractGenerator {
 			return;
 		}
 		
+		namer.setScope(entity);
+
 		CharSequence contents = new VerilogPrinter(namer, this).doSwitch(entity);
 		writer.write(computePath(entity), contents);
 	}
@@ -98,6 +99,8 @@ public class VerilogCodeGenerator extends AbstractGenerator {
 		}
 
 		// print testbench
+		namer.setScope(entity);
+
 		CharSequence contents = new VerilogTestbenchPrinter(namer, this).printTestbench(entity);
 		writer.write(path, contents);
 	}
@@ -131,23 +134,33 @@ public class VerilogCodeGenerator extends AbstractGenerator {
 
 				CharSequence sequence;
 				EObject value = var.getInitialValue();
-				if (value == null) {
-					int n = 1;
-					for (Integer dim : typeArray.getDimensions()) {
-						n *= dim;
-					}
-
-					int numDigits = getNumberOfHexadecimalDigits(size);
-					String str = String.format("%0" + numDigits + "x\n", 0);
-					sequence = Strings.repeat(str, n);
-				} else {
-					sequence = new VerilogHexPrinter(size).doSwitch(value);
+				if (VerilogIrPrinter.isArrayInlined(typeArray, value)) {
+					// The values are emitted directly into the module by
+					// VerilogIrPrinter.printArrayInit, so nothing reads this file any more.
+					// Writing it anyway would ship a file that LOOKS like the ROM's source of
+					// truth and silently is not -- edit it and nothing changes. That is the same
+					// class of defect as the absolute $readmemh path it replaced (TRAPS T33).
+					continue;
 				}
+				if (value == null) {
+					// Zeroed in place by VerilogIrPrinter.printArrayInit (S181, finding F8): no side
+					// file to write, and no absolute $readmemh path pointing at one.
+					continue;
+				}
+				sequence = new VerilogHexPrinter(size).doSwitch(value);
 
 				String path = computePath(file + "_" + var.getName(), "hex");
 				writer.write(path, sequence);
 			}
 		}
+	}
+
+	@Override
+	public void prepare(Entity entity) {
+		// Tag direct held-producer stream links before any per-actor transform runs, so
+		// AddReadyAssignments / SynchronousPrinter can emit the standard (non-pipelined)
+		// ready/valid handshake for them. See StreamLinkMarker.
+		StreamLinkMarker.mark(entity);
 	}
 
 	@Override

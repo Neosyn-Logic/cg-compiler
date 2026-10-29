@@ -32,7 +32,6 @@ import com.neosyn.models.util.Void;
  * should be extended by classes that implement intra-procedural IR visitors and
  * transformations.
  * 
-
  * @since 1.2
  */
 public abstract class AbstractIrVisitor extends IrSwitch<Void> {

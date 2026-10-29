@@ -19,7 +19,6 @@ import com.neosyn.models.graph.Graph;
  * This class defines a Finite State Machine (FSM). A FSM is a directed multi-graph, where a vertex
  * is a state, and an edge is a list of actions.
  * 
-
  * @model
  */
 public interface FSM extends Graph {

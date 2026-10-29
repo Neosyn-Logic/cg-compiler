@@ -18,12 +18,9 @@ import com.neosyn.models.ir.util.IrSwitch
 import static extension com.neosyn.neosynide.internal.generators.GeneratorExtensions.getNumberOfHexadecimalDigits
 
 /**
- * This class defines an expression printer used for .hex files, that
- * prints boolean values as integers, with "1" representing <code>true</code>,
- * and "0" representing <code>false</code>.
- * 
-
- * 
+ * Expression printer for the {@code .hex} files that back {@code $readmemh}-initialised
+ * arrays: it prints boolean values as integers ("1" for <code>true</code>, "0" for
+ * <code>false</code>).
  */
 class VerilogHexPrinter extends IrSwitch<CharSequence> {
 

@@ -28,8 +28,6 @@ import com.neosyn.models.dpn.Instance;
 /**
  * This class defines a properties checker for an instance.
  * 
-
- * 
  */
 public class InstancePropertiesChecker extends PropertiesChecker {
 
@@ -117,6 +115,12 @@ public class InstancePropertiesChecker extends PropertiesChecker {
 			return;
 		}
 		JsonArray entityClocks = entity.getProperties().getAsJsonArray(PROP_CLOCKS);
+		// A built-in entity loaded from IR (or any entity that skipped
+		// EntityPropertiesChecker) may not declare "clocks". Treat a missing
+		// declaration as "no clocks" instead of dereferencing null downstream.
+		if (entityClocks == null) {
+			entityClocks = new JsonArray();
+		}
 
 		// use {clock: "name"} as a shortcut for {clocks: ["name"]}
 		JsonObject properties = instance.getProperties();
@@ -157,6 +161,11 @@ public class InstancePropertiesChecker extends PropertiesChecker {
 			return;
 		}
 		JsonArray entityResets = entity.getProperties().getAsJsonArray(PROP_RESETS);
+		// A built-in entity loaded from IR may declare "reset": null (no "resets"
+		// array). Treat a missing declaration as "no resets" instead of NPE-ing.
+		if (entityResets == null) {
+			entityResets = new JsonArray();
+		}
 
 		// use {reset: {"x": "y"}} as a shortcut for {resets: [{"x": "y"}]}
 		JsonObject properties = instance.getProperties();

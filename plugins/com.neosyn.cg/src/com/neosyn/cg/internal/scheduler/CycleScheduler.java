@@ -44,8 +44,6 @@ import com.neosyn.models.util.Void;
 /**
  * This class defines a cycle scheduler.
  * 
-
- * 
  */
 public class CycleScheduler extends AbstractCycleScheduler {
 
@@ -139,8 +137,27 @@ public class CycleScheduler extends AbstractCycleScheduler {
 
 		// we also add tBefore's scheduler and body to transition's scheduler and body
 		// (but this time we just copy it the simple way)
+		//
+		// ORDER MATTERS (TRAPS T137). tBefore's scheduler already holds the statements that
+		// precede its own conditions (an outer includePreamble put them there), and tBefore's
+		// body holds copies of those same statements followed by the branch's statements, which
+		// come AFTER the conditions in the source. Prepending the whole body in front of the
+		// scheduler made the outer guard read the variables after the branch had updated them:
+		// `if (a.available() && frames < 3) { ... if (last) { frames++; } if (n == 8) {
+		// idle(4); } }` tested `frames < 3` with the frame just counted, no action could fire
+		// and both back ends hung. Simply swapping the two (scheduler, then the whole body) was
+		// tried and is wrong too: the duplicated preceding statements ran a second time after
+		// the guard, and the Intel-8088 InstrDecode guard read another action's stale local.
+		// Source order is: tBefore's scheduler as it is, then only the body statements it does
+		// not already contain, then (added by the caller) this branch's condition.
+		List<EObject> rest = new ArrayList<>();
+		for (EObject eObject : body) {
+			if (!tBefore.getScheduler().contains(eObject)) {
+				rest.add(eObject);
+			}
+		}
+		transition.getScheduler().addAll(0, rest);
 		transition.getScheduler().addAll(0, tBefore.getScheduler());
-		transition.getScheduler().addAll(0, body);
 	}
 
 	/**
@@ -247,7 +264,24 @@ public class CycleScheduler extends AbstractCycleScheduler {
 				StatementIf _if = (StatementIf) last;
 				boolean hasGoto = false;
 				for (Branch branch : _if.getBranches()) {
-					List<Statement> stmts = branch.getBody().getStmts();
+					Block branchBody = branch.getBody();
+					if (branchBody == null) {
+						// A parse error can leave a branch with NO body at all -- an `if`
+						// whose body failed to parse, which a reserved word used as a
+						// variable is enough to cause (`int<32> out = ...; if (out < 0)
+						// out = 0;`). This used to throw
+						// "Cannot invoke Block.getStmts() because Branch.getBody() is null"
+						// ABOVE the real diagnostic, naming the scheduler for what is one
+						// bad token in the source -- the same misdirection the null-name
+						// guards in IrBuilder remove, reached through a different route.
+						//
+						// A bodyless branch is definitively not "a branch that is exactly
+						// one goto", so the answer here is simply no.
+						hasGoto = false;
+						break;
+					}
+
+					List<Statement> stmts = branchBody.getStmts();
 					if (stmts.size() == 1 && stmts.get(0) instanceof StatementGoto) {
 						hasGoto = true;
 					} else {
@@ -358,6 +392,34 @@ public class CycleScheduler extends AbstractCycleScheduler {
 		boolean oldAssociate = associate;
 		this.associate = false;
 
+		if (schedule.hasMultipleTransitions()) {
+			// TRAPS T136: after an `if` in which only some branches broke the cycle
+			// (`if (c) { idle(3); }`, `if (c) { fence; }`), several transitions are open, and they
+			// ARE the current node's children. The join below clears the fork's children, so run
+			// on that node it wiped every open path: this `if`, everything after it and the
+			// post-break path's way back to the loop start vanished from the design, on every back
+			// end, silently. Register the branches' patterns on each open path instead -- a leaf,
+			// whose children are only the ones this `if` itself adds.
+			Node parent = schedule.getNode();
+			for (Node leaf : openLeaves(parent)) {
+				schedule.setNode(leaf);
+				registerSimpleIfPatterns(stmtIf);
+			}
+			schedule.setNode(parent);
+		} else {
+			registerSimpleIfPatterns(stmtIf);
+		}
+
+		// set associate flag to true again, and associate this statement
+		this.associate = oldAssociate;
+		associate(stmtIf);
+	}
+
+	/**
+	 * Visits the branches of a single-cycle `if` on the current node, so the reads and writes of
+	 * every branch reach the current transition's action.
+	 */
+	private void registerSimpleIfPatterns(StatementIf stmtIf) {
 		IfBehavior behavior = new IfBehaviorMono(schedule);
 		Node fork = behavior.fork();
 		for (Branch branch : stmtIf.getBranches()) {
@@ -365,10 +427,28 @@ public class CycleScheduler extends AbstractCycleScheduler {
 			schedule.visitBranch(this, branch);
 		}
 		behavior.join(fork);
+	}
 
-		// set associate flag to true again, and associate this statement
-		this.associate = oldAssociate;
-		associate(stmtIf);
+	/**
+	 * The open paths under {@code node}: leaves whose transition has no target yet. A target set
+	 * by break/continue ends that path (see associate), so nothing more is scheduled on it.
+	 */
+	private static List<Node> openLeaves(Node node) {
+		List<Node> leaves = new ArrayList<>();
+		collectOpenLeaves(node, leaves);
+		return leaves;
+	}
+
+	private static void collectOpenLeaves(Node node, List<Node> leaves) {
+		if (!node.hasChildren()) {
+			if (ScheduleFsm.getTransition(node).getTarget() == null) {
+				leaves.add(node);
+			}
+			return;
+		}
+		for (Node child : node.getChildren()) {
+			collectOpenLeaves(child, leaves);
+		}
 	}
 
 }

@@ -1,0 +1,14 @@
+package com.neosyn.test.codegen;
+
+// TRAPS T175: a failing assert in Verilog printed `(v_3 == E_0_1)` -- IR names, no values, no file:line.
+task AssertIndexMessage {
+	const u8 E[4] = { 10, 20, 30, 40 };
+	bool finished;
+	u3 i;
+	void loop() {
+		u8 v = (u8) (i * 10 + 10);
+		assert(v == E[i]);
+		i++;
+		if (i == 4) { finished = true; }
+	}
+}

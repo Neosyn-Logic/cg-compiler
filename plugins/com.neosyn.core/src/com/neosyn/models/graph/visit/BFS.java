@@ -17,8 +17,6 @@ import com.neosyn.models.graph.Vertex;
 /**
  * This class defines Breadth-First Search (BFS) for a graph.
  * 
-
- * 
  */
 public class BFS extends Ordering {
 

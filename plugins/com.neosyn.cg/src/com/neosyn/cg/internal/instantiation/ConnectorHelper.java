@@ -23,8 +23,6 @@ import com.neosyn.models.dpn.Port;
 /**
  * This class defines an helper class that creates Connections.
  * 
-
- * 
  */
 public class ConnectorHelper {
 
@@ -40,6 +38,12 @@ public class ConnectorHelper {
 	 */
 	public Endpoint getEndpoint(DPN dpn, VarRef ref) {
 		Variable cxPort = ref.getVariable();
+		// A reference to a port that does not exist (`checker.reads(dut.y)` where dut has no y): the linker
+		// has already said "y cannot be resolved". Without this the instance branch below dereferenced it
+		// and printed a NullPointerException after that message (TRAPS T61). Callers skip a null endpoint.
+		if (cxPort == null || cxPort.eIsProxy()) {
+			return null;
+		}
 		Instance otherInst = getInstance(dpn, ref);
 		if (otherInst == null) {
 			Port otherPort = instantiator.getMapping(dpn, cxPort);

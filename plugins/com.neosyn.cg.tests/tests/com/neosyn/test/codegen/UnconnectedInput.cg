@@ -1,0 +1,27 @@
+package com.neosyn.test.codegen;
+
+/*
+ * Regression fixture, TRAPS T119: a child's input port that the network does not connect.
+ *
+ * `spare` is read by the task and wired to nothing, exactly as `io_rdata` is on the Rv32iCpu
+ * instance inside TestRvChecksum. VHDL has always tied such a port to '0' (it refuses to
+ * elaborate otherwise), but Verilog left it out of the port map altogether, which floats the
+ * pin and reads it as X -- the same design deterministic in one language and X-propagating in
+ * the other. Verilator says so as `Cell has missing pin`; nothing else did.
+ *
+ * See GeneratedNoiseTest.
+ */
+network UnconnectedInput {
+	in stream u8 din;
+	out push u8 dout;
+
+	dut = new task {
+		in push u8 spare;
+
+		void loop() {
+			u8 v = din.read();
+			u8 extra = spare.read();
+			dout.write((u8)(v + extra));
+		}
+	};
+}

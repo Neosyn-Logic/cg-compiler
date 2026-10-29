@@ -1,0 +1,480 @@
+/*
+ * Copyright (c) 2024-2026 Neosyn (neosyn.io). All rights reserved.
+ * SPDX-License-Identifier: LicenseRef-Neosyn-Proprietary
+ * Proprietary software of Neosyn; licensed, not sold. Provided "AS IS".
+ */
+package com.neosyn.test.bytecode;
+
+/**
+ * Value gate for `/` and `%` by a compile-time NON-power-of-two constant.
+ *
+ * A non-power-of-two constant divisor used to be a hard compile error ("divisor
+ * must be a power of two"). It is now lowered to a reciprocal (magic-number)
+ * multiply: `q = (x * M) >> s`, matching C / RISC-V / Verilog semantics — floor
+ * for unsigned, truncation toward zero for signed (the rounding pinned down for
+ * powers of two in S159 §34, and what the std.math.Divide built-in produces).
+ *
+ * The magic constant M is up to N+1 bits, so `x * M` is a >N-bit product; C⏚ `*`
+ * is full width (never truncated) and the JVM sim carries >64 bits as BigInteger,
+ * so the wide product is exact on both backends. The (M, s) formulas were proven
+ * by brute force over the whole dividend range for both signednesses before this
+ * fixture was written; the expected vectors here are computed by that same oracle,
+ * NOT by hand (a hand-authored vector is how the first §34 test verified nothing).
+ *
+ * Written as `inp`/`outp` vector tasks ON PURPOSE so the harness drives `inp` and
+ * value-checks `outp` element by element on Fast-Sim (a `terminate:`-only network
+ * would only compile). Cases: unsigned and signed, div and mod, several divisors
+ * (3, 7, 10), two widths (32- and 8-bit), and the edge where the divisor exceeds
+ * every dividend (quotient 0, remainder = dividend). Inputs include both signs,
+ * exact vs inexact, |a| < divisor, zero, and the width extremes.
+ */
+
+/* ---- unsigned 32-bit ------------------------------------------------------ */
+
+task UnsignedDiv3 {
+	properties {
+		test: {
+			inp:  [ 7, 3, 2, 0, 10, 100, 4294967295, 2147483648, 1000000000 ],
+			outp: [ 2, 1, 0, 0,  3,  33, 1431655765,  715827882,  333333333 ]
+		}
+	}
+
+	sync { in u32 inp; out u32 outp; }
+
+	void loop() {
+		outp.write(inp.read() / 3);
+	}
+}
+
+task UnsignedMod3 {
+	properties {
+		test: {
+			inp:  [ 7, 3, 2, 0, 10, 100, 4294967295, 2147483648, 1000000000 ],
+			outp: [ 1, 0, 2, 0,  1,   1,          0,          2,          1 ]
+		}
+	}
+
+	sync { in u32 inp; out u32 outp; }
+
+	void loop() {
+		outp.write(inp.read() % 3);
+	}
+}
+
+task UnsignedDiv7 {
+	properties {
+		test: {
+			inp:  [ 7, 3, 2, 0, 10, 100, 4294967295, 2147483648, 1000000000 ],
+			outp: [ 1, 0, 0, 0,  1,  14,  613566756,  306783378,  142857142 ]
+		}
+	}
+
+	sync { in u32 inp; out u32 outp; }
+
+	void loop() {
+		outp.write(inp.read() / 7);
+	}
+}
+
+task UnsignedDiv10 {
+	properties {
+		test: {
+			inp:  [ 7, 3, 2, 0, 10, 100, 4294967295, 2147483648, 1000000000 ],
+			outp: [ 0, 0, 0, 0,  1,  10,  429496729,  214748364,  100000000 ]
+		}
+	}
+
+	sync { in u32 inp; out u32 outp; }
+
+	void loop() {
+		outp.write(inp.read() / 10);
+	}
+}
+
+task UnsignedMod10 {
+	properties {
+		test: {
+			inp:  [ 7, 3, 2, 0, 10, 100, 4294967295, 2147483648, 1000000000 ],
+			outp: [ 7, 3, 2, 0,  0,   0,          5,          8,          0 ]
+		}
+	}
+
+	sync { in u32 inp; out u32 outp; }
+
+	void loop() {
+		outp.write(inp.read() % 10);
+	}
+}
+
+/* ---- signed 32-bit (truncate toward zero) --------------------------------- */
+
+task SignedDiv3 {
+	properties {
+		test: {
+			inp:  [ 7, -7, 6, -6, 2, -2, 0, -9, 9, -2147483648, 2147483647, 1000000000, -1000000000 ],
+			outp: [ 2, -2, 2, -2, 0,  0, 0, -3, 3,  -715827882,  715827882,  333333333,  -333333333 ]
+		}
+	}
+
+	sync { in int<32> inp; out int<32> outp; }
+
+	void loop() {
+		outp.write(inp.read() / 3);
+	}
+}
+
+task SignedMod3 {
+	properties {
+		test: {
+			inp:  [ 7, -7, 6, -6, 2, -2, 0, -9, 9, -2147483648, 2147483647, 1000000000, -1000000000 ],
+			outp: [ 1, -1, 0,  0, 2, -2, 0,  0, 0,          -2,          1,          1,          -1 ]
+		}
+	}
+
+	sync { in int<32> inp; out int<32> outp; }
+
+	void loop() {
+		outp.write(inp.read() % 3);
+	}
+}
+
+task SignedDiv7 {
+	properties {
+		test: {
+			inp:  [ 7, -7, 6, -6, 2, -2, 0, -9, 9, -2147483648, 2147483647, 1000000000, -1000000000 ],
+			outp: [ 1, -1, 0,  0, 0,  0, 0, -1, 1,  -306783378,  306783378,  142857142,  -142857142 ]
+		}
+	}
+
+	sync { in int<32> inp; out int<32> outp; }
+
+	void loop() {
+		outp.write(inp.read() / 7);
+	}
+}
+
+task SignedMod7 {
+	properties {
+		test: {
+			inp:  [ 7, -7, 6, -6, 2, -2, 0, -9, 9, -2147483648, 2147483647, 1000000000, -1000000000 ],
+			outp: [ 0,  0, 6, -6, 2, -2, 0, -2, 2,          -2,          1,          6,          -6 ]
+		}
+	}
+
+	sync { in int<32> inp; out int<32> outp; }
+
+	void loop() {
+		outp.write(inp.read() % 7);
+	}
+}
+
+task SignedDiv10 {
+	properties {
+		test: {
+			inp:  [ 7, -7, 6, -6, 2, -2, 0, -9, 9, -2147483648, 2147483647, 1000000000, -1000000000 ],
+			outp: [ 0,  0, 0,  0, 0,  0, 0,  0, 0,  -214748364,  214748364,  100000000,  -100000000 ]
+		}
+	}
+
+	sync { in int<32> inp; out int<32> outp; }
+
+	void loop() {
+		outp.write(inp.read() / 10);
+	}
+}
+
+task SignedMod10 {
+	properties {
+		test: {
+			inp:  [ 7, -7, 6, -6, 2, -2, 0, -9, 9, -2147483648, 2147483647, 1000000000, -1000000000 ],
+			outp: [ 7, -7, 6, -6, 2, -2, 0, -9, 9,          -8,          7,          0,           0 ]
+		}
+	}
+
+	sync { in int<32> inp; out int<32> outp; }
+
+	void loop() {
+		outp.write(inp.read() % 10);
+	}
+}
+
+/* ---- 8-bit (smaller magic, product stays <= 64 bits) ---------------------- */
+
+task U8Div3 {
+	properties {
+		test: {
+			inp:  [ 255, 100, 7, 3, 2, 0, 1 ],
+			outp: [  85,  33, 2, 1, 0, 0, 0 ]
+		}
+	}
+
+	sync { in u8 inp; out u8 outp; }
+
+	void loop() {
+		outp.write(inp.read() / 3);
+	}
+}
+
+task I8Div3 {
+	properties {
+		test: {
+			inp:  [ 127, -128, 7, -7, 2, -2, 0, -1, 100, -100 ],
+			outp: [  42,  -42, 2, -2, 0,  0, 0,  0,  33,  -33 ]
+		}
+	}
+
+	sync { in int<8> inp; out int<8> outp; }
+
+	void loop() {
+		outp.write(inp.read() / 3);
+	}
+}
+
+task I8Mod3 {
+	properties {
+		test: {
+			inp:  [ 127, -128, 7, -7, 2, -2, 0, -1, 100, -100 ],
+			outp: [   1,   -2, 1, -1, 2, -2, 0, -1,   1,   -1 ]
+		}
+	}
+
+	sync { in int<8> inp; out int<8> outp; }
+
+	void loop() {
+		outp.write(inp.read() % 3);
+	}
+}
+
+/* ---- divisor larger than any dividend: q == 0, r == dividend -------------- */
+
+task U8DivOversize {
+	properties {
+		test: {
+			inp:  [ 255, 100, 7, 3, 2, 0, 1 ],
+			outp: [   0,   0, 0, 0, 0, 0, 0 ]
+		}
+	}
+
+	sync { in u8 inp; out u8 outp; }
+
+	void loop() {
+		outp.write(inp.read() / 300);
+	}
+}
+
+task U8ModOversize {
+	properties {
+		test: {
+			inp:  [ 255, 100, 7, 3, 2, 0, 1 ],
+			outp: [ 255, 100, 7, 3, 2, 0, 1 ]
+		}
+	}
+
+	sync { in u8 inp; out u8 outp; }
+
+	void loop() {
+		outp.write(inp.read() % 300);
+	}
+}
+
+/* ---- 16-bit ---------------------------------------------------------------- */
+
+task U16Div7 {
+	properties {
+		test: {
+			inp:  [ 7, 3, 0, 100, 1000, 65535, 32768, 12345, 255 ],
+			outp: [ 1, 0, 0,  14,  142,  9362,  4681,  1763,  36 ]
+		}
+	}
+
+	sync { in u16 inp; out u16 outp; }
+
+	void loop() {
+		outp.write(inp.read() / 7);
+	}
+}
+
+task U16Mod7 {
+	properties {
+		test: {
+			inp:  [ 7, 3, 0, 100, 1000, 65535, 32768, 12345, 255 ],
+			outp: [ 0, 3, 0,   2,    6,     1,     1,     4,   3 ]
+		}
+	}
+
+	sync { in u16 inp; out u16 outp; }
+
+	void loop() {
+		outp.write(inp.read() % 7);
+	}
+}
+
+task I16Div7 {
+	properties {
+		test: {
+			inp:  [ 7, -7, 100, -100, 0, -32768, 32767, 12345, -12345 ],
+			outp: [ 1, -1,  14,  -14, 0,  -4681,  4681,  1763,  -1763 ]
+		}
+	}
+
+	sync { in int<16> inp; out int<16> outp; }
+
+	void loop() {
+		outp.write(inp.read() / 7);
+	}
+}
+
+task I16Div10 {
+	properties {
+		test: {
+			inp:  [ 7, -7, 100, -100, 0, -32768, 32767, 12345, -12345 ],
+			outp: [ 0,  0,  10,  -10, 0,  -3276,  3276,  1234,  -1234 ]
+		}
+	}
+
+	sync { in int<16> inp; out int<16> outp; }
+
+	void loop() {
+		outp.write(inp.read() / 10);
+	}
+}
+
+/* ---- more 32-bit divisor shapes ------------------------------------------- */
+
+task U32Div6 {
+	properties {
+		test: {
+			inp:  [ 7, 100, 1000000000, 4294967295, 0, 65535, 3 ],
+			outp: [ 1,  16,  166666666,  715827882, 0, 10922, 0 ]
+		}
+	}
+
+	sync { in u32 inp; out u32 outp; }
+
+	void loop() {
+		outp.write(inp.read() / 6);
+	}
+}
+
+task U32Div100 {
+	properties {
+		test: {
+			inp:  [ 7, 100, 1000000000, 4294967295, 0, 65535, 3 ],
+			outp: [ 0,   1,   10000000,   42949672, 0,   655, 0 ]
+		}
+	}
+
+	sync { in u32 inp; out u32 outp; }
+
+	void loop() {
+		outp.write(inp.read() / 100);
+	}
+}
+
+task U32Div65535 {
+	properties {
+		test: {
+			inp:  [ 7, 100, 1000000000, 4294967295, 0, 65535, 3 ],
+			outp: [ 0,   0,      15259,      65537, 0,     1, 0 ]
+		}
+	}
+
+	sync { in u32 inp; out u32 outp; }
+
+	void loop() {
+		outp.write(inp.read() / 65535);
+	}
+}
+
+task I32Div6 {
+	properties {
+		test: {
+			inp:  [ 7, -7, 1000000000, -1000000000, 0, -2147483648, 2147483647, 6 ],
+			outp: [ 1, -1,  166666666,  -166666666, 0,  -357913941,  357913941, 1 ]
+		}
+	}
+
+	sync { in int<32> inp; out int<32> outp; }
+
+	void loop() {
+		outp.write(inp.read() / 6);
+	}
+}
+
+/* ---- 64-bit: magic is up to 65 bits, so `x*M` is a >64-bit product carried
+ *      as a BigInteger in the Fast-Sim — the widest path this feature touches. */
+
+task U64Div7 {
+	properties {
+		test: {
+			inp:  [ 7, 100, 1000000000000, 4611686018427387903, 0, 1, 9223372036854775807 ],
+			outp: [ 1,  14,  142857142857,  658812288346769700, 0, 0, 1317624576693539401 ]
+		}
+	}
+
+	sync { in u64 inp; out u64 outp; }
+
+	void loop() {
+		outp.write(inp.read() / 7);
+	}
+}
+
+task U64Div10 {
+	properties {
+		test: {
+			inp:  [ 7, 100, 1000000000000, 4611686018427387903, 0, 1, 9223372036854775807 ],
+			outp: [ 0,  10,  100000000000,  461168601842738790, 0, 0,  922337203685477580 ]
+		}
+	}
+
+	sync { in u64 inp; out u64 outp; }
+
+	void loop() {
+		outp.write(inp.read() / 10);
+	}
+}
+
+task U64Mod7 {
+	properties {
+		test: {
+			inp:  [ 7, 100, 1000000000000, 4611686018427387903, 0, 1, 9223372036854775807 ],
+			outp: [ 0,   2,             1,                   3, 0, 1,                   0 ]
+		}
+	}
+
+	sync { in u64 inp; out u64 outp; }
+
+	void loop() {
+		outp.write(inp.read() % 7);
+	}
+}
+
+task I64Div7 {
+	properties {
+		test: {
+			inp:  [ 7, -7, 1000000000000, -1000000000000, 0, -1, 4611686018427387903, -4611686018427387903 ],
+			outp: [ 1, -1,  142857142857,  -142857142857, 0,  0,  658812288346769700,  -658812288346769700 ]
+		}
+	}
+
+	sync { in int<64> inp; out int<64> outp; }
+
+	void loop() {
+		outp.write(inp.read() / 7);
+	}
+}
+
+task I64Mod7 {
+	properties {
+		test: {
+			inp:  [ 7, -7, 1000000000000, -1000000000000, 0, -1, 4611686018427387903, -4611686018427387903 ],
+			outp: [ 0,  0,             1,             -1, 0, -1,                   3,                   -3 ]
+		}
+	}
+
+	sync { in int<64> inp; out int<64> outp; }
+
+	void loop() {
+		outp.write(inp.read() % 7);
+	}
+}

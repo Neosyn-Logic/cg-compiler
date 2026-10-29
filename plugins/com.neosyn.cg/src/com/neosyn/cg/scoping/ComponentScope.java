@@ -379,8 +379,9 @@ public class ComponentScope extends AbstractScope {
 			return extractEntityFromResource(resource, entityIndex);
 
 		} catch (Exception e) {
+			// A missing/broken built-in resolves to null (the caller handles it); the gated
+			// debugLog is enough — don't dump a raw stack trace to stderr.
 			debugLog("Failed to load built-in .cg: " + cgPath + " - " + e.getClass().getSimpleName() + ": " + e.getMessage());
-			e.printStackTrace();
 			return null;
 		}
 	}

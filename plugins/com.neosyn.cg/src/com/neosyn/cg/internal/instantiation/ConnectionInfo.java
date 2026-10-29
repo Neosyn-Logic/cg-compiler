@@ -27,8 +27,6 @@ import com.neosyn.models.dpn.Port;
 /**
  * This class holds information about a connect statement.
  * 
-
- *
  */
 public class ConnectionInfo implements Iterable<Port> {
 

@@ -23,6 +23,19 @@ public interface IPathResolver {
 		// Default implementation does nothing - override in generators that support this
 	}
 
+	/** The target vendor of the current generation run: "generic" unless one was chosen. */
+	default String getTargetVendor() {
+		return "generic";
+	}
+
+	/**
+	 * Whether the network printer inserts a reset release synchronizer in {@code entity}: only in a design
+	 * root, and only when a vendor is targeted (see {@code ICodeGenerator#setTarget}).
+	 */
+	default boolean synchronizesResets(Entity entity) {
+		return false;
+	}
+
 	/**
 	 * Returns the path to the given entity. Equivalent to
 	 * <code>computePath(IrUtil.getFile(entity.getName()))</code>

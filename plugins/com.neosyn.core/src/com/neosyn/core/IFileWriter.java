@@ -14,8 +14,6 @@ import java.io.InputStream;
 /**
  * This interface defines a file writer that is independent of the underlying platform.
  * 
-
- * 
  */
 public interface IFileWriter {
 

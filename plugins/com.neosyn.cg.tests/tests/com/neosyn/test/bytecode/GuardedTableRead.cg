@@ -1,0 +1,30 @@
+/*
+ * TRAPS T9 (Bus repro R3): `if (i < N) { if (go.read() >= T[i]) ... }`. The scheduler loads T[i]
+ * before it evaluates the conditions around it, so once i == N the simulator read T[3] of a 3-entry
+ * table and died with ArrayIndexOutOfBoundsException. The `&&` discards that value, and Verilog,
+ * which masks the index, was always right. Vectors: idx counts up to N and stays there.
+ * Simulator only: the VHDL back end still crashes on this (T9, VHDL half deferred).
+ */
+package com.neosyn.test.bytecode.guardedtableread;
+
+task GuardedTableRead {
+	properties {
+		test: {
+			go:  [ 1, 2, 3, 3, 3 ],
+			idx: [ 1, 2, 3, 3, 3 ]
+		}
+	}
+	in u8 go;
+	out u8 idx;
+	const u8 N = 3;
+	const u8 T[3] = { 1, 2, 3 };
+	u8 i = 0;
+	void loop() {
+		if (i < N) {
+			if (go.read() >= T[i]) {
+				i = (u8) (i + 1);
+			}
+		}
+		idx.write(i);
+	}
+}

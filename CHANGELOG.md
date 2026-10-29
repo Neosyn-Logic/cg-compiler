@@ -1,0 +1,101 @@
+# Changelog
+
+All notable changes to the open-source C⏚ Verilog compiler.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). From 3.5.1 the
+version is the one of the Neosyn C⏚ release the compiler comes from: `cg-language-server.jar
+--version` reports the same number as the commercial distribution's compiler.
+
+## [Unreleased]
+
+## [3.5.1] - 2026-10-29
+
+Brings the compiler up to date with the Neosyn C⏚ 3.5.1 release. Every change between 2.6.9 and
+3.5.1 that concerns the language or the generated Verilog is in this release; the main ones are
+below.
+
+### Changed — designs that may need an edit (breaking)
+
+- **A one-bit integer is an error.** `u1`, `i1`, `uint<1>`, `int<1>` -- any spelling with a literal
+  width of 1 -- stops `generate`. Use `bool`. A width set by a generic parameter is still accepted.
+- **`confirm` ports (and the old `sync ack`) are refused.** The generated Verilog declared the
+  acknowledge input and never read it, so a value the consumer was not ready for was lost. Use
+  `stream`.
+- **Arithmetic on a `bool` is an error** (`1 - flag`, `flag + 1`, also inside an array index).
+  Write `flag ? 1 : 0`. Comparing a `bool` with a number is unchanged.
+- **A `combinational` task that assigns one of its own variables is an error.** The variable was
+  held in a latch. Remove `combinational` to make it a register, or compute it from the inputs every
+  cycle. A table the task only reads is still accepted.
+- **An initial value that does not fit its variable is an error** (`u2 w = 50;` was stored as 2),
+  and **assigning to a `const`** or to a function parameter is an error, not a warning.
+- **An early `return;` in `loop()` or `setup()` that skips statements is an error.**
+- **Two entities with the same name** -- in two packages, or the same package in two files -- stop
+  the build, and the message names the other file.
+- **`generate` on a directory** fails if any source under it has a compile error, and no longer
+  compiles neighbouring projects.
+- **A declaration at the top of a file is private to that file**, as documented.
+
+### Added
+
+- **`framed` streams** carry a frame boundary: `in framed u8 din;` / `out framed u8 dout;`,
+  `dout.write(v, isLast)`, and `din.last` read in the same cycle as `din.read()` (AXI-Stream
+  `TLAST`).
+- **Range bit-slices** `v[high:low]` and **array ports** `in u8 W[4]`.
+- **`generate --top <entity>`** emits only that entity, what it uses, and its testbench.
+- **`std.math.Divide` and `std.math.Multiply`**: a divider (sequential, or `use_hard = 1` for a
+  native one) and a registered multiplier, both `stream`. A `/` or `%` by a power-of-two or other
+  constant compiles; by a variable it still needs `Divide`.
+- **`std.fifo.SynchronousFIFO` has an `almost_full` output.**
+- **A generated FSM with spare encodings has a safe state**: an unused state code returns to the
+  initial state.
+- **The generated Verilog is meant to be read**: one port per line, temporaries named after what
+  they hold, a header that takes its author and copyright from the source and nothing from the
+  machine, no constant `if`s or empty blocks.
+- **Generated `assert`s say when they run.** A failing one prints the source text, the file and
+  line, and the value of each side of a comparison; a passing one prints `[check] ... first passed
+  at <time>` once, so a run whose asserts never executed no longer looks like a pass.
+- **Warnings** for a sum or product that wraps before it is used, a `combinational` task that
+  forwards a stream input without checking it, `sync` ports, and a misused `din.last`.
+
+### Fixed — generated Verilog that computed the wrong result
+
+- A multi-dimensional array whose inner size is not a power of two (`u8 a[3][5]`) addressed the
+  wrong element.
+- The `else` of an `if` whose first branch reads a port ran even when the condition held.
+- A stream output could lose a value when its consumer was not ready; a stream link through a
+  network boundary lost its handshake; `p.write(x); p.write(q.read())` took `q`'s value a cycle
+  early.
+- `std.fifo.SynchronousFIFO` now holds its output until it is read (first-word fall-through).
+- A task that paused inside its read block could stop for good; an `if` after a pause that only
+  some paths take was dropped; a port read inside a cast in a constant `for` loop was not waited
+  for.
+- A signed value with its high bit set was miscompiled by a constant division (a Verilog
+  concatenation is always unsigned).
+- A local variable written one bit at a time read as undefined; combinational temporaries inferred
+  latches; an input a network left unconnected floated.
+- An `assert` passed when its condition was unknown (X), and an `assert` inside a guarded branch ran
+  every cycle.
+- `generate .` built different hardware from `generate <full path>`.
+
+### Fixed — Verilog that did not compile, crashes and messages
+
+- A port named with a Verilog keyword, a state variable named like a handshake signal, and two
+  entities with the same name in different packages produced Verilog that did not compile.
+- A source with an error is reported by the front end, with its file and line, and no longer
+  followed by an internal crash. Only the first error is reported on a line the parser could not
+  read.
+- Common mistakes name their fix: `switch`, do-while, C-style generic brackets `task D[int W : 32]`,
+  `new T<>()`, a Java-style literal suffix `100L`, an `import` after `properties`.
+- Generated output contains only the standard-library files the design uses.
+
+### Standard library
+
+The standard-library Verilog (FIFOs, RAMs, synchronizers, DDR mux/demux, `Divide`, `Multiply`) is
+© Neosyn and ships in this repository in a non-readable form that keeps every module's name,
+parameters and ports. This release regenerates it from the 3.5.1 library, which fixes the FIFO
+behaviour above and adds `almost_full`; each module was checked equivalent to its source by
+co-simulation (two parameter sets, 4,000 random cycles, every output compared bit for bit).
+
+## [2.6.9] - 2026-06-29
+
+First tagged release of the open-source compiler.

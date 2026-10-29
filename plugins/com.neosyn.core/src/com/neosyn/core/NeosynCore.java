@@ -44,8 +44,6 @@ import com.google.inject.name.Names;
 /**
  * This class defines the Neosyn core plug-in, as well as various constants.
  *
-
- *
  */
 public class NeosynCore implements BundleActivator {
 
@@ -157,7 +155,7 @@ public class NeosynCore implements BundleActivator {
 		List<IProject> projects = new ArrayList<>();
 		for (IProject project : root.getProjects()) {
 			try {
-				if (project.isOpen() && project.hasNature(NeosynNature.NATURE_ID)) {
+				if (project.isOpen() && project.hasNature(ICoreConstants.NATURE_ID)) {
 					projects.add(project);
 				}
 			} catch (CoreException e) {

@@ -1,0 +1,60 @@
+/*
+ * Regression test for parameterized built-in port widths seen through a DIRECT
+ * instance-port reference (`ram.q.read` from an inline task, as opposed to a
+ * `reads()` wiring, which takes its width from the reader's own declaration).
+ *
+ * Two caller-side bugs this guards against (both were live before the fix, and
+ * neither was catchable by BuiltinPortTypeResolverTest -- the resolver itself
+ * was always correct, its callers just never let it run with real arguments):
+ *
+ *  - ORDERING: InstantiatorImpl built the built-in port mappings BEFORE
+ *    translateProperties() ran. A built-in carries its args (size/width) as JSON
+ *    properties, and the resolver reads them from there, so at mapping time
+ *    size/width were still unset and every port silently kept the built-in IR's
+ *    baked default.
+ *  - GUARD: ImplicitConnector only resolved when the port type's size was the
+ *    -1 placeholder. RAMs/FIFOs use -1, but other built-ins bake a DEFAULT const
+ *    width onto the port, so the resolve was skipped and the 32-bit default won.
+ *
+ * Net effect: a 128-bit RAM read back through `ram.q` produced a 32-BIT port.
+ * The Verilog backend silently pruned the high 96 bits (iverilog: "expects 32
+ * bits, got 128 -- Pruning 96 high bits") and the bytecode sim read 0, because a
+ * 32-bit Port reads intValue while a 128-bit RAM writes the BigInteger `value`.
+ *
+ * The value below MUST exceed 32 bits: with a small value the truncation is
+ * invisible (0x1234 survives a 32-bit prune unharmed) and the test would pass
+ * against the bug. width=32 also happened to work by accident, since the wrong
+ * default matched -- so this fixture deliberately uses a 128-bit RAM.
+ */
+package com.neosyn.test.bytecode;
+
+network WideRamPortTest {
+	properties { test: { terminate: "checker.finished" } }
+
+	writer = new task {
+		out u4 addr;
+		out push u128 data;
+
+		void setup() {
+			// single write at address 5, then hold the address
+			addr.write(5);
+			data.write(0x11223344_55667788_99aabbcc_ddeeff00);
+		}
+	};
+
+	ram = new std.mem.SinglePortRAM({size: 16, width: 128});
+	ram.reads(writer.addr, writer.data);
+
+	checker = new task {
+		bool finished;
+
+		void setup() {
+			idle(10);
+			// Read the built-in's q DIRECTLY: this is the path whose port width
+			// was resolved from the instance's `width: 128` argument.
+			u128 v = ram.q.read;
+			assert(v == 0x11223344_55667788_99aabbcc_ddeeff00);
+			finished = true;
+		}
+	};
+}
